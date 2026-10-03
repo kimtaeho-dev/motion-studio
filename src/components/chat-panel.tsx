@@ -255,7 +255,7 @@ function SettingsMenu() {
 }
 
 export function ChatPanel() {
-  const { messages, sending, send, cancel, reset, upload } = useChat();
+  const { messages, sending, send, cancel, reset, upload, composeRequest } = useChat();
   const [text, setText] = createSignal("");
   const [staged, setStaged] = createSignal<Staged[]>([]);
   const [attachError, setAttachError] = createSignal<string | null>(null);
@@ -364,6 +364,18 @@ export function ChatPanel() {
       void handleSend();
     }
   };
+
+  // "수정 요청" / "답하기" elsewhere in the app: start the message for the designer.
+  createEffect(() => {
+    const request = composeRequest();
+    if (!request || !textareaRef) return;
+    setText(request.text);
+    queueMicrotask(() => {
+      autoGrow();
+      textareaRef!.focus();
+      textareaRef!.setSelectionRange(request.text.length, request.text.length);
+    });
+  });
 
   // Keep the latest message in view as the thread grows.
   createEffect(() => {

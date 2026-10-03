@@ -93,12 +93,25 @@ export interface FilmOutput {
 export interface FilmFiles {
   docs: Partial<Record<"brief" | "shotlist" | "review" | "style", FilmFile>>;
   outputs: FilmOutput[];
-  /**
-   * The furthest step of the pipeline the film has reached. Inferred from the
-   * files that exist until the agent records it in state.json itself.
-   */
+  /** The pipeline step: what the agent recorded in state.json, or — with none recorded — what the files show. */
   stage: FilmStage;
   quality: FilmQuality;
+  /** The agent stopped for the designer: to approve the shotlist, or to answer its questions. */
+  waiting: FilmWaiting | null;
+  /** Critique round in progress or last finished (1-based), when the agent recorded one. */
+  round: number | null;
+}
+
+export type FilmWaiting = "approval" | "answer";
+
+/** films/<slug>/state.json — written by the app (quality, approvals) and the agent (tools/state.mjs). */
+export interface FilmState {
+  stage?: FilmStage;
+  waiting?: FilmWaiting | null;
+  round?: number;
+  quality?: FilmQuality;
+  /** Gates the designer has passed, e.g. ["shotlist"]. */
+  approved?: string[];
 }
 
 /** One render in the studio's queue (server/render.ts), pushed as `render:update`. */

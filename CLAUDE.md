@@ -35,13 +35,15 @@ After Effects를 쓰지 않는다. 모든 영상은 HTML 한 장에 들어 있�
 
 ## 작업 순서 (게이트를 건너뛰지 않는다)
 
-1. **브리프**: `films/<이름>/brief.md` (템플릿: `prompts/spec-template.md`). 빈칸이 있으면 디자이너에게 먼저 묻는다.
+단계가 바뀔 때마다 `node tools/state.mjs films/<이름> stage=<단계>`로 기록한다. Motion Studio 앱이 이걸 보고 디자이너에게 진행 단계와 승인 버튼을 보여준다. `state.json`을 손으로 고치지 않는다. `quality`와 `approved`는 앱이 쓴다.
+
+1. **브리프** (`stage=brief`): `films/<이름>/brief.md` (템플릿: `prompts/spec-template.md`). 빈칸이 있으면 디자이너에게 먼저 묻고, `waiting=answer`로 기록한 뒤 **턴을 끝낸다.**
 2. **레퍼런스가 있으면**: `films/<이름>/refs/`에서 `style_guide.md`를 먼저 쓴다(`prompts/reference.md`). 레퍼런스의 문법만 가져오고 내용·로고·캐릭터는 가져오지 않는다.
-3. **숏리스트**: `films/<이름>/shotlist.md`에 비트 그리드 위의 상태 목록을 적는다. 시각, 상태, 커서 동작, 효과음. **디자이너 OK를 받기 전에는 코드를 쓰지 않는다.**
-4. **스틸**: `node tools/render.mjs films/<이름> --stills beats`로 비트마다 1장 → `contact-beats.png`를 **직접 열어서 본다.** 그리드에서 벗어남, 답답함, 읽기 어려움을 고친다.
-5. **초안**: `--draft`로 빠르게 렌더해서 타이밍을 확인한다.
-6. **크리틱 루프**: 풀 렌더 → `tools/sound.mjs` → `node tools/critique.mjs` → `prompts/critique-pass.md` 기준으로 점수를 매긴다. 라운드 수는 `films/<이름>/state.json`의 `quality`를 따른다: `fast` 1라운드 · `standard`(없을 때 기본) 3라운드 · `launch` 모든 항목이 8점 이상이 될 때까지(최소 3라운드, 6라운드를 넘기면 멈추고 디자이너에게 묻는다). 매 라운드 `films/<이름>/review_log.md`에 점수와 고친 점을 남긴다.
-7. **전달**: `out/<이름>/<포맷>/final.mp4`, `contact-beats.png`, 포스터 프레임(`--stills <시각>`)을 전달하고, 다음에 개선할 점을 한 줄 덧붙인다.
+3. **숏리스트** (`stage=shotlist`): `films/<이름>/shotlist.md`에 비트 그리드 위의 상태 목록을 마크다운 표로 적는다(비트 | 시각 | 상태 / 동작 | 커서 | 효과음). 다 쓰면 `waiting=approval`로 기록하고, 채팅에 표를 보여주고 승인을 부탁한 뒤 **턴을 끝낸다.** **디자이너 승인 전에는 코드를 쓰지 않는다.** 승인은 앱의 승인 버튼(`state.json`의 `approved`에 `shotlist`가 들어간다) 또는 채팅의 분명한 OK다. 수정 요청이 오면 숏리스트를 고치고 다시 `waiting=approval`.
+4. **스틸** (`stage=stills`): `node tools/render.mjs films/<이름> --stills beats`로 비트마다 1장 → `contact-beats.png`를 **직접 열어서 본다.** 그리드에서 벗어남, 답답함, 읽기 어려움을 고친다.
+5. **초안** (`stage=draft`): `--draft`로 빠르게 렌더해서 타이밍을 확인한다.
+6. **크리틱 루프** (라운드마다 `stage=critique round=<N>`): 풀 렌더 → `tools/sound.mjs` → `node tools/critique.mjs` → `prompts/critique-pass.md` 기준으로 점수를 매긴다. 라운드 수는 `films/<이름>/state.json`의 `quality`를 따른다: `fast` 1라운드 · `standard`(없을 때 기본) 3라운드 · `launch` 모든 항목이 8점 이상이 될 때까지(최소 3라운드, 6라운드를 넘기면 멈추고 `waiting=answer`로 디자이너에게 묻는다). 매 라운드 `films/<이름>/review_log.md`에 `## 라운드 N` 제목 아래 점수와 고친 점을 남긴다.
+7. **전달** (`stage=deliver waiting=none`): `out/<이름>/<포맷>/final.mp4`, `contact-beats.png`, 포스터 프레임(`--stills <시각>` 결과를 `poster.png`로 복사)을 전달하고, 다음에 개선할 점을 한 줄 덧붙인다.
 
 수정할 때는 바뀐 구간만 `--from/--to`로 다시 렌더해서 확인한 뒤, 마지막에 전체를 렌더한다.
 
@@ -58,6 +60,7 @@ node tools/render.mjs films/<이름> --codec prores  # 편집용 ProRes 4444 (�
 node tools/sound.mjs films/<이름> [--format 9x16]  # 음악+효과음 합성, 믹스 → final.mp4
 node tools/critique.mjs films/<이름> [포맷] [빠른동작시각]
 node tools/determinism.mjs films/<이름>            # 같은 프레임 두 번 → 같은 픽셀인지
+node tools/state.mjs films/<이름> stage=shotlist waiting=approval  # 진행 단계 기록 (앱의 단계 표시·승인 버튼)
 ```
 
 ## effort

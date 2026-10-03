@@ -21,6 +21,12 @@ const ChatContext = createContext<{
   /** Saves a file into the current film's refs/ or audio/ folder, ready to attach. */
   upload: (file: File) => Promise<ChatAttachment>;
   send: (text: string, attachments?: ChatAttachment[]) => Promise<void>;
+  /** The app's approve button for a pipeline gate (server/mailbox.ts records it in state.json). */
+  approve: (gate: "shotlist") => Promise<void>;
+  /** Put text in the message box and focus it — for "수정 요청" and "답하기". */
+  compose: (text: string) => void;
+  /** The latest compose request; the panel applies it when the id changes. */
+  composeRequest: () => { id: number; text: string } | null;
   cancel: (messageId: string) => Promise<void>;
   /** Send a failed request again, unchanged. */
   retry: (messageId: string) => Promise<void>;
@@ -101,6 +107,20 @@ export function ChatProvider(props: { children: JSX.Element }) {
     }
   };
 
+  const approve = async (gate: "shotlist") => {
+    const film = params.film;
+    if (!film) return;
+    setSending(true);
+    try {
+      await post("/__chat/send", { film, text: "", approval: gate, settings: settings() });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const [composeRequest, setComposeRequest] = createSignal<{ id: number; text: string } | null>(null);
+  const compose = (text: string) => setComposeRequest((prev) => ({ id: (prev?.id ?? 0) + 1, text }));
+
   const cancel = async (messageId: string) => {
     if (params.film) await post("/__chat/cancel", { film: params.film, messageId });
   };
@@ -137,7 +157,23 @@ export function ChatProvider(props: { children: JSX.Element }) {
 
   return (
     <ChatContext.Provider
-      value={{ messages, sending, progress, typicalDurationMs, settings, setSettings, upload, send, cancel, retry, signIn, reset }}
+      value={{
+        messages,
+        sending,
+        progress,
+        typicalDurationMs,
+        settings,
+        setSettings,
+        upload,
+        send,
+        approve,
+        compose,
+        composeRequest,
+        cancel,
+        retry,
+        signIn,
+        reset,
+      }}
     >
       {props.children}
     </ChatContext.Provider>

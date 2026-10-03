@@ -8,6 +8,16 @@ import type { FilmFile, FilmJson, FilmOutput, FilmParam } from "@/types";
 
 type Tab = "props" | "review";
 
+// Module-level so the stage panel can bring the shotlist into view when it asks for approval.
+const [tab, setTabSignal] = createSignal<Tab>("review");
+let scrollBody: HTMLDivElement | undefined;
+
+/** Switch the inspector to a tab, scrolled to its top. */
+export function showInspectorTab(next: Tab): void {
+  setTabSignal(next);
+  scrollBody?.scrollTo({ top: 0 });
+}
+
 async function loadText(url: string | undefined): Promise<string> {
   if (!url) return "";
   const res = await fetch(url, { cache: "no-store" });
@@ -242,11 +252,80 @@ function PropsTab() {
   );
 }
 
+interface ScoreRound {
+  round: number;
+  scores: { name: string; score: number | null }[];
+}
+
+/**
+ * The scores out of review_log.md: under each "## 라운드 N" heading, a line
+ * "점수: 훅 8 · 가독성 7 · … · 사운드 —" (CLAUDE.md 6번, prompts/critique-pass.md).
+ */
+export function parseScores(markdown: string): ScoreRound[] {
+  const rounds: ScoreRound[] = [];
+  const parts = markdown.split(/^##\s*라운드\s*(\d+).*$/m);
+  for (let i = 1; i < parts.length; i += 2) {
+    const line = /^\s*점수\s*[:：]\s*(.+)$/m.exec(parts[i + 1] ?? "");
+    if (!line) continue;
+    const scores = line[1]
+      .split(/[·,|]/)
+      .map((item) => /^\s*(.+?)\s+(\d+(?:\.\d+)?|—|-)\s*$/.exec(item))
+      .filter((m): m is RegExpExecArray => !!m)
+      .map((m) => ({ name: m[1], score: /\d/.test(m[2]) ? Number(m[2]) : null }));
+    if (scores.length) rounds.push({ round: Number(parts[i]), scores });
+  }
+  return rounds;
+}
+
+function ScoreTable(props: { rounds: ScoreRound[] }) {
+  const names = () => props.rounds.at(-1)?.scores.map((s) => s.name) ?? [];
+  return (
+    <div class="overflow-x-auto">
+      <table class="w-full border-collapse text-center text-[10px]">
+        <thead>
+          <tr>
+            <th class="px-1 py-1 text-left font-normal text-muted-foreground">라운드</th>
+            <For each={names()}>{(n) => <th class="px-1 py-1 font-normal whitespace-nowrap text-muted-foreground">{n}</th>}</For>
+          </tr>
+        </thead>
+        <tbody>
+          <For each={props.rounds}>
+            {(r) => (
+              <tr class="border-t border-border/60">
+                <td class="px-1 py-1 text-left font-mono text-muted-foreground">{r.round}</td>
+                <For each={names()}>
+                  {(n) => {
+                    const score = () => r.scores.find((s) => s.name === n)?.score ?? null;
+                    return (
+                      <td
+                        class="px-1 py-1 font-mono"
+                        classList={{
+                          "text-foreground font-strong": score() !== null && score()! >= 8,
+                          "text-destructive": score() !== null && score()! < 8,
+                          "text-muted-foreground": score() === null,
+                        }}
+                      >
+                        {score() ?? "—"}
+                      </td>
+                    );
+                  }}
+                </For>
+              </tr>
+            )}
+          </For>
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 /** Shotlist, contact sheet, critique and brief — what the agent wrote down, readable. */
 function ReviewTab() {
   const { files } = useFiles();
   const { format } = usePlayer();
   // The format on screen, or whichever one has renders.
+  const [review] = createResource(() => files()?.docs.review?.url, loadText);
+  const scores = () => parseScores(review.latest ?? "");
   const output = (): FilmOutput | undefined => {
     const outs = files()?.outputs ?? [];
     return outs.find((o) => o.format === format()) ?? outs[0];
@@ -263,6 +342,9 @@ function ReviewTab() {
       </Section>
 
       <Section title="검수" when={files()?.docs.review} empty="완성본을 렌더하면 점수와 고친 점이 여기에 쌓여요.">
+        <Show when={scores().length > 0}>
+          <ScoreTable rounds={scores()} />
+        </Show>
         <Show when={output()?.critique.length}>
           <div class="grid grid-cols-2 gap-1.5">
             <For each={output()!.critique}>
@@ -286,13 +368,8 @@ function ReviewTab() {
 }
 
 export function Inspector() {
-  const [tab, setTabSignal] = createSignal<Tab>("review");
-  let body: HTMLDivElement | undefined;
   // Each tab starts at its top; the other tab's scroll position means nothing here.
-  const setTab = (next: Tab) => {
-    setTabSignal(next);
-    body?.scrollTo({ top: 0 });
-  };
+  const setTab = showInspectorTab;
   const TABS: { value: Tab; label: string }[] = [
     { value: "review", label: "리뷰" },
     { value: "props", label: "속성" },
@@ -317,7 +394,7 @@ export function Inspector() {
           )}
         </For>
       </div>
-      <div ref={body} class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+      <div ref={scrollBody} class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
         <Show when={tab() === "review"} fallback={<PropsTab />}>
           <ReviewTab />
         </Show>

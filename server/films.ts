@@ -4,6 +4,7 @@ import chokidar, { type FSWatcher } from "chokidar";
 import type { Plugin, ViteDevServer } from "vite";
 import { FILM_STAGES, type ChatAttachment, type FilmChange, type FilmFile, type FilmFiles, type FilmOutput, type FilmQuality, type FilmStage, type FilmSummary } from "../src/types/common";
 import { inside, json, readJsonBody, saveBody, sendFile } from "./http";
+import { readState, writeState } from "./state";
 import { resolveWorkspace, type Workspace } from "./workspace";
 
 /** Workspace folders the film pages and the app read directly, served as-is. */
@@ -147,25 +148,8 @@ function createFilm(ws: Workspace, { name, formats, dur, quality }: NewFilm): st
     entry.t = Math.round(entry.t * scale * 1000) / 1000;
   }
   fs.writeFileSync(jsonFile, JSON.stringify(film, null, 2) + "\n");
-  writeState(ws, slug, { stage: "brief", quality });
+  writeState(dir, { stage: "brief", quality });
   return slug;
-}
-
-function statePath(ws: Workspace, slug: string): string {
-  return path.join(ws.filmsDir, slug, "state.json");
-}
-
-function readState(ws: Workspace, slug: string): Record<string, unknown> {
-  try {
-    const data = JSON.parse(fs.readFileSync(statePath(ws, slug), "utf8"));
-    return data && typeof data === "object" ? (data as Record<string, unknown>) : {};
-  } catch {
-    return {};
-  }
-}
-
-function writeState(ws: Workspace, slug: string, patch: Record<string, unknown>): void {
-  fs.writeFileSync(statePath(ws, slug), JSON.stringify({ ...readState(ws, slug), ...patch }, null, 2) + "\n");
 }
 
 function fileInfo(ws: Workspace, file: string): FilmFile | undefined {
@@ -211,21 +195,20 @@ function readOutputs(ws: Workspace, slug: string): FilmOutput[] {
 }
 
 /**
- * The furthest step the files show. Until the agent writes `stage` into
- * state.json itself (CLAUDE.md, 작업 순서), the evidence is what each step
- * leaves behind: a shotlist, a contact sheet, a render, a review log, a final.
+ * Where the film stands. What the agent recorded (tools/state.mjs) wins — a
+ * film can go back to its shotlist with old renders still on disk. Only a
+ * film with no recorded stage (made outside the app, or before state.json)
+ * is judged by what each step leaves behind.
  */
 function inferStage(docs: FilmFiles["docs"], outputs: FilmOutput[], state: Record<string, unknown>): FilmStage {
-  const evidence: FilmStage =
-    outputs.some((o) => o.final) ? "deliver"
+  const recorded = FILM_STAGES.find((s) => s === state.stage);
+  if (recorded) return recorded;
+  return outputs.some((o) => o.final) ? "deliver"
     : docs.review ? "critique"
     : outputs.some((o) => o.silent) ? "draft"
     : outputs.some((o) => o.contact) ? "stills"
     : docs.shotlist ? "shotlist"
     : "brief";
-  const recorded = FILM_STAGES.find((s) => s === state.stage);
-  if (!recorded) return evidence;
-  return FILM_STAGES.indexOf(recorded) > FILM_STAGES.indexOf(evidence) ? recorded : evidence;
 }
 
 function readFilmFiles(ws: Workspace, slug: string): FilmFiles {
@@ -236,9 +219,11 @@ function readFilmFiles(ws: Workspace, slug: string): FilmFiles {
     if (info) docs[key] = info;
   }
   const outputs = readOutputs(ws, slug);
-  const state = readState(ws, slug);
+  const state = readState(dir) as Record<string, unknown>;
   const quality = QUALITIES.find((q) => q === state.quality) ?? "standard";
-  return { docs, outputs, stage: inferStage(docs, outputs, state), quality };
+  const waiting = state.waiting === "approval" || state.waiting === "answer" ? state.waiting : null;
+  const round = typeof state.round === "number" && state.round > 0 ? Math.floor(state.round) : null;
+  return { docs, outputs, stage: inferStage(docs, outputs, state), quality, waiting, round };
 }
 
 /** Rewrites only `title`, keeping every other key (and their order) as the agent left them. */
@@ -257,6 +242,9 @@ function trashFilm(ws: Workspace, slug: string): void {
   fs.renameSync(path.join(ws.filmsDir, slug), path.join(dest, "film"));
   const out = path.join(ws.outDir, slug);
   if (fs.existsSync(out)) fs.renameSync(out, path.join(dest, "out"));
+  // The conversation goes too: a new film under the same name must not resume this one's session.
+  const thread = path.join(ws.mailboxDir, slug);
+  if (fs.existsSync(thread)) fs.renameSync(thread, path.join(dest, "mailbox"));
 }
 
 /** What a change inside `films/<slug>/` means for an open player. */

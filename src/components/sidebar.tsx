@@ -143,7 +143,7 @@ export function Sidebar() {
           <AlertDialogHeader>
             <AlertDialogTitle>'{deleting()?.title}'을 삭제할까요?</AlertDialogTitle>
             <AlertDialogDescription>
-              필름과 렌더한 영상이 목록에서 사라져요. 작업 폴더의 .trash에 보관되니 필요하면 되살릴 수 있어요.
+              필름과 렌더한 영상, 대화 기록이 목록에서 사라져요. 작업 폴더의 .trash에 보관되니 필요하면 되살릴 수 있어요.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

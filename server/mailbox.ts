@@ -5,6 +5,7 @@ import { spawn, type ChildProcess } from "node:child_process";
 import type { Plugin, ViteDevServer } from "vite";
 import type { ChatAttachment, ChatAuthFailure, ChatEffort, ChatMessage, ChatModel, ChatProgress, ChatSettings } from "../src/types/common";
 import { json, readJsonBody } from "./http";
+import { readState, writeState } from "./state";
 import { resolveWorkspace } from "./workspace";
 import { isSignedOut, resolveClaudePath } from "./claude-cli";
 
@@ -41,6 +42,10 @@ const EFFORTS: ChatEffort[] = ["low", "medium", "high", "max"];
 const DEFAULT_SETTINGS: ChatSettings = { model: "opus", effort: "high" };
 
 const ATTACHMENT_KINDS: ChatAttachment["kind"][] = ["image", "video", "audio"];
+
+/** Gates the app can approve with a button (CLAUDE.md, 작업 순서). */
+const APPROVALS = { shotlist: "숏리스트" } as const;
+type Approval = keyof typeof APPROVALS;
 const MAX_ATTACHMENTS = 10;
 
 /**
@@ -69,6 +74,8 @@ interface QueueItem {
   placeholderId: string;
   userText: string;
   attachments: ChatAttachment[];
+  /** Set when the message is the app's approve button rather than typed text. */
+  approval?: Approval;
   /**
    * Carried on the item rather than read when the turn starts: the user can
    * change the setting while this message waits behind another film's turn,
@@ -179,15 +186,15 @@ const QUALITY_PROMPT: Record<string, string> = {
   launch: "launch(모든 항목 8점 이상까지, 6라운드 상한)",
 };
 
-/** The opening of every turn's prompt: which film, its quality setting, and what the user attached. */
+/** The opening of every turn's prompt: which film, where it stands, and what the user attached or approved. */
 function buildPrompt(item: QueueItem, filmsDir: string): string {
   let prompt = `현재 대상 필름은 films/${item.film} 이다. `;
-  try {
-    // Chosen in the new-film dialog; CLAUDE.md says how many critique rounds each means.
-    const state = JSON.parse(fs.readFileSync(path.join(filmsDir, item.film, "state.json"), "utf8")) as { quality?: string };
-    if (state.quality && QUALITY_PROMPT[state.quality]) prompt += `이 필름의 품질 단계는 ${QUALITY_PROMPT[state.quality]}다. `;
-  } catch {
-    // No state.json (a film made outside the app): CLAUDE.md's default applies.
+  // state.json is written by the app (quality, approvals) and by the agent; a film made outside the app has none.
+  const state = readState(path.join(filmsDir, item.film));
+  if (state.quality && QUALITY_PROMPT[state.quality]) prompt += `이 필름의 품질 단계는 ${QUALITY_PROMPT[state.quality]}다. `;
+  if (state.stage) prompt += `state.json의 현재 단계는 ${state.stage}${state.round ? ` (검수 ${state.round}라운드)` : ""}다. `;
+  if (item.approval) {
+    prompt += `디자이너가 앱의 승인 버튼으로 ${APPROVALS[item.approval]}를 승인했다. CLAUDE.md 작업 순서의 다음 단계부터 진행한다. `;
   }
   if (item.attachments.length > 0) {
     const lines = item.attachments.map((a) => `- ${a.path} (${a.kind}, 원본 파일명: ${a.name})`).join("\n");
@@ -621,13 +628,26 @@ export function mailboxPlugin(options: MailboxOptions = {}): Plugin {
           return json(res, 400, { error: "missing or invalid film" });
         }
         const attachments = validAttachments(film, body.attachments);
-        if (!text && attachments.length === 0) return json(res, 400, { error: "missing text" });
+        const approval = (Object.keys(APPROVALS) as Approval[]).find((a) => a === body.approval);
+        if (!text && attachments.length === 0 && !approval) return json(res, 400, { error: "missing text" });
+
+        // Whatever the agent stopped for, the designer has now answered. An
+        // approval is recorded here, not left to the agent, so the gate holds
+        // even if the turn fails.
+        const filmDir = path.join(filmsDir, film);
+        const state = readState(filmDir);
+        if (state.waiting || approval) {
+          writeState(filmDir, {
+            waiting: null,
+            ...(approval && { approved: [...new Set([...(state.approved ?? []), approval])] }),
+          });
+        }
 
         const now = new Date().toISOString();
         const userMessage: ChatMessage = {
           id: crypto.randomUUID(),
           role: "user",
-          text,
+          text: text || (approval ? `${APPROVALS[approval]} 승인` : ""),
           status: "done",
           createdAt: now,
           ...(attachments.length > 0 && { attachments }),
@@ -645,7 +665,8 @@ export function mailboxPlugin(options: MailboxOptions = {}): Plugin {
         writeThread(film, thread);
         broadcast(server, film);
 
-        queue.push({ film, placeholderId: placeholder.id, userText: text, attachments, settings: readSettings(body) });
+        const userText = text || (approval ? "승인합니다. 다음 단계로 진행해 주세요." : "");
+        queue.push({ film, placeholderId: placeholder.id, userText, attachments, approval, settings: readSettings(body) });
         processNext(server);
 
         json(res, 201, { ok: true });

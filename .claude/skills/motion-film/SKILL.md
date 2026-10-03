@@ -6,7 +6,7 @@ description: 코드로 모션 영상(UI 모핑 루프, 프로덕트 릴, 런칭 
 # motion-film
 
 디자이너는 코드를 몰라도 된다. 말로 요청하면 이 파이프라인을 끝까지 돌리고, 게이트마다 확인을 받는다.
-규칙은 레포 루트 `CLAUDE.md`가 우선한다.
+규칙은 레포 루트 `CLAUDE.md`가 우선한다. 단계가 바뀔 때마다 `node tools/state.mjs films/<이름> stage=<단계>`로 기록한다(앱의 진행 단계 표시와 승인 버튼이 이걸 본다).
 
 ## 0. 필름 준비
 - `films/<이름>/`이 없으면 `node tools/new.mjs <이름>`.
@@ -14,7 +14,7 @@ description: 코드로 모션 영상(UI 모핑 루프, 프로덕트 릴, 런칭 
 
 ## 1. 입력 받기 (brief.md)
 `prompts/spec-template.md`의 `<inputs>` 항목 중 빈 것을 한 번에 묻는다. 기본값을 제안하면서 묻는다
-(예: "포맷은 1x1 + 9x16, 음악은 합성으로 할까요?"). 답을 `brief.md`에 채운다.
+(예: "포맷은 1x1 + 9x16, 음악은 합성으로 할까요?"). 물었으면 `waiting=answer`로 기록하고 턴을 끝낸다. 답을 `brief.md`에 채운다.
 실제 프로덕트 화면이 필요하면 디자이너에게 스크린샷을 달라고 한다(채팅창에 끌어다 놓으면 refs/에 저장된다). 프로덕트 UI를 상상으로 그리지 않는다.
 
 ## 2. 레퍼런스 → style_guide.md (있을 때만)
@@ -27,7 +27,8 @@ description: 코드로 모션 영상(UI 모핑 루프, 프로덕트 릴, 런칭 
 |---|---|---|---|---|
 
 음악 파일이 있으면 먼저 디자이너에게 BPM과 첫 다운비트 시각(초)을 묻고 `bpm`·`beatOffset`으로 쓴다. 비트를 자동으로 측정하지 않는다.
-**표를 보여주고 OK를 받기 전에는 코드를 쓰지 않는다.**
+다 쓰면 `node tools/state.mjs films/<이름> stage=shotlist waiting=approval`, 채팅에 표를 보여주고 승인을 부탁한 뒤 턴을 끝낸다.
+**승인(앱의 승인 버튼 또는 채팅의 분명한 OK) 전에는 코드를 쓰지 않는다.**
 
 ## 4. 구현
 `films/<이름>/film.json`(데이터)과 `films/<이름>/index.html`(코드). `films/sample-morph/`를 구조 참고로 읽는다(film.json의 params·timeline·cues, index.html의 STATES 표, CUR 커서 키, 상태별 draw 함수).
@@ -40,10 +41,11 @@ description: 코드로 모션 영상(UI 모핑 루프, 프로덕트 릴, 런칭 
 - 효과음: `film.json` `cues` (`at`으로 timeline에 붙인다). 반복 패턴만 코드의 `cues`
 
 ## 5. 스틸 → 직접 보기
-`node tools/render.mjs films/<이름> --stills beats` → `out/<이름>/<포맷>/contact-beats.png`를 Read로 열어서 본다.
+`stage=stills`. `node tools/render.mjs films/<이름> --stills beats` → `out/<이름>/<포맷>/contact-beats.png`를 Read로 열어서 본다.
 비트에 아무것도 없는 칸, 너무 작은 글자, 화면 밖으로 나간 커서, 겹침을 고친다. 깨끗해질 때까지 반복.
 
 ## 6. 렌더 + 사운드 + 크리틱 루프
+초안은 `stage=draft`, 크리틱은 라운드마다 `stage=critique round=<N>`.
 ```bash
 node tools/render.mjs films/<이름>          # 1x1 기준 12초 ≈ 20초
 node tools/sound.mjs films/<이름>
@@ -54,8 +56,9 @@ node tools/critique.mjs films/<이름> <포맷> <가장 빠른 동작 시각>
 
 ## 7. 전달
 - 요청된 포맷 전부 렌더 (`--all-formats` 또는 `--format`)하고 포맷마다 `sound.mjs --format`.
-- 포스터: `node tools/render.mjs films/<이름> --stills <가장 좋은 시각>`.
-- 디자이너에게: final.mp4 경로, 컨택트 시트, 최종 점수, 다음에 개선할 점 한 줄.
+- 포스터: `node tools/render.mjs films/<이름> --stills <가장 좋은 시각>` → 그 스틸을 `out/<이름>/<포맷>/poster.png`로 복사.
+- `node tools/state.mjs films/<이름> stage=deliver waiting=none`.
+- 디자이너에게: 완성본이 플레이어 아래 결과물 줄에 있다는 것, 최종 점수, 다음에 개선할 점 한 줄. 파일 경로는 말하지 않는다.
 
 ## 수정 요청이 오면
 "3초쯤 토글이 너무 빨라요" → 해당 키의 시각/스프링 프리셋만 바꾸고 `--from 2.5 --to 4.5`로 구간 렌더해서 먼저 보여준다. OK면 전체 렌더.
