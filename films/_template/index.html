@@ -1,0 +1,48 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>__NAME__</title>
+<!--
+  새 필름 템플릿. 이 파일은 Claude가 brief.md / shotlist.md 를 보고 채운다.
+  규칙은 레포 루트의 CLAUDE.md 참고. 핵심: 모든 값은 t 로부터 계산한다.
+-->
+<script src="../../lib/motion.js"></script>
+<script src="../../lib/stage.js"></script>
+<script>
+const { track, loopTrack, colorTrack, mixColor, spring, stretch, swapAlpha, swapBlur, range, clamp, lerp, ease, sp, rng } = M;
+const { rrect, cursor, text, layer } = Stage;
+
+const C = { bg: '#ECEAE5', ink: '#111111', paper: '#FFFFFF', mute: '#8B8A86', accent: '#2F6BFF' };
+const F = (w, px) => `${w} ${px}px Pretendard, Geist, sans-serif`;
+
+const BPM = 120, DUR = 8, b = (n) => n * 60 / BPM;   // b(n) = n번째 비트의 시각
+
+// 하나의 컨테이너가 상태마다 모양을 바꾼다: [시각, w, h, r, 색]
+const STATES = [
+  [0,    360, 112, 56, C.ink],
+  [b(4), 600, 128, 36, C.paper],
+  [b(12), 360, 112, 56, C.ink],   // 루프: 마지막 = 처음
+];
+const key = (i) => STATES.map((s) => [s[0], s[i]]);
+
+Stage.film({
+  title: '__NAME__', dur: DUR, bpm: BPM,
+  formats: { '1x1': [1080, 1080], '9x16': [1080, 1920], '16x9': [1920, 1080] },
+  cues: [
+    { t: b(4), type: 'swish' },
+    { t: b(12), type: 'swish' },
+  ],
+  draw(g, t, S) {
+    g.fillStyle = C.bg; g.fillRect(0, 0, S.W, S.H);
+    const [k, d] = sp('ui');
+    const w = loopTrack(t, key(1), DUR, k, d), h = loopTrack(t, key(2), DUR, k, d), r = loopTrack(t, key(3), DUR, k, d);
+    g.translate(S.cx, S.cy); g.scale(S.unit * 1.4, S.unit * 1.4);
+    g.fillStyle = colorTrack(t, key(4), k, d, DUR);
+    rrect(g, -w / 2, -h / 2, w, h, r); g.fill();
+
+    const a1 = Math.max(swapAlpha(t, b(12), b(4) + DUR), swapAlpha(t + DUR, b(12), b(4) + DUR));
+    layer(g, a1, swapBlur(a1), () => text(g, '시작하기', 0, 2, { font: F(600, 40), color: '#fff' }));
+    const a2 = swapAlpha(t, b(4), b(12));
+    layer(g, a2, swapBlur(a2), () => text(g, '두 번째 상태', 0, 2, { font: F(600, 34), color: C.ink }));
+  },
+});
+</script>
