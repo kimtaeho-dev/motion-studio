@@ -133,10 +133,13 @@ Node.js, Homebrew, Python, ffmpeg 어느 것도 사용자가 깔 필요 없다.
 - ✓ 새 필름 하나를 브리프부터 전달까지 터미널 없이 끝낸다 (품질 '기본')
 - 결과: 에이전트가 `node tools/state.mjs`로 stage·waiting·round를 기록(CLAUDE.md 작업 순서에 단계별 기록·멈춤 지점). 앱은 기록된 단계를 우선하고 없으면 파일로 추정. 승인 대기면 [숏리스트 승인]·[수정 요청], 답변 대기면 [답하기], 작업 중이면 현재 진행 문구와 검수 라운드. 승인은 서버가 state.json에 approved를 직접 기록하고 프롬프트로 전달, 디자이너가 채팅을 보내면 대기가 풀린다. 리뷰 탭에 라운드별 점수표. 실제 에이전트(Haiku)로 브리프→숏리스트에서 스스로 멈추고(코드 미작성), 승인 버튼 뒤 스틸 단계로 넘어가는 것 확인. 전체 과정을 전달까지 돌리는 확인은 6단계 최종 점검에서
 
-### 6단계 — 내보내기·패키징·배포
+### 6단계 — 내보내기·패키징·배포 ✅ 완료 (새 계정 점검과 릴리스 게시는 사람이)
 - 내보내기 창(형식 × 포맷 선택, 폴더/zip), electron-builder 설정, ffmpeg 서명을 포함한 after-pack, 작업공간 업데이트 규칙
 - 디자이너용 README(lottie-studio README 구조를 따름), 예시 갤러리
 - ✓ **node·Homebrew·Python이 없는 새 macOS 사용자 계정**에서 dmg 설치 → 온보딩 → 필름 완성 → 내보내기까지 통과. arm64, x64 둘 다
+- 결과: ffmpeg는 Martin Riedl 정적 빌드 9.0.2(GPLv3, nonfree 없음, Developer ID 서명)를 `scripts/fetch-ffmpeg.mjs`가 고정 주소·SHA-256으로 받아 `resources/bin/ffmpeg`에 넣는다(LICENSES/에 고지·GPL 전문·소스 위치). 내보내기 창(포맷×MP4·GIF·ProRes·WebM·포스터, zip, 오래되거나 해상도가 다른 결과는 다시 렌더, ~/Downloads/Motion Studio). 앱 아이콘, electron-builder 설정(런타임 의존성 없이 app.asar 876KB, dmg 161MB/173MB), after-pack이 ffmpeg 아키텍처·서명을 확인. 디자이너용 README(A~I), docs/RELEASE_CHECK.md(새 계정 점검·릴리스 절차)
+- 점검: dmg에서 꺼낸 앱을 빈 PATH·새 작업공간으로 띄워 새 필름 → 숏리스트 정지 → 승인 → 전달 → 내보내기까지 확인(아래 기록). 새 사용자 계정·Gatekeeper(격리 표시) 점검과 Intel 실기 점검은 docs/RELEASE_CHECK.md대로 사람이 한다
+- 점검 기록 (arm64 dmg, 빈 PATH, 새 작업공간, Haiku·품질 '빠르게', 4초 1x1): 첫 턴 69초에 브리프·숏리스트 후 승인 대기로 멈춤 → 승인 → 273초에 스틸·초안·검수 1라운드·전달까지 진행, state.json이 단계마다 기록됨 → 내보내기 MP4(1080, AAC)·GIF(720)·ProRes·포스터·컨택트 시트·zip. 참고용 sample-morph는 그대로. 발견: Haiku의 검수가 루프 이음새 불일치(마지막 비트에 체크가 남음)를 놓쳤고 채팅에 파일 이름을 썼다 — 기본 모델·품질로 다시 볼 것. 점수 줄을 굵게 쓴 기록도 읽도록 파서 보완, zip에서 macOS 확장 속성 파일 제거
 
 ## 위험과 미리 정해 둘 것
 - **ffmpeg 바이너리**: ffmpeg-static의 맥 빌드는 --enable-nonfree라 재배포 불가. 지금 앱은 Homebrew ffmpeg를 찾아 쓴다. 6단계에서 nonfree 없는 GPL 빌드(arm64·x64)를 정해 resources/bin/ffmpeg로 넣는다.

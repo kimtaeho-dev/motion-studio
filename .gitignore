@@ -8,3 +8,4 @@ release/
 *.tsbuildinfo
 .mailbox/
 .trash/
+vendor/

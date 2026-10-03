@@ -265,7 +265,8 @@ export function parseScores(markdown: string): ScoreRound[] {
   const rounds: ScoreRound[] = [];
   const parts = markdown.split(/^##\s*라운드\s*(\d+).*$/m);
   for (let i = 1; i < parts.length; i += 2) {
-    const line = /^\s*점수\s*[:：]\s*(.+)$/m.exec(parts[i + 1] ?? "");
+    // The agent may bold the label ("**점수**: …"); the scores are what follows either way.
+    const line = /^\s*\**\s*점수\s*\**\s*[:：]\s*\**\s*(.+?)\**\s*$/m.exec(parts[i + 1] ?? "");
     if (!line) continue;
     const scores = line[1]
       .split(/[·,|]/)

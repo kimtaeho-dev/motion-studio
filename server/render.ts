@@ -69,6 +69,20 @@ function defaultWorkerCommand(root: string): WorkerCommand {
   return { command: electron, args: [path.join(root, "dist-electron", "render-worker.cjs")] };
 }
 
+/** What an in-process caller (the export) gets back from one render. */
+export interface RenderResult {
+  ok: boolean;
+  files: string[];
+  error?: string;
+}
+
+/**
+ * The running queue, for other server modules: a render they start is a job
+ * like any other — listed in the app, one at a time, cancellable.
+ */
+export let enqueueRender: ((args: string[]) => { id: string; done: Promise<RenderResult> }) | null = null;
+export let cancelRenderJob: ((id: string) => void) | null = null;
+
 export function renderPlugin(options: RenderOptions = {}): Plugin {
   let ws: Workspace;
   let repoRoot = "";
@@ -181,6 +195,25 @@ export function renderPlugin(options: RenderOptions = {}): Plugin {
     });
   }
 
+  function createRun(slug: string, args: string[]): Running {
+    return {
+      job: { id: crypto.randomUUID(), film: slug, ...describe(args), status: "queued", format: null, done: 0, total: 0, createdAt: Date.now(), files: [] },
+      args,
+      listeners: new Set(),
+      child: null,
+      cancelled: false,
+    };
+  }
+
+  /** Queue a job; returns how many were ahead of it. */
+  function submit(server: ViteDevServer, run: Running): number {
+    const ahead = jobs.filter((r) => r.job.status === "queued" || r.job.status === "running").length;
+    jobs.push(run);
+    broadcast(server, true);
+    startNext(server);
+    return ahead;
+  }
+
   function cancel(server: ViteDevServer, run: Running): void {
     if (run.job.status === "queued") {
       run.cancelled = true;
@@ -232,13 +265,7 @@ export function renderPlugin(options: RenderOptions = {}): Plugin {
           return json(res, 400, { error: "films/<이름> 안의 필름만 렌더할 수 있습니다" });
         }
 
-        const run: Running = {
-          job: { id: crypto.randomUUID(), film: slug, ...describe(args), status: "queued", format: null, done: 0, total: 0, createdAt: Date.now(), files: [] },
-          args,
-          listeners: new Set(),
-          child: null,
-          cancelled: false,
-        };
+        const run = createRun(slug, args);
 
         res.statusCode = 200;
         res.setHeader("Content-Type", "application/x-ndjson; charset=utf-8");
@@ -254,12 +281,28 @@ export function renderPlugin(options: RenderOptions = {}): Plugin {
           if (!res.writableEnded && (run.job.status === "queued" || run.job.status === "running")) cancel(server, run);
         });
 
-        const ahead = jobs.filter((r) => r.job.status === "queued" || r.job.status === "running").length;
-        jobs.push(run);
+        const ahead = submit(server, run);
         if (ahead > 0) write(JSON.stringify({ type: "queued", ahead }));
-        broadcast(server, true);
-        startNext(server);
       });
+
+      cancelRenderJob = (id) => {
+        const run = jobs.find((r) => r.job.id === id);
+        if (run) cancel(server, run);
+      };
+
+      enqueueRender = (args) => {
+        const filmArg = args.find((a, i) => !a.startsWith("--") && !(i > 0 && FLAGS_WITH_VALUE.includes(args[i - 1].slice(2))));
+        const run = createRun(path.basename(path.resolve(ws.root, filmArg ?? "")), args);
+        const done = new Promise<RenderResult>((resolve) => {
+          run.listeners.add((line) => {
+            const event = JSON.parse(line) as { type?: string; message?: string };
+            if (event.type === "done") resolve({ ok: true, files: run.job.files });
+            if (event.type === "error") resolve({ ok: false, files: run.job.files, error: event.message });
+          });
+        });
+        submit(server, run);
+        return { id: run.job.id, done };
+      };
     },
   };
 }

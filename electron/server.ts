@@ -7,6 +7,7 @@ import chokidar from "chokidar";
 import { filmsPlugin } from "../server/films";
 import { mailboxPlugin } from "../server/mailbox";
 import { renderPlugin, type WorkerCommand } from "../server/render";
+import { exportPlugin } from "../server/export";
 import { WORKSPACE_ENV } from "../server/workspace";
 
 /**
@@ -113,6 +114,8 @@ export interface StudioServerOptions {
   agentEnv?: () => NodeJS.ProcessEnv;
   /** How to start a render worker — the app's own executable (see main.ts). */
   workerCommand: () => WorkerCommand;
+  /** Show a finished export in Finder. */
+  reveal?: (dir: string) => void;
 }
 
 /**
@@ -189,6 +192,7 @@ export async function startStudioServer(options: StudioServerOptions): Promise<S
     filmsPlugin(),
     mailboxPlugin({ signIn: options.onSignInRequested, agentEnv: options.agentEnv }),
     renderPlugin({ workerCommand: options.workerCommand }),
+    exportPlugin({ reveal: options.reveal }),
   ]) {
     const configResolved = plugin.configResolved;
     const configureServer = plugin.configureServer;

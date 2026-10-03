@@ -14,35 +14,112 @@
     "draft": "node tools/render.mjs --draft",
     "sound": "node tools/sound.mjs",
     "critique": "node tools/critique.mjs",
-    "check": "node tools/determinism.mjs"
+    "check": "node tools/determinism.mjs",
+    "dist:mac": "node scripts/fetch-ffmpeg.mjs && npm run build && npm run build:electron && electron-builder --mac",
+    "fetch:ffmpeg": "node scripts/fetch-ffmpeg.mjs"
   },
   "devDependencies": {
+    "@kobalte/core": "^0.13.11",
+    "@solidjs/router": "^0.16.1",
     "@tailwindcss/vite": "^4.1.13",
     "@types/node": "^25.9.2",
     "@types/ws": "^8.18.1",
+    "chokidar": "^5.0.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "electron": "^44.3.0",
+    "electron-builder": "^26.15.3",
     "esbuild": "^0.28.2",
+    "lucide-solid": "^1.18.0",
+    "shadcn": "^4.11.0",
+    "solid-js": "^1.9.9",
+    "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.1.13",
+    "tw-animate-css": "^1.4.0",
     "typescript": "^5.9.2",
     "vite": "^7.1.4",
-    "vite-plugin-solid": "^2.11.8"
+    "vite-plugin-solid": "^2.11.8",
+    "vite-plugin-solid-svg": "^0.8.1",
+    "ws": "^8.21.3"
   },
   "private": true,
   "type": "module",
   "productName": "Motion Studio",
   "main": "dist-electron/main.cjs",
-  "dependencies": {
-    "@kobalte/core": "^0.13.11",
-    "@solidjs/router": "^0.16.1",
-    "chokidar": "^5.0.0",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "lucide-solid": "^1.18.0",
-    "shadcn": "^4.11.0",
-    "solid-js": "^1.9.9",
-    "tailwind-merge": "^3.6.0",
-    "tw-animate-css": "^1.4.0",
-    "vite-plugin-solid-svg": "^0.8.1",
-    "ws": "^8.21.3"
+  "build": {
+    "appId": "com.motionstudio.app",
+    "productName": "Motion Studio",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "afterPack": "scripts/after-pack.cjs",
+    "files": [
+      "dist-electron/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "dist",
+        "to": "dist"
+      },
+      {
+        "from": "CLAUDE.md",
+        "to": "seed/CLAUDE.md"
+      },
+      {
+        "from": ".claude/skills",
+        "to": "seed/.claude/skills",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "prompts",
+        "to": "seed/prompts"
+      },
+      {
+        "from": "lib",
+        "to": "seed/lib"
+      },
+      {
+        "from": "tools",
+        "to": "seed/tools"
+      },
+      {
+        "from": "assets",
+        "to": "seed/assets"
+      },
+      {
+        "from": "films/_template",
+        "to": "seed/films/_template"
+      },
+      {
+        "from": "films/sample-morph",
+        "to": "seed/films/sample-morph"
+      },
+      {
+        "from": "vendor/ffmpeg/${arch}/ffmpeg",
+        "to": "bin/ffmpeg"
+      },
+      {
+        "from": "LICENSES",
+        "to": "LICENSES"
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.video",
+      "icon": "build/icon.svg",
+      "identity": null,
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ]
+    }
   }
 }

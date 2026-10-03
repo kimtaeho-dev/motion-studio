@@ -135,6 +135,29 @@ export interface RenderJob {
   files: string[];
 }
 
+/** What the export dialog can deliver (server/export.ts). */
+export type ExportKind = "mp4" | "gif" | "prores" | "webm" | "png";
+
+export interface ExportStep {
+  label: string;
+  status: "pending" | "running" | "done" | "error";
+}
+
+/** The one export at a time, pushed as `export:update`. */
+export interface ExportJob {
+  id: string;
+  film: string;
+  title: string;
+  status: "running" | "done" | "error" | "cancelled";
+  steps: ExportStep[];
+  startedAt: number;
+  error?: string;
+  /** The folder the files went to, once done. */
+  dest?: string;
+  /** The zip next to it, when one was asked for. */
+  zip?: string;
+}
+
 /** A file the user attached to a chat message, already saved inside the film folder. */
 export interface ChatAttachment {
   /** Original filename as picked/dropped by the user. */

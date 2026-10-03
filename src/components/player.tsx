@@ -7,6 +7,7 @@ import { useFilms } from "@/context/films";
 import { useFiles } from "@/context/files";
 import { useRender } from "@/context/render";
 import { openMedia } from "@/components/media-viewer";
+import { ExportButton } from "@/components/export-dialog";
 import type { FilmFile, FilmJson, RenderJob } from "@/types";
 import { useParams } from "@solidjs/router";
 
@@ -482,7 +483,7 @@ export function Player() {
 
   return (
     <main class="flex min-w-0 flex-1 flex-col gap-3 rounded-2xl border border-border bg-background p-3">
-      <div class="flex h-6 items-center justify-between gap-3 px-1">
+      <div class="flex h-8 items-center justify-between gap-3 px-1">
         <span class="truncate text-xxs font-strong text-foreground">{findFilm(params.film ?? "")?.title ?? params.film}</span>
         <div class="flex items-center gap-3">
           <Show when={film()}>
@@ -494,6 +495,7 @@ export function Player() {
           </Show>
           <HistoryButtons />
           <FormatSwitch />
+          <ExportButton />
         </div>
       </div>
 

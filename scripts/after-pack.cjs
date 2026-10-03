@@ -13,7 +13,24 @@ exports.default = async function afterPack(context) {
   if (context.electronPlatformName !== "darwin") return;
 
   const appPath = path.join(context.appOutDir, `${context.packager.appInfo.productFilename}.app`);
+
+  // Renders and sound need the bundled ffmpeg (scripts/fetch-ffmpeg.mjs), and
+  // it has to be the one for this build's architecture.
+  const ffmpeg = path.join(appPath, "Contents", "Resources", "bin", "ffmpeg");
+  const expected = { 1: "x86_64", 3: "arm64" }[context.arch];
+  const kind = spawnSync("file", [ffmpeg], { encoding: "utf8" }).stdout ?? "";
+  if (!kind.includes("Mach-O") || (expected && !kind.includes(expected))) {
+    throw new Error(`bundled ffmpeg missing or wrong architecture (want ${expected}): ${kind.trim() || ffmpeg}\nRun: node scripts/fetch-ffmpeg.mjs`);
+  }
+
   execFileSync("codesign", ["--force", "--deep", "--sign", "-", appPath], { stdio: "inherit" });
+
+  // Signed by its builder or re-signed above — either is fine, broken is not:
+  // Apple Silicon refuses to run an executable without a valid signature.
+  const ffmpegCheck = spawnSync("codesign", ["-v", ffmpeg], { encoding: "utf8" });
+  if (ffmpegCheck.status !== 0) throw new Error(`bundled ffmpeg signature invalid:\n${ffmpegCheck.stderr}`);
+  const ffmpegSigner = /Authority=([^\n]+)/.exec(spawnSync("codesign", ["-dv", "--verbose=2", ffmpeg], { encoding: "utf8" }).stderr ?? "");
+  console.log(`  ffmpeg ${expected}: ${ffmpegSigner ? ffmpegSigner[1] : "ad-hoc"}`);
 
   // codesign reports on stderr, and execFileSync only hands back stdout, so the
   // verification has to go through spawnSync to see anything at all.

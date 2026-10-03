@@ -203,6 +203,7 @@ async function boot(): Promise<void> {
     distDir: distRoot(),
     workspaceRoot: workspace.root,
     workerCommand,
+    reveal: (dir) => shell.showItemInFolder(dir),
     // A session that expires while the app is open reopens the same setup
     // window the first run uses — it already handles "installed but signed
     // out". Unlike at startup, closing it without signing in is not fatal:
