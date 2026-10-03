@@ -188,7 +188,7 @@ const QUALITY_PROMPT: Record<string, string> = {
 
 /** The opening of every turn's prompt: which film, where it stands, and what the user attached or approved. */
 function buildPrompt(item: QueueItem, filmsDir: string): string {
-  let prompt = `현재 대상 필름은 films/${item.film} 이다. `;
+  let prompt = `현재 대상 필름은 films/${item.film} 이다. 다른 필름 폴더는 참고로 읽기만 하고 고치지 않는다. `;
   // state.json is written by the app (quality, approvals) and by the agent; a film made outside the app has none.
   const state = readState(path.join(filmsDir, item.film));
   if (state.quality && QUALITY_PROMPT[state.quality]) prompt += `이 필름의 품질 단계는 ${QUALITY_PROMPT[state.quality]}다. `;
