@@ -26,7 +26,7 @@ After Effects를 쓰지 않는다. 모든 영상은 HTML 한 장에 들어 있�
 ## 사운드
 
 - 트랙이 없으면 `tools/sound.mjs`가 BPM에 맞춰 음악과 효과음을 합성한다.
-- 트랙이 있으면 `films/<이름>/audio/track.wav`에 두고 `python3 tools/beats.py`로 비트를 측정한다. 다운비트에서 시작하고, 효과음은 측정된 hits에 맞춘다.
+- 트랙이 있으면 `films/<이름>/audio/track.wav`에 두고, 디자이너에게 **BPM과 첫 다운비트 시각**을 물어 필름의 `bpm`·`beatOffset`에 적는다. 다운비트에서 시작하고, 효과음은 그 비트 그리드에 맞춘다. 비트를 자동으로 측정하지 않는다.
 - 최종 라우드니스는 -14 LUFS (sound.mjs가 처리).
 
 ## 작업 순서 (게이트를 건너뛰지 않는다)

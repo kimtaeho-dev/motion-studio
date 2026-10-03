@@ -35,7 +35,6 @@ Claude가 순서대로 진행한다. 게이트마다 멈추고 확인을 받는�
 # macOS
 brew install node ffmpeg python
 npm install && npx playwright install chromium
-pip3 install numpy librosa soundfile      # 음악 파일 비트 측정할 때만
 ```
 
 ## 구조
@@ -51,7 +50,6 @@ lib/
 tools/
   render.mjs              Playwright 프레임 캡처 → ffmpeg (60fps, 4 서브프레임 모션블러)
   sound.mjs               효과음·음악 합성, 믹스, -14 LUFS → final.mp4
-  beats.py                음악 파일 비트 그리드 측정 → beats.json
   critique.sh             contact / strip / phone / seam / loop_check
   determinism.sh          같은 프레임 두 번 렌더 → 같은 픽셀인지
   new.mjs, preview.mjs

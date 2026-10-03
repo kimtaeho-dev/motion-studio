@@ -5,7 +5,7 @@
  *   node tools/sound.mjs films/<이름> [--format 1x1]
  *
  * 입력:  out/<이름>/<포맷>/silent.mp4, cues.json, film.json   (render.mjs 결과)
- *        films/<이름>/audio/track.wav 가 있으면 그 음악을 그대로 쓴다 (beats.py로 비트 측정 먼저)
+ *        films/<이름>/audio/track.wav 가 있으면 그 음악을 그대로 쓴다 (BPM·beatOffset은 디자이너가 알려준 값)
  *        없으면 film.json 의 bpm/dur 로 루프 가능한 음악 베드를 합성한다
  * 출력:  out/<이름>/<포맷>/sfx.wav, music.wav, final.mp4
  *

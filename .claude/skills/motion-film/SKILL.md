@@ -26,7 +26,7 @@ description: 코드로 모션 영상(UI 모핑 루프, 프로덕트 릴, 런칭 
 | 비트 | 시각 | 상태 | 커서 | 효과음 |
 |---|---|---|---|---|
 
-음악 파일이 있으면 먼저 `python3 tools/beats.py films/<이름>/audio/track.wav > films/<이름>/audio/beats.json`.
+음악 파일이 있으면 먼저 디자이너에게 BPM과 첫 다운비트 시각(초)을 묻고 `bpm`·`beatOffset`으로 쓴다. 비트를 자동으로 측정하지 않는다.
 **표를 보여주고 OK를 받기 전에는 코드를 쓰지 않는다.**
 
 ## 4. 구현

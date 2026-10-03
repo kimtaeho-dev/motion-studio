@@ -11,7 +11,7 @@
 
 ## 레퍼런스와 입력
 - films/<이름>/refs/ : [영상 / 프레임 / 이미지 라이브러리]. 문법만 가져오고 내용은 가져오지 않는다.
-- films/<이름>/audio/track.wav : 그대로 쓴다. 먼저 tools/beats.py로 비트를 잰다.
+- films/<이름>/audio/track.wav : 그대로 쓴다. BPM [  ] · 첫 다운비트 [  ]초.
 - 쓸 수 있는 API는 .env에: [ELEVENLABS_API_KEY …]. 예산: [$X]. 아껴 쓴다.
 
 ## 룩
