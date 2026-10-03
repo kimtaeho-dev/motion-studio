@@ -2,3 +2,9 @@ node_modules/
 out/
 .env
 .DS_Store
+dist/
+dist-electron/
+release/
+*.tsbuildinfo
+.mailbox/
+.trash/

@@ -62,6 +62,15 @@ films/
   _template/              npm run new -- <이름> 이 복사하는 원본 (index.html + film.json)
   sample-morph/           샘플: 하나의 도형이 9개 UI 상태를 지나는 12초 루프
 assets/fonts/             Pretendard, Geist, Geist Mono (OFL) — 기기마다 결과가 같도록 레포에 포함
+
+# 설치형 앱 (docs/APP_PLAN.md)
+src/                      앱 화면 (Solid + Tailwind): 필름 목록 · 플레이어 · 에이전트 채팅
+server/                   앱 서버 모듈 — 개발 서버(Vite)와 패키징된 앱이 그대로 같이 쓴다
+  films.ts                /__films 목록·생성·이름·삭제·첨부 업로드, 작업공간 파일 제공, 변경 감시
+  mailbox.ts              /__chat 필름별 대화, claude -p 실행 큐, 진행 상황
+  workspace.ts            작업공간 위치와 시드 (앱: ~/Library/Application Support/Motion Studio/workspace)
+  claude-cli.ts           Claude Code 실행 파일 찾기, 로그인 상태
+electron/                 앱 진입점, 처음 실행 준비 화면(설치·로그인), 정적 서버
 ```
 
 ## 엔진의 원리
@@ -86,6 +95,8 @@ assets/fonts/             Pretendard, Geist, Geist Mono (OFL) — 기기마다 �
 ## 명령어
 
 ```bash
+npm run dev                                           # 앱 화면 개발 서버 http://localhost:3040 (작업공간 = 이 레포)
+npm run app                                           # 빌드 후 Electron 앱으로 실행 (작업공간 = Application Support)
 npm run new -- <이름>
 npm run preview
 node tools/render.mjs films/<이름> --stills beats     # 비트마다 스틸

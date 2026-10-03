@@ -106,10 +106,14 @@ Node.js, Homebrew, Python, ffmpeg 어느 것도 사용자가 깔 필요 없다.
 - ✓ 샘플 필름이 바뀌기 전과 같은 프레임을 낸다 (기존 렌더 결과와 픽셀 비교)
 - 결과: 샘플 필름 전 포맷 픽셀 일치, cue 목록 일치. 템플릿 렌더·투명 스틸(알파 0)·reload·오류 문구 확인
 
-### 2단계 — 앱 셸 이식
+### 2단계 — 앱 셸 이식 ✅ 완료
 - lottie-studio의 `electron/`(main, setup, onboarding, preload, server), `vite-plugins/`(claude-cli, mailbox, workspace)를 가져와 이름·경로·문구를 Motion Studio로 바꾼다
 - Solid + Tailwind 프런트 골격, 필름 목록 + 플레이어(iframe에 필름 페이지, 앱 쪽 재생 컨트롤) + 채팅
 - ✓ `npm run app`으로 열고 채팅으로 필름 하나를 만들어 플레이어에서 재생
+- 결과: `server/`(films·mailbox·workspace·claude-cli)를 개발 서버와 Electron이 같이 쓴다. 플레이어는 iframe(`?embed=1`)에 앱 쪽 시계로 `seek(t)`, film.json 변경은 새로고침 없이 `Stage.reload`, 코드 변경은 시각·재생 상태를 유지한 채 다시 연다. 타임라인에 마디·비트·장면 마커·효과음, 포맷 전환, 단축키(Space, ←/→ 프레임, Shift+←/→ 비트, Home). 채팅은 필름별 세션, 이미지·영상·음악 첨부(refs/·audio/에 저장). Electron 앱이 작업공간을 시드하고 운영 서버로 같은 화면을 띄우는 것 확인
+- 화면 배치는 위 "메인 화면" 그대로 잡았다. 지금 채워진 것: 단계 표시(파일로 추정 — 숏리스트·컨택트 시트·초안·검수 기록·완성본), 리뷰 탭(숏리스트 표·컨택트 시트·검수 이미지와 기록·브리프), 속성 탭(film.json 값과 장면 목록, 읽기 전용, 장면을 누르면 그 시각으로), 결과물 줄(포맷별 완성본·초안·포스터를 앱 안 뷰어로), 새 필름 창(이름·포맷·길이·품질 → film.json·state.json). 품질 단계는 매 턴 에이전트 프롬프트에 들어가고 CLAUDE.md 6번이 라운드 수를 정한다
+- 나중 단계가 채울 자리: 렌더 진행률·취소(3단계, 결과물 줄), 속성 값·장면 시각·cue 직접 편집(4단계), 에이전트가 state.json에 단계를 기록하고 승인 버튼으로 멈추는 흐름(5단계)
+- 남은 것: 패키징된 앱의 에이전트는 아직 node·ffmpeg가 사용자 맥에 있어야 렌더할 수 있다(3단계에서 `MailboxOptions.agentEnv`로 앱의 bin/을 PATH에 붙인다). dmg 빌드 설정은 6단계
 
 ### 3단계 — 렌더 엔진 교체
 - 숨김 창 렌더러, 렌더 API·큐·진행률·취소, `render.mjs` 클라이언트화, `bin/` shim, ffmpeg 번들

@@ -49,7 +49,7 @@ node tools/render.mjs films/<이름>          # 1x1 기준 12초 ≈ 3분
 node tools/sound.mjs films/<이름>
 bash tools/critique.sh films/<이름> <포맷> <가장 빠른 동작 시각>
 ```
-그다음 `/motion-critique` 절차(`prompts/critique-pass.md`)로 채점 → 수정 → 재렌더. 모든 항목 8점 이상, 최소 3라운드.
+그다음 `/motion-critique` 절차(`prompts/critique-pass.md`)로 채점 → 수정 → 재렌더. 라운드 수는 `state.json`의 `quality`(CLAUDE.md 6번): fast 1 · standard 3 · launch 전 항목 8점 이상까지(6라운드 상한).
 `bash tools/determinism.sh films/<이름>`이 통과해야 한다.
 
 ## 7. 전달

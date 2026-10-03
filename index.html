@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Motion Studio</title>
+    <!-- Apply the system color scheme before first paint to avoid a flash of
+         the wrong theme. Dark mode is class-based (see the `dark` custom
+         variant in src/index.css), so we just toggle `.dark` on <html>. -->
+    <script>
+      (function () {
+        var mq = window.matchMedia('(prefers-color-scheme: dark)');
+        var apply = function (dark) {
+          document.documentElement.classList.toggle('dark', dark);
+        };
+        apply(mq.matches);
+        mq.addEventListener('change', function (e) {
+          apply(e.matches);
+        });
+      })();
+    </script>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+
+    <script src="/src/index.tsx" type="module"></script>
+  </body>
+</html>
