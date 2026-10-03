@@ -24,7 +24,7 @@
 </structure>
 
 <build>
-1. films/<이름>/index.html 한 장, Stage.film({ draw(g, t, S) }). CSS transition, 타이머, 누적 상태 없음.
+1. films/<이름>/film.json(데이터: params·timeline·cues) + index.html(코드: Stage.film((film) => ({ draw(g, t, S) }))). CSS transition, 타이머, 누적 상태 없음.
 2. 닫힌 해 스프링. 목표가 여러 번 바뀌는 값 = 변화마다 스프링 하나씩 더하기 (M.track / M.loopTrack).
 3. 모핑 컨테이너 안 텍스트는 모핑 시작 후 들어오고 다음 모핑 전에 나간다 (M.swapAlpha).
 4. 탭 인디케이터와 토글 노브는 앞/뒤 끝이 다른 스프링을 탄다 (M.stretch).

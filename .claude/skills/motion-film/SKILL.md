@@ -30,12 +30,14 @@ description: 코드로 모션 영상(UI 모핑 루프, 프로덕트 릴, 런칭 
 **표를 보여주고 OK를 받기 전에는 코드를 쓰지 않는다.**
 
 ## 4. 구현
-`films/<이름>/index.html`. `films/sample-morph/index.html`을 구조 참고로 읽는다(STATES 표, CUR 커서 키, cues, 상태별 draw 함수).
+`films/<이름>/film.json`(데이터)과 `films/<이름>/index.html`(코드). `films/sample-morph/`를 구조 참고로 읽는다(film.json의 params·timeline·cues, index.html의 STATES 표, CUR 커서 키, 상태별 draw 함수).
+- 숏리스트의 장면 시각은 `film.json` `timeline`에 이름을 붙여 옮기고, 코드에서는 `film.T.<이름>`으로만 쓴다.
+- 화면에 나오는 문구, 포인트 컬러, 배경색은 `params`로 뺀다. `label`은 디자이너가 알아볼 한국어로.
 - 컨테이너 크기/모서리/색/카메라: `loopTrack` (루프 아니면 `track`)
 - 커서: 화면 좌표 키, UI를 가리킬 땐 그 시점 줌을 곱한다. 클릭은 카메라가 멈춘 뒤.
 - 상태 안 내용: `swapAlpha` + `swapBlur`
 - 인디케이터/노브: `stretch`
-- 효과음: `cues`
+- 효과음: `film.json` `cues` (`at`으로 timeline에 붙인다). 반복 패턴만 코드의 `cues`
 
 ## 5. 스틸 → 직접 보기
 `node tools/render.mjs films/<이름> --stills beats` → `out/<이름>/<포맷>/contact-beats.png`를 Read로 열어서 본다.

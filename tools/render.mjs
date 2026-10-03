@@ -14,9 +14,9 @@
  */
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
-import { mkdirSync, writeFileSync, existsSync } from 'node:fs';
-import { resolve, basename, join } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { createServer } from 'node:http';
+import { mkdirSync, writeFileSync, existsSync, readFileSync, statSync } from 'node:fs';
+import { resolve, basename, join, relative, extname, sep } from 'node:path';
 
 const argv = process.argv.slice(2);
 const FLAGS_WITH_VALUE = ['format', 'fps', 'sub', 'from', 'to', 'stills'];
@@ -28,11 +28,34 @@ const draft = !!opt('draft', false);
 const name = basename(resolve(filmDir));
 const html = existsSync(join(filmDir, 'index.html')) ? join(filmDir, 'index.html') : filmDir;
 
+// 필름은 film.json을 fetch로 읽으므로 file://이 아니라 http로 연다. 레포 루트(cwd)를 그대로 내보낸다.
+const ROOT = process.cwd();
+const rel = relative(ROOT, resolve(html));
+if (rel.startsWith('..')) { console.error('필름은 현재 폴더 안에 있어야 합니다: ' + filmDir); process.exit(1); }
+const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.json': 'application/json', '.woff2': 'font/woff2',
+  '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml' };
+const server = createServer((req, res) => {
+  const file = resolve(ROOT, '.' + decodeURIComponent(req.url.split('?')[0]));
+  if (!(file + sep).startsWith(ROOT + sep) || !existsSync(file) || statSync(file).isDirectory()) { res.writeHead(404); return res.end(); }
+  res.writeHead(200, { 'content-type': TYPES[extname(file)] || 'application/octet-stream', 'cache-control': 'no-store' });
+  res.end(readFileSync(file));
+});
+await new Promise((ok) => server.listen(0, '127.0.0.1', ok));
+const filmURL = `http://127.0.0.1:${server.address().port}/${rel.split(sep).map(encodeURIComponent).join('/')}`;
+
+// 필름 쪽 문제(film.json 형식, 스크립트 오류)는 스택 없이 문구만 보여준다
+class FilmError extends Error {}
+async function waitReady(page) {
+  await page.waitForFunction(() => window.READY === true || !!window.LOAD_ERROR, null, { timeout: 30000 });
+  const err = await page.evaluate(() => window.LOAD_ERROR);
+  if (err) throw new FilmError(err);
+}
+
 async function openFilm(browser, format, scale = 1) {
   // 먼저 메타데이터를 읽기 위해 작은 창으로 연다
   const probe = await browser.newPage();
-  await probe.goto(pathToFileURL(resolve(html)).href + `?render=1${format ? '&format=' + format : ''}`);
-  await probe.waitForFunction(() => window.READY === true, null, { timeout: 30000 });
+  await probe.goto(filmURL + `?render=1${format ? '&format=' + format : ''}`);
+  await waitReady(probe);
   const film = await probe.evaluate(() => window.FILM);
   await probe.close();
 
@@ -40,15 +63,15 @@ async function openFilm(browser, format, scale = 1) {
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e)));
   page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
-  await page.goto(pathToFileURL(resolve(html)).href + `?render=1&format=${film.format}`);
-  await page.waitForFunction(() => window.READY === true, null, { timeout: 30000 });
+  await page.goto(filmURL + `?render=1&format=${film.format}`);
+  await waitReady(page);
   if (errors.length) console.warn('⚠️  페이지 오류:\n  ' + errors.join('\n  '));
   return { page, film };
 }
 
 async function frame(page, film, t) {
   await page.evaluate((tt) => window.seek(tt), t);
-  return page.screenshot({ type: 'png', clip: { x: 0, y: 0, width: film.W, height: film.H }, animations: 'disabled' });
+  return page.screenshot({ type: 'png', clip: { x: 0, y: 0, width: film.W, height: film.H }, animations: 'disabled', omitBackground: film.transparent });
 }
 
 function ffmpeg(args, stdin) {
@@ -136,9 +159,17 @@ try {
     console.log(`▶ ${film.title} · ${film.format} ${film.W}x${film.H} · ${film.dur}s · ${film.bpm}BPM · 효과음 ${film.cues.length}개`);
 
     if (opt('stills', false)) await stills(browser, page, film, outDir, opt('stills'));
-    else await renderVideo(page, film, outDir);
+    else {
+      if (film.transparent) console.warn('⚠️  투명 배경 필름입니다. 스틸 PNG는 알파를 유지하지만 MP4에는 알파가 없습니다.');
+      await renderVideo(page, film, outDir);
+    }
     await page.close();
   }
+} catch (e) {
+  if (!(e instanceof FilmError)) throw e;
+  console.error('❌ ' + e.message);
+  process.exitCode = 1;
 } finally {
   await browser.close();
+  server.close();
 }

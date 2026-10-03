@@ -1,0 +1,23 @@
+{
+  "title": "__NAME__",
+  "dur": 8,
+  "bpm": 120,
+  "beatOffset": 0,
+  "fps": 60,
+  "formats": { "1x1": [1080, 1080], "9x16": [1080, 1920], "16x9": [1920, 1080] },
+  "transparent": false,
+  "params": {
+    "bg": { "type": "color", "value": "#ECEAE5", "label": "배경" },
+    "accent": { "type": "color", "value": "#2F6BFF", "label": "포인트 컬러" },
+    "label1": { "type": "text", "value": "시작하기", "label": "첫 상태 문구" },
+    "label2": { "type": "text", "value": "두 번째 상태", "label": "두 번째 상태 문구" }
+  },
+  "timeline": {
+    "morph1": { "t": 2, "label": "두 번째 상태로 모핑" },
+    "morph2": { "t": 6, "label": "처음 상태로 (루프)" }
+  },
+  "cues": [
+    { "at": "morph1", "type": "swish" },
+    { "at": "morph2", "type": "swish" }
+  ]
+}

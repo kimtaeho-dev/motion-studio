@@ -1,0 +1,198 @@
+{
+  "title": "Sample · One shape morph",
+  "dur": 12,
+  "bpm": 120,
+  "beatOffset": 0,
+  "fps": 60,
+  "formats": {
+    "1x1": [
+      1080,
+      1080
+    ],
+    "9x16": [
+      1080,
+      1920
+    ],
+    "16x9": [
+      1920,
+      1080
+    ]
+  },
+  "transparent": false,
+  "params": {
+    "accent": {
+      "type": "color",
+      "value": "#2F6BFF",
+      "label": "포인트 컬러"
+    },
+    "bg": {
+      "type": "color",
+      "value": "#ECEAE5",
+      "label": "배경"
+    },
+    "buttonLabel": {
+      "type": "text",
+      "value": "지원하기",
+      "label": "버튼 문구"
+    },
+    "rowTitle": {
+      "type": "text",
+      "value": "새 공고 알림",
+      "label": "알림 제목"
+    },
+    "rowSub": {
+      "type": "text",
+      "value": "관심 직무 공고가 열리면 알림",
+      "label": "알림 설명"
+    },
+    "chartTitle": {
+      "type": "text",
+      "value": "이번 주 지원자",
+      "label": "차트 제목"
+    },
+    "toastText": {
+      "type": "text",
+      "value": "지원이 완료됐어요",
+      "label": "토스트 문구"
+    }
+  },
+  "timeline": {
+    "click1": {
+      "t": 1.0,
+      "label": "버튼 클릭"
+    },
+    "loader": {
+      "t": 1.0,
+      "label": "로더로 모핑"
+    },
+    "check": {
+      "t": 2.5,
+      "label": "체크로 모핑"
+    },
+    "row": {
+      "t": 3.0,
+      "label": "알림 토글 행"
+    },
+    "toggle": {
+      "t": 4.0,
+      "label": "토글 클릭"
+    },
+    "tabs": {
+      "t": 5.0,
+      "label": "탭으로 모핑"
+    },
+    "tab1": {
+      "t": 5.5,
+      "label": "탭 1 클릭"
+    },
+    "tab2": {
+      "t": 6.0,
+      "label": "탭 2 클릭"
+    },
+    "chart": {
+      "t": 7.0,
+      "label": "차트로 모핑"
+    },
+    "hover": {
+      "t": 8.0,
+      "label": "막대 호버"
+    },
+    "cmdk": {
+      "t": 9.0,
+      "label": "⌘K 검색"
+    },
+    "toast": {
+      "t": 10.5,
+      "label": "토스트"
+    },
+    "button": {
+      "t": 11.5,
+      "label": "다시 버튼 (루프)"
+    }
+  },
+  "cues": [
+    {
+      "at": "click1",
+      "type": "click"
+    },
+    {
+      "at": "loader",
+      "dt": 0.02,
+      "type": "pop",
+      "pitch": 0.8
+    },
+    {
+      "at": "check",
+      "type": "success"
+    },
+    {
+      "at": "row",
+      "type": "swish"
+    },
+    {
+      "at": "toggle",
+      "type": "click"
+    },
+    {
+      "at": "toggle",
+      "dt": 0.01,
+      "type": "toggle"
+    },
+    {
+      "at": "tabs",
+      "type": "swish"
+    },
+    {
+      "at": "tab1",
+      "type": "click"
+    },
+    {
+      "at": "tab1",
+      "type": "tick",
+      "pitch": 0.9
+    },
+    {
+      "at": "tab2",
+      "type": "click"
+    },
+    {
+      "at": "tab2",
+      "type": "tick",
+      "pitch": 1.1
+    },
+    {
+      "at": "chart",
+      "type": "whoosh"
+    },
+    {
+      "at": "hover",
+      "type": "pop",
+      "pitch": 1.2
+    },
+    {
+      "at": "cmdk",
+      "type": "swish"
+    },
+    {
+      "at": "toast",
+      "dt": -0.02,
+      "type": "type",
+      "pitch": 0.8
+    },
+    {
+      "at": "toast",
+      "type": "thump",
+      "gain": 0.8
+    },
+    {
+      "at": "toast",
+      "dt": 0.03,
+      "type": "pop"
+    },
+    {
+      "at": "button",
+      "type": "swish",
+      "gain": 0.8
+    }
+  ]
+}

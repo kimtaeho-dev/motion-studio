@@ -46,7 +46,7 @@ CLAUDE.md                 하우스 룰. Claude가 매번 읽는다 (렌더 계�
   motion-critique/        /motion-critique — 렌더 결과를 보고 채점·수정
 lib/
   motion.js               스프링(닫힌 해), track/loopTrack, stretch, swapAlpha, rng …
-  stage.js                캔버스·포맷·폰트·미리보기 UI·렌더 계약 (window.seek / FILM / READY)
+  stage.js                film.json 로딩·검사, 캔버스·포맷·폰트·미리보기 UI·렌더 계약 (window.seek / FILM / READY / Stage.reload)
 tools/
   render.mjs              Playwright 프레임 캡처 → ffmpeg (60fps, 4 서브프레임 모션블러)
   sound.mjs               효과음·음악 합성, 믹스, -14 LUFS → final.mp4
@@ -59,7 +59,7 @@ prompts/
   reference.md            레퍼런스 → style_guide.md
   director-brief.md       30초 이상 긴 작업용 브리프
 films/
-  _template/              npm run new -- <이름> 이 복사하는 원본
+  _template/              npm run new -- <이름> 이 복사하는 원본 (index.html + film.json)
   sample-morph/           샘플: 하나의 도형이 9개 UI 상태를 지나는 12초 루프
 assets/fonts/             Pretendard, Geist, Geist Mono (OFL) — 기기마다 결과가 같도록 레포에 포함
 ```
@@ -70,7 +70,8 @@ assets/fonts/             Pretendard, Geist, Geist Mono (OFL) — 기기마다 �
 - **스프링을 더한다**: 목표가 여러 번 바뀌는 값(커서, 컨테이너 폭)은 스프링을 다시 시작하지 않고 변화마다 하나씩 더한다(`track`). 움직임이 끊기지 않고, 여전히 t의 순수 함수다. `loopTrack`은 이전 사이클의 꼬리까지 더해서 루프 이음새의 위치와 속도를 정확히 맞춘다.
 - **늘어나는 인디케이터**: 탭 인디케이터와 토글 노브는 앞 끝과 뒤 끝이 서로 다른 스프링을 탄다(`stretch`). 이동 중에 액체처럼 늘어났다가 붙는다.
 - **모션 블러**: 프레임마다 4장의 서브프레임을 렌더해서 ffmpeg `tmix`로 평균낸다.
-- **사운드**: 효과음은 `cues: [{ t, type }]`로 선언하면 `sound.mjs`가 합성한다. 음악이 없으면 BPM에 맞춰 루프 가능한 베드를 합성한다.
+- **코드와 데이터 분리**: 움직임은 `index.html`, 바꿀 만한 값(문구·색·장면 시각·효과음)은 `film.json`. 장면 시각을 옮기면 거기 붙은 효과음과 움직임이 함께 따라온다.
+- **사운드**: 효과음은 `film.json`의 `cues`(`{ at, dt, type }` 또는 `{ t, type }`)로 선언하면 `sound.mjs`가 합성한다. 음악이 없으면 BPM에 맞춰 루프 가능한 베드를 합성한다.
 
 스프링 프리셋 (`M.sp('이름')`):
 

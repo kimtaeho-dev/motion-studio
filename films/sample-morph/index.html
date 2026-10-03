@@ -12,246 +12,222 @@
 const { track, loopTrack, colorTrack, mixColor, spring, stretch, swapAlpha, swapBlur, range, clamp, lerp, ease, sp } = M;
 const { rrect, cursor, text, layer } = Stage;
 
-/* ── 팔레트 · 타이포 ─────────────────────────────── */
-const C = { bg: '#ECEAE5', ink: '#111111', paper: '#FFFFFF', mute: '#8B8A86', line: '#E3E1DC', soft: '#F3F2EF', accent: '#2F6BFF' };
-const F = (w, px) => `${w} ${px}px Pretendard, Geist, sans-serif`;
+Stage.film((film) => {
+  const { P } = film;
 
-/* ── 타임라인 (초) — 120BPM, 1비트 = 0.5초 ─────────── */
-const DUR = 12, b = (n) => n * 0.5;
-const T = {
-  click1: b(2),            // 버튼 클릭
-  loader: b(2),            // → 로더
-  check: b(5),             // → 체크
-  row: b(6),               // → 알림 토글 행
-  toggle: b(8),            // 토글 클릭
-  tabs: b(10),             // → 탭
-  tab1: b(11), tab2: b(12),
-  chart: b(14),            // → 차트
-  hover: b(16),            // 막대 호버 → 툴팁
-  cmdk: b(18),             // → ⌘K
-  keys: [b(18.5), b(19), b(19.5), b(20)],
-  toast: b(21),            // 엔터 → 토스트
-  button: b(23),           // → 다시 버튼 (루프)
-};
-const TYPED = ['디', '디자', '디자이', '디자이너'];
+  /* ── 팔레트 · 타이포 ─────────────────────────────── */
+  const C = { bg: P.bg, ink: '#111111', paper: '#FFFFFF', mute: '#8B8A86', line: '#E3E1DC', soft: '#F3F2EF', accent: P.accent };
+  const F = (w, px) => `${w} ${px}px Pretendard, Geist, sans-serif`;
 
-/* ── 하나의 컨테이너: 크기·모서리·색 키 ─────────────── */
-// [시각, w, h, r, fill, 카메라 줌]
-const STATES = [
-  [0,        360, 112, 56, C.ink,    1.80],
-  [T.loader, 112, 112, 56, C.ink,    2.20],
-  [T.check,  112, 112, 56, C.accent, 2.20],
-  [T.row,    600, 128, 36, C.paper,  1.42],
-  [T.tabs,   600, 104, 52, C.paper,  1.42],
-  [T.chart,  600, 440, 40, C.paper,  1.45],
-  [T.cmdk,   600, 104, 28, C.paper,  1.42],
-  [T.toast,  520, 104, 52, C.ink,    1.60],
-  [T.button, 360, 112, 56, C.ink,    1.80],
-];
-const key = (i) => STATES.map((s) => [s[0], s[i]]);
-const [UK, UD] = sp('ui'), [CK, CD] = sp('camera');
+  /* ── 타임라인 (초) — film.json timeline. 120BPM, 1비트 = 0.5초 ─── */
+  const DUR = film.dur;
+  const T = { ...film.T, keys: [1, 2, 3, 4].map((i) => film.T.cmdk + i * 0.25) };   // ⌘K 뒤 반 비트마다 한 글자
+  const TYPED = ['디', '디자', '디자이', '디자이너'];
 
-/* ── 커서: 화면 좌표 키 (시작 = 끝 → 루프) ─────────────
- * 화면 중심 기준, 1080 기준 px. UI 요소를 가리킬 땐 W2S(시각, 월드x, 월드y)로
- * 그 시점 카메라 줌을 곱해 화면 좌표로 바꾼다. (클릭은 카메라가 멈춘 뒤에만)
- */
-const zoomAt = (t) => STATES.filter((s) => s[0] <= t).pop()[5];
-const W2S = (t, x, y) => [x * zoomAt(t), y * zoomAt(t)];
-const tabX = (i) => (i - 1) * 194.7;
-const CUR = [
-  [0, 330, 330],
-  [0.15, ...W2S(T.click1 - 0.01, 40, 22)],          // 버튼으로
-  [1.25, 270, 250],                                  // 로딩 중엔 비켜서기
-  [T.toggle - 0.55, ...W2S(T.toggle, 214, 6)],       // 토글로
-  [T.toggle + 0.4, 330, 210],
-  [T.tab1 - 0.4, ...W2S(T.tab1, tabX(1) + 14, 14)],
-  [T.tab2 - 0.38, ...W2S(T.tab2, tabX(2) + 14, 14)],
-  [T.tab2 + 0.4, 340, 230],
-  [T.hover - 0.45, ...W2S(T.hover, 82, 40)],         // 막대 5번 위로
-  [T.hover + 0.6, 380, 380],                         // 검색 땐 구석으로
-  [T.toast + 0.4, 330, 330],                         // 처음 위치로 복귀
-];
-const CLICKS = [T.click1, T.toggle, T.tab1, T.tab2];
-const press = (t) => CLICKS.reduce((m, c) => Math.max(m, range(c - 0.06, c, t) * (1 - range(c + 0.04, c + 0.16, t))), 0);
+  /* ── 하나의 컨테이너: 크기·모서리·색 키 ─────────────── */
+  // [시각, w, h, r, fill, 카메라 줌]
+  const STATES = [
+    [0,        360, 112, 56, C.ink,    1.80],
+    [T.loader, 112, 112, 56, C.ink,    2.20],
+    [T.check,  112, 112, 56, C.accent, 2.20],
+    [T.row,    600, 128, 36, C.paper,  1.42],
+    [T.tabs,   600, 104, 52, C.paper,  1.42],
+    [T.chart,  600, 440, 40, C.paper,  1.45],
+    [T.cmdk,   600, 104, 28, C.paper,  1.42],
+    [T.toast,  520, 104, 52, C.ink,    1.60],
+    [T.button, 360, 112, 56, C.ink,    1.80],
+  ];
+  const key = (i) => STATES.map((s) => [s[0], s[i]]);
+  const [UK, UD] = sp('ui'), [CK, CD] = sp('camera');
 
-/* ── 효과음 큐 ─────────────────────────────────────── */
-const cues = [
-  { t: T.click1, type: 'click' }, { t: T.loader + 0.02, type: 'pop', pitch: 0.8 },
-  { t: T.check, type: 'success' },
-  { t: T.row, type: 'swish' },
-  { t: T.toggle, type: 'click' }, { t: T.toggle + 0.01, type: 'toggle' },
-  { t: T.tabs, type: 'swish' },
-  { t: T.tab1, type: 'click' }, { t: T.tab1, type: 'tick', pitch: 0.9 },
-  { t: T.tab2, type: 'click' }, { t: T.tab2, type: 'tick', pitch: 1.1 },
-  { t: T.chart, type: 'whoosh' },
-  ...[0, 1, 2, 3, 4, 5, 6].map((i) => ({ t: T.chart + 0.1 + i * 0.125, type: 'tick', pitch: 0.8 + i * 0.07, gain: 0.7 })),
-  { t: T.hover, type: 'pop', pitch: 1.2 },
-  { t: T.cmdk, type: 'swish' },
-  ...T.keys.map((k, i) => ({ t: k, type: 'type', pitch: 1 + (i % 2) * 0.08 })),
-  { t: T.toast - 0.02, type: 'type', pitch: 0.8 }, { t: T.toast, type: 'thump', gain: 0.8 }, { t: T.toast + 0.03, type: 'pop' },
-  { t: T.button, type: 'swish', gain: 0.8 },
-];
+  /* ── 커서: 화면 좌표 키 (시작 = 끝 → 루프) ─────────────
+   * 화면 중심 기준, 1080 기준 px. UI 요소를 가리킬 땐 W2S(시각, 월드x, 월드y)로
+   * 그 시점 카메라 줌을 곱해 화면 좌표로 바꾼다. (클릭은 카메라가 멈춘 뒤에만)
+   */
+  const zoomAt = (t) => STATES.filter((s) => s[0] <= t).pop()[5];
+  const W2S = (t, x, y) => [x * zoomAt(t), y * zoomAt(t)];
+  const tabX = (i) => (i - 1) * 194.7;
+  const CUR = [
+    [0, 330, 330],
+    [0.15, ...W2S(T.click1 - 0.01, 40, 22)],          // 버튼으로
+    [1.25, 270, 250],                                  // 로딩 중엔 비켜서기
+    [T.toggle - 0.55, ...W2S(T.toggle, 214, 6)],       // 토글로
+    [T.toggle + 0.4, 330, 210],
+    [T.tab1 - 0.4, ...W2S(T.tab1, tabX(1) + 14, 14)],
+    [T.tab2 - 0.38, ...W2S(T.tab2, tabX(2) + 14, 14)],
+    [T.tab2 + 0.4, 340, 230],
+    [T.hover - 0.45, ...W2S(T.hover, 82, 40)],         // 막대 5번 위로
+    [T.hover + 0.6, 380, 380],                         // 검색 땐 구석으로
+    [T.toast + 0.4, 330, 330],                         // 처음 위치로 복귀
+  ];
+  const CLICKS = [T.click1, T.toggle, T.tab1, T.tab2];
+  const press = (t) => CLICKS.reduce((m, c) => Math.max(m, range(c - 0.06, c, t) * (1 - range(c + 0.04, c + 0.16, t))), 0);
 
-/* ── 내용 레이어들 (각 상태의 안쪽) ─────────────────── */
-// 상태 i 의 들어오는/나가는 시각
-const win = (i) => [STATES[i][0], STATES[i + 1] ? STATES[i + 1][0] : null];
+  /* ── 효과음 큐: 단발은 film.json cues, 반복 패턴만 코드로 ─── */
+  const cues = [
+    ...[0, 1, 2, 3, 4, 5, 6].map((i) => ({ t: T.chart + 0.1 + i * 0.125, type: 'tick', pitch: 0.8 + i * 0.07, gain: 0.7 })),
+    ...T.keys.map((k, i) => ({ t: k, type: 'type', pitch: 1 + (i % 2) * 0.08 })),
+  ];
 
-function drawButton(g, t, a) {
-  layer(g, a, swapBlur(a), () => text(g, '지원하기', 0, 2, { font: F(600, 40), color: '#fff' }));
-}
+  /* ── 내용 레이어들 (각 상태의 안쪽) ─────────────────── */
+  // 상태 i 의 들어오는/나가는 시각
+  const win = (i) => [STATES[i][0], STATES[i + 1] ? STATES[i + 1][0] : null];
 
-function drawLoader(g, t, a) {
-  layer(g, a, swapBlur(a, 6), () => {
-    const rot = t * Math.PI * 2 * 1.3, len = 0.9 + 0.6 * Math.sin(t * 5);
-    g.lineWidth = 7; g.lineCap = 'round'; g.strokeStyle = 'rgba(255,255,255,.22)';
-    g.beginPath(); g.arc(0, 0, 26, 0, Math.PI * 2); g.stroke();
-    g.strokeStyle = '#fff'; g.beginPath(); g.arc(0, 0, 26, rot, rot + len * 1.6); g.stroke();
-  });
-}
+  function drawButton(g, t, a) {
+    layer(g, a, swapBlur(a), () => text(g, P.buttonLabel, 0, 2, { font: F(600, 40), color: '#fff' }));
+  }
 
-function drawCheck(g, t, a) {
-  layer(g, a, 0, () => {
-    const p = ease.outCubic(range(T.check + 0.04, T.check + 0.32, t));
-    const pts = [[-20, 1], [-6, 15], [22, -14]];
-    const l1 = Math.hypot(14, 14), l2 = Math.hypot(28, 29), L = (l1 + l2) * p;
-    g.lineWidth = 9; g.lineCap = 'round'; g.lineJoin = 'round'; g.strokeStyle = '#fff';
-    g.beginPath(); g.moveTo(...pts[0]);
-    if (L <= l1) g.lineTo(lerp(pts[0][0], pts[1][0], L / l1), lerp(pts[0][1], pts[1][1], L / l1));
-    else { g.lineTo(...pts[1]); const q = (L - l1) / l2; g.lineTo(lerp(pts[1][0], pts[2][0], q), lerp(pts[1][1], pts[2][1], q)); }
-    g.stroke();
-  });
-}
-
-function drawRow(g, t, a, w) {
-  layer(g, a, swapBlur(a), () => {
-    const x0 = -w / 2;
-    // 벨 아이콘 자리: 둥근 사각 + 점
-    g.fillStyle = C.soft; rrect(g, x0 + 28, -36, 72, 72, 20); g.fill();
-    g.fillStyle = C.ink; g.beginPath(); g.arc(x0 + 64, -4, 13, Math.PI, 0); g.lineTo(x0 + 77, 10); g.lineTo(x0 + 51, 10); g.closePath(); g.fill();
-    g.beginPath(); g.arc(x0 + 64, 16, 5, 0, Math.PI * 2); g.fill();
-    text(g, '새 공고 알림', x0 + 124, -14, { font: F(600, 32), color: C.ink, align: 'left' });
-    text(g, '관심 직무 공고가 열리면 알림', x0 + 124, 24, { font: F(500, 24), color: C.mute, align: 'left' });
-    // 토글
-    const on = spring(t - T.toggle, ...sp('snappy'));
-    const tx = w / 2 - 36 - 104, kn = stretch(t, [[0, tx + 6], [T.toggle, tx + 104 - 6 - 48]], 48);
-    g.fillStyle = mixColor('#D9D7D2', C.accent, clamp(on)); rrect(g, tx, -30, 104, 60, 30); g.fill();
-    g.fillStyle = '#fff'; g.shadowColor = 'rgba(0,0,0,.18)'; g.shadowBlur = 6; g.shadowOffsetY = 2;
-    rrect(g, kn.left, -24, kn.width, 48, 24); g.fill(); g.shadowColor = 'transparent';
-  });
-}
-
-function drawTabs(g, t, a, w) {
-  layer(g, a, swapBlur(a), () => {
-    const tw = (w - 16) / 3, x0 = -w / 2 + 8;
-    const ind = stretch(t, [[0, x0], [T.tab1, x0 + tw], [T.tab2, x0 + tw * 2]], tw);
-    g.fillStyle = C.ink; rrect(g, ind.left, -44, ind.width, 88, 44); g.fill();
-    ['전체', '개발', '디자인'].forEach((s, i) => {
-      const cx = x0 + tw * i + tw / 2;
-      // 인디케이터와 겹친 비율만큼 글자색이 바뀐다
-      const cover = clamp((Math.min(ind.right, cx + 30) - Math.max(ind.left, cx - 30)) / 60);
-      text(g, s, cx, 2, { font: F(600, 30), color: mixColor(C.mute, '#FFFFFF', cover) });
+  function drawLoader(g, t, a) {
+    layer(g, a, swapBlur(a, 6), () => {
+      const rot = t * Math.PI * 2 * 1.3, len = 0.9 + 0.6 * Math.sin(t * 5);
+      g.lineWidth = 7; g.lineCap = 'round'; g.strokeStyle = 'rgba(255,255,255,.22)';
+      g.beginPath(); g.arc(0, 0, 26, 0, Math.PI * 2); g.stroke();
+      g.strokeStyle = '#fff'; g.beginPath(); g.arc(0, 0, 26, rot, rot + len * 1.6); g.stroke();
     });
-  });
-}
+  }
 
-const BARS = [38, 52, 46, 70, 96, 64, 82], BAR_N = ['월', '화', '수', '목', '금', '토', '일'];
-function drawChart(g, t, a, w, h) {
-  layer(g, a, swapBlur(a), () => {
-    const x0 = -w / 2 + 44, y0 = -h / 2 + 44;
-    text(g, '이번 주 지원자', x0, y0 + 14, { font: F(600, 30), color: C.ink, align: 'left' });
-    text(g, '+18%', w / 2 - 44, y0 + 14, { font: F(600, 26), color: C.accent, align: 'right' });
-    const base = h / 2 - 72, maxH = 250, bw = 52, gap = (w - 88 - bw * 7) / 6;
-    const hov = spring(t - T.hover, ...sp('snappy'));
-    g.strokeStyle = C.line; g.lineWidth = 2; g.beginPath(); g.moveTo(x0, base + 1); g.lineTo(w / 2 - 44, base + 1); g.stroke();
-    BARS.forEach((v, i) => {
-      const s = spring(t - (T.chart + 0.1 + i * 0.125), ...sp('ui'));
-      const bh = (v / 100) * maxH * s, bx = x0 + i * (bw + gap);
-      g.fillStyle = i === 4 ? mixColor('#1A1A1A', C.accent, hov) : mixColor('#1A1A1A', '#CFCDC8', hov);
-      rrect(g, bx, base - bh, bw, bh, 12); g.fill();
-      text(g, BAR_N[i], bx + bw / 2, base + 32, { font: F(500, 22), color: C.mute, alpha: clamp(s * 1.5) });
+  function drawCheck(g, t, a) {
+    layer(g, a, 0, () => {
+      const p = ease.outCubic(range(T.check + 0.04, T.check + 0.32, t));
+      const pts = [[-20, 1], [-6, 15], [22, -14]];
+      const l1 = Math.hypot(14, 14), l2 = Math.hypot(28, 29), L = (l1 + l2) * p;
+      g.lineWidth = 9; g.lineCap = 'round'; g.lineJoin = 'round'; g.strokeStyle = '#fff';
+      g.beginPath(); g.moveTo(...pts[0]);
+      if (L <= l1) g.lineTo(lerp(pts[0][0], pts[1][0], L / l1), lerp(pts[0][1], pts[1][1], L / l1));
+      else { g.lineTo(...pts[1]); const q = (L - l1) / l2; g.lineTo(lerp(pts[1][0], pts[2][0], q), lerp(pts[1][1], pts[2][1], q)); }
+      g.stroke();
     });
-    // 툴팁
-    const ta = swapAlpha(t, T.hover - 0.08, null), bx4 = x0 + 4 * (bw + gap) + bw / 2, top = base - (96 / 100) * maxH;
-    layer(g, ta, swapBlur(ta, 8), () => {
-      const y = top - 26 - 10 * (1 - spring(t - T.hover, ...sp('snappy')));
-      g.fillStyle = C.ink; rrect(g, bx4 - 70, y - 52, 140, 52, 16); g.fill();
-      g.beginPath(); g.moveTo(bx4 - 9, y - 1); g.lineTo(bx4 + 9, y - 1); g.lineTo(bx4, y + 9); g.closePath(); g.fill();
-      text(g, '128명', bx4, y - 25, { font: F(600, 26), color: '#fff' });
+  }
+
+  function drawRow(g, t, a, w) {
+    layer(g, a, swapBlur(a), () => {
+      const x0 = -w / 2;
+      // 벨 아이콘 자리: 둥근 사각 + 점
+      g.fillStyle = C.soft; rrect(g, x0 + 28, -36, 72, 72, 20); g.fill();
+      g.fillStyle = C.ink; g.beginPath(); g.arc(x0 + 64, -4, 13, Math.PI, 0); g.lineTo(x0 + 77, 10); g.lineTo(x0 + 51, 10); g.closePath(); g.fill();
+      g.beginPath(); g.arc(x0 + 64, 16, 5, 0, Math.PI * 2); g.fill();
+      text(g, P.rowTitle, x0 + 124, -14, { font: F(600, 32), color: C.ink, align: 'left' });
+      text(g, P.rowSub, x0 + 124, 24, { font: F(500, 24), color: C.mute, align: 'left' });
+      // 토글
+      const on = spring(t - T.toggle, ...sp('snappy'));
+      const tx = w / 2 - 36 - 104, kn = stretch(t, [[0, tx + 6], [T.toggle, tx + 104 - 6 - 48]], 48);
+      g.fillStyle = mixColor('#D9D7D2', C.accent, clamp(on)); rrect(g, tx, -30, 104, 60, 30); g.fill();
+      g.fillStyle = '#fff'; g.shadowColor = 'rgba(0,0,0,.18)'; g.shadowBlur = 6; g.shadowOffsetY = 2;
+      rrect(g, kn.left, -24, kn.width, 48, 24); g.fill(); g.shadowColor = 'transparent';
     });
-  });
-}
+  }
 
-function drawCmdk(g, t, a, w) {
-  layer(g, a, swapBlur(a), () => {
-    const x0 = -w / 2 + 36;
-    g.strokeStyle = C.ink; g.lineWidth = 4.5; g.lineCap = 'round';
-    g.beginPath(); g.arc(x0 + 14, -3, 13, 0, Math.PI * 2); g.stroke();
-    g.beginPath(); g.moveTo(x0 + 24, 7); g.lineTo(x0 + 33, 16); g.stroke();
-    const n = T.keys.filter((k) => t >= k).length, str = n ? TYPED[n - 1] : '';
-    if (!str) text(g, '직무, 공고 검색', x0 + 58, 2, { font: F(500, 30), color: '#B4B2AD', align: 'left' });
-    else text(g, str, x0 + 58, 2, { font: F(600, 30), color: C.ink, align: 'left' });
-    g.font = F(600, 30);
-    const cw = str ? g.measureText(str).width : 0, blink = Math.floor((t - T.cmdk) * 4) % 2 === 0 || (t > T.keys[0] - 0.1 && t < T.keys[3] + 0.25);
-    if (blink) { g.fillStyle = C.accent; g.fillRect(x0 + 58 + cw + 3, -20, 3, 42); }
-    // ⌘K 키캡
-    g.fillStyle = C.soft; rrect(g, w / 2 - 36 - 84, -24, 84, 48, 12); g.fill();
-    text(g, '⌘K', w / 2 - 36 - 42, 1, { font: `500 24px Geist, sans-serif`, color: C.mute });
-  });
-}
+  function drawTabs(g, t, a, w) {
+    layer(g, a, swapBlur(a), () => {
+      const tw = (w - 16) / 3, x0 = -w / 2 + 8;
+      const ind = stretch(t, [[0, x0], [T.tab1, x0 + tw], [T.tab2, x0 + tw * 2]], tw);
+      g.fillStyle = C.ink; rrect(g, ind.left, -44, ind.width, 88, 44); g.fill();
+      ['전체', '개발', '디자인'].forEach((s, i) => {
+        const cx = x0 + tw * i + tw / 2;
+        // 인디케이터와 겹친 비율만큼 글자색이 바뀐다
+        const cover = clamp((Math.min(ind.right, cx + 30) - Math.max(ind.left, cx - 30)) / 60);
+        text(g, s, cx, 2, { font: F(600, 30), color: mixColor(C.mute, '#FFFFFF', cover) });
+      });
+    });
+  }
 
-function drawToast(g, t, a, w) {
-  layer(g, a, swapBlur(a), () => {
-    const x0 = -w / 2 + 40, d = spring(t - T.toast - 0.08, ...sp('snappy'));
-    g.fillStyle = C.accent; g.beginPath(); g.arc(x0 + 14, 0, 14 * d, 0, Math.PI * 2); g.fill();
-    text(g, '지원이 완료됐어요', x0 + 48, 2, { font: F(600, 32), color: '#fff', align: 'left' });
-    text(g, '보기', w / 2 - 40, 2, { font: F(600, 30), color: '#8FB0FF', align: 'right' });
-  });
-}
+  const BARS = [38, 52, 46, 70, 96, 64, 82], BAR_N = ['월', '화', '수', '목', '금', '토', '일'];
+  function drawChart(g, t, a, w, h) {
+    layer(g, a, swapBlur(a), () => {
+      const x0 = -w / 2 + 44, y0 = -h / 2 + 44;
+      text(g, P.chartTitle, x0, y0 + 14, { font: F(600, 30), color: C.ink, align: 'left' });
+      text(g, '+18%', w / 2 - 44, y0 + 14, { font: F(600, 26), color: C.accent, align: 'right' });
+      const base = h / 2 - 72, maxH = 250, bw = 52, gap = (w - 88 - bw * 7) / 6;
+      const hov = spring(t - T.hover, ...sp('snappy'));
+      g.strokeStyle = C.line; g.lineWidth = 2; g.beginPath(); g.moveTo(x0, base + 1); g.lineTo(w / 2 - 44, base + 1); g.stroke();
+      BARS.forEach((v, i) => {
+        const s = spring(t - (T.chart + 0.1 + i * 0.125), ...sp('ui'));
+        const bh = (v / 100) * maxH * s, bx = x0 + i * (bw + gap);
+        g.fillStyle = i === 4 ? mixColor('#1A1A1A', C.accent, hov) : mixColor('#1A1A1A', '#CFCDC8', hov);
+        rrect(g, bx, base - bh, bw, bh, 12); g.fill();
+        text(g, BAR_N[i], bx + bw / 2, base + 32, { font: F(500, 22), color: C.mute, alpha: clamp(s * 1.5) });
+      });
+      // 툴팁
+      const ta = swapAlpha(t, T.hover - 0.08, null), bx4 = x0 + 4 * (bw + gap) + bw / 2, top = base - (96 / 100) * maxH;
+      layer(g, ta, swapBlur(ta, 8), () => {
+        const y = top - 26 - 10 * (1 - spring(t - T.hover, ...sp('snappy')));
+        g.fillStyle = C.ink; rrect(g, bx4 - 70, y - 52, 140, 52, 16); g.fill();
+        g.beginPath(); g.moveTo(bx4 - 9, y - 1); g.lineTo(bx4 + 9, y - 1); g.lineTo(bx4, y + 9); g.closePath(); g.fill();
+        text(g, '128명', bx4, y - 25, { font: F(600, 26), color: '#fff' });
+      });
+    });
+  }
 
-/* ── 프레임 ───────────────────────────────────────── */
-Stage.film({
-  title: 'Sample · One shape morph', dur: DUR, bpm: 120,
-  formats: { '1x1': [1080, 1080], '9x16': [1080, 1920], '16x9': [1920, 1080] },
-  cues,
-  draw(g, t, S) {
-    g.fillStyle = C.bg; g.fillRect(0, 0, S.W, S.H);
+  function drawCmdk(g, t, a, w) {
+    layer(g, a, swapBlur(a), () => {
+      const x0 = -w / 2 + 36;
+      g.strokeStyle = C.ink; g.lineWidth = 4.5; g.lineCap = 'round';
+      g.beginPath(); g.arc(x0 + 14, -3, 13, 0, Math.PI * 2); g.stroke();
+      g.beginPath(); g.moveTo(x0 + 24, 7); g.lineTo(x0 + 33, 16); g.stroke();
+      const n = T.keys.filter((k) => t >= k).length, str = n ? TYPED[n - 1] : '';
+      if (!str) text(g, '직무, 공고 검색', x0 + 58, 2, { font: F(500, 30), color: '#B4B2AD', align: 'left' });
+      else text(g, str, x0 + 58, 2, { font: F(600, 30), color: C.ink, align: 'left' });
+      g.font = F(600, 30);
+      const cw = str ? g.measureText(str).width : 0, blink = Math.floor((t - T.cmdk) * 4) % 2 === 0 || (t > T.keys[0] - 0.1 && t < T.keys[3] + 0.25);
+      if (blink) { g.fillStyle = C.accent; g.fillRect(x0 + 58 + cw + 3, -20, 3, 42); }
+      // ⌘K 키캡
+      g.fillStyle = C.soft; rrect(g, w / 2 - 36 - 84, -24, 84, 48, 12); g.fill();
+      text(g, '⌘K', w / 2 - 36 - 42, 1, { font: `500 24px Geist, sans-serif`, color: C.mute });
+    });
+  }
 
-    const w = loopTrack(t, key(1), DUR, UK, UD), h = loopTrack(t, key(2), DUR, UK, UD);
-    const r = loopTrack(t, key(3), DUR, UK, UD), fill = colorTrack(t, key(4), UK, UD, DUR);
-    const cam = loopTrack(t, key(5), DUR, CK, CD);
-    const p = press(t);
+  function drawToast(g, t, a, w) {
+    layer(g, a, swapBlur(a), () => {
+      const x0 = -w / 2 + 40, d = spring(t - T.toast - 0.08, ...sp('snappy'));
+      g.fillStyle = C.accent; g.beginPath(); g.arc(x0 + 14, 0, 14 * d, 0, Math.PI * 2); g.fill();
+      text(g, P.toastText, x0 + 48, 2, { font: F(600, 32), color: '#fff', align: 'left' });
+      text(g, '보기', w / 2 - 40, 2, { font: F(600, 30), color: '#8FB0FF', align: 'right' });
+    });
+  }
 
-    g.translate(S.cx, S.cy);
-    g.scale(S.unit * cam, S.unit * cam);
+  /* ── 프레임 ───────────────────────────────────────── */
+  return {
+    cues,
+    draw(g, t, S) {
+      g.fillStyle = C.bg; g.fillRect(0, 0, S.W, S.H);
 
-    // 컨테이너 (버튼 눌림만 살짝 축소)
-    g.save();
-    const ps = 1 - 0.035 * p * (t < T.loader + 0.2 ? 1 : 0);
-    g.scale(ps, ps);
-    g.shadowColor = 'rgba(30,25,15,.10)'; g.shadowBlur = 48; g.shadowOffsetY = 18;
-    g.fillStyle = fill; rrect(g, -w / 2, -h / 2, w, h, r); g.fill();
-    g.shadowColor = 'transparent';
-    g.save(); rrect(g, -w / 2, -h / 2, w, h, r); g.clip();
+      const w = loopTrack(t, key(1), DUR, UK, UD), h = loopTrack(t, key(2), DUR, UK, UD);
+      const r = loopTrack(t, key(3), DUR, UK, UD), fill = colorTrack(t, key(4), UK, UD, DUR);
+      const cam = loopTrack(t, key(5), DUR, CK, CD);
+      const p = press(t);
 
-    const A = (i) => { const [a, z] = win(i); return swapAlpha(t, a, z); };
-    drawButton(g, t, Math.max(swapAlpha(t, T.button, T.click1 + DUR), swapAlpha(t + DUR, T.button, T.click1 + DUR)));
-    drawLoader(g, t, A(1));
-    drawCheck(g, t, A(2));
-    // 내용은 "도착할 크기" 기준으로 배치한다. 컨테이너가 커지는 동안 클립이 내용을 드러낸다 (찌그러짐·겹침 방지)
-    const tw = (i) => STATES[i][1], th = (i) => STATES[i][2];
-    drawRow(g, t, A(3), tw(3));
-    drawTabs(g, t, A(4), tw(4));
-    drawChart(g, t, A(5), tw(5), th(5));
-    drawCmdk(g, t, A(6), tw(6));
-    drawToast(g, t, A(7), tw(7));
-    g.restore();
-    g.restore();
+      g.translate(S.cx, S.cy);
+      g.scale(S.unit * cam, S.unit * cam);
 
-    // 커서는 카메라 밖(화면 좌표)에서 그린다 → 줌과 상관없이 같은 크기
-    g.setTransform(S.unit, 0, 0, S.unit, S.cx, S.cy);
-    const cx = loopTrack(t, CUR.map((c) => [c[0], c[1]]), DUR, ...sp('ui'));
-    const cy = loopTrack(t, CUR.map((c) => [c[0], c[2]]), DUR, ...sp('ui'));
-    cursor(g, cx, cy, 1.6, p);
-  },
+      // 컨테이너 (버튼 눌림만 살짝 축소)
+      g.save();
+      const ps = 1 - 0.035 * p * (t < T.loader + 0.2 ? 1 : 0);
+      g.scale(ps, ps);
+      g.shadowColor = 'rgba(30,25,15,.10)'; g.shadowBlur = 48; g.shadowOffsetY = 18;
+      g.fillStyle = fill; rrect(g, -w / 2, -h / 2, w, h, r); g.fill();
+      g.shadowColor = 'transparent';
+      g.save(); rrect(g, -w / 2, -h / 2, w, h, r); g.clip();
+
+      const A = (i) => { const [a, z] = win(i); return swapAlpha(t, a, z); };
+      drawButton(g, t, Math.max(swapAlpha(t, T.button, T.click1 + DUR), swapAlpha(t + DUR, T.button, T.click1 + DUR)));
+      drawLoader(g, t, A(1));
+      drawCheck(g, t, A(2));
+      // 내용은 "도착할 크기" 기준으로 배치한다. 컨테이너가 커지는 동안 클립이 내용을 드러낸다 (찌그러짐·겹침 방지)
+      const tw = (i) => STATES[i][1], th = (i) => STATES[i][2];
+      drawRow(g, t, A(3), tw(3));
+      drawTabs(g, t, A(4), tw(4));
+      drawChart(g, t, A(5), tw(5), th(5));
+      drawCmdk(g, t, A(6), tw(6));
+      drawToast(g, t, A(7), tw(7));
+      g.restore();
+      g.restore();
+
+      // 커서는 카메라 밖(화면 좌표)에서 그린다 → 줌과 상관없이 같은 크기
+      g.setTransform(S.unit, 0, 0, S.unit, S.cx, S.cy);
+      const cx = loopTrack(t, CUR.map((c) => [c[0], c[1]]), DUR, ...sp('ui'));
+      const cy = loopTrack(t, CUR.map((c) => [c[0], c[2]]), DUR, ...sp('ui'));
+      cursor(g, cx, cy, 1.6, p);
+    },
+  };
 });
 </script>

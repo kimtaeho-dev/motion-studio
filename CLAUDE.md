@@ -5,14 +5,17 @@ After Effects를 쓰지 않는다. 모든 영상은 HTML 한 장에 들어 있�
 
 ## 렌더 계약 (절대 규칙)
 
-- 필름 한 편 = `films/<이름>/index.html` 한 장. `lib/motion.js`, `lib/stage.js`만 불러온다. 다른 라이브러리는 사람이 명시적으로 요청한 경우만.
-- 모든 프레임은 **시간의 순수 함수**다. `Stage.film({ draw(g, t, S) })` 안에서 t로부터 모든 값을 계산한다.
+- 필름 한 편 = `films/<이름>/index.html`(코드) + `films/<이름>/film.json`(데이터). `lib/motion.js`, `lib/stage.js`만 불러온다. 다른 라이브러리는 사람이 명시적으로 요청한 경우만.
+- `film.json`에 길이·BPM·포맷·`transparent`·`params`(디자이너가 바꿀 문구·색·숫자)·`timeline`(이름 붙은 장면 시각)·`cues`를 둔다. 형식은 `lib/stage.js` 맨 위 주석. 앱의 속성 패널과 타임라인이 이 파일을 고치므로, 디자이너가 바꿀 만한 값은 코드에 박지 말고 여기로 뺀다.
+- 코드는 `Stage.film((film) => { ...; return { draw(g, t, S) {} }; })`. `film.P`(params 값), `film.T`(timeline 시각)로 상수와 표를 만들고, 장면 시각은 반드시 `film.T`에서 읽는다(타임라인에서 끌어 옮기면 따라오도록).
+- 모든 프레임은 **시간의 순수 함수**다. `draw(g, t, S)` 안에서 t로부터 모든 값을 계산한다.
+- `transparent: true`면 `S.transparent`일 때 배경을 칠하지 않는다.
 - 금지: CSS transition/animation, `setTimeout`, `setInterval`, 렌더 모드의 `requestAnimationFrame`, 프레임 사이에 이어지는 상태(누적 변수), `Math.random` (→ `M.rng(seed)`), `Date.now()`.
 - 움직임은 `M.spring` / `M.track` / `M.loopTrack` / `M.stretch`로 만든다. 고정 곡선 이징은 선 그리기 진행도처럼 스프링이 어색한 곳에만 쓴다.
 - 목표가 여러 번 바뀌는 값은 반드시 `track()`(루프면 `loopTrack()`)을 쓴다. 스프링을 새로 시작하지 않고 더한다.
 - 폰트는 `assets/fonts`의 Pretendard / Geist / Geist Mono만 쓴다. 시스템 폰트에 의존하지 않는다.
 - 레이아웃은 1080 기준 단위(`S.unit`)로 짠다. 포맷(1x1, 9x16, 16x9)이 바뀌어도 크롭하지 말고 다시 배치한다.
-- 효과음은 `cues` 배열로 선언한다(`{ t, type }`). 오디오 파일을 직접 만지지 않는다.
+- 효과음은 `film.json`의 `cues`로 선언한다. 장면에 붙는 효과음은 `{ "at": "<timeline 이름>", "dt": 0.02, "type": "pop" }`, 고정 시각은 `{ "t": 1.5, "type": "click" }`. 타이핑처럼 규칙적으로 반복되는 것만 코드에서 `return { cues: [...] }`로 만든다. 오디오 파일을 직접 만지지 않는다.
 
 ## 룩
 
