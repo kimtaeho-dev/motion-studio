@@ -1,4 +1,4 @@
-import { createSignal } from "solid-js";
+import { createSignal, getOwner, onCleanup } from "solid-js";
 
 /**
  * The studio backend — the plugin endpoints (`/__scenes`, `/__chat`, …) and the
@@ -62,15 +62,22 @@ function connect(): void {
 
 /**
  * Subscribe to a server push. Same event names in both modes, so call sites do
- * not care which backend is behind them.
+ * not care which backend is behind them. Called inside a component or
+ * provider, the subscription ends with it — otherwise every remount (and, in
+ * dev, every hot update) would leave one more stale handler reacting.
  */
-export function onServerEvent<T>(event: string, handler: (data: T) => void): void {
+export function onServerEvent<T>(event: string, handler: (data: T) => void): () => void {
+  let off: () => void;
   if (DEV) {
     import.meta.hot?.on(event, handler);
-    return;
+    off = () => import.meta.hot?.off(event, handler);
+  } else {
+    let set = handlers.get(event);
+    if (!set) handlers.set(event, (set = new Set()));
+    set.add(handler as Handler);
+    connect();
+    off = () => set!.delete(handler as Handler);
   }
-  let set = handlers.get(event);
-  if (!set) handlers.set(event, (set = new Set()));
-  set.add(handler as Handler);
-  connect();
+  if (getOwner()) onCleanup(off);
+  return off;
 }

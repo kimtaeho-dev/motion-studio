@@ -47,6 +47,15 @@ const PlayerContext = createContext<{
   stepFrames: (n: number) => void;
   /** Move to the previous/next beat on the grid and pause. */
   stepBeats: (n: number) => void;
+  /**
+   * Apply an edited film.json to the open page right away (no save). Returns
+   * why it was rejected, or null — a rejected edit leaves the page as it was.
+   */
+  applyLocal: (next: FilmJson) => string | null;
+  /** The app is about to save this film.json; its own echo from the file watcher is not news. */
+  markSaved: (saved: FilmJson) => void;
+  /** Bumped whenever film.json changes from outside the app (the agent): edit history no longer applies. */
+  externalChanges: () => number;
 }>();
 
 function loadFormats(): Record<string, string> {
@@ -88,16 +97,23 @@ export function PlayerProvider(props: { children: JSX.Element }) {
   const [format, setFormatSignal] = createSignal<string | null>(loadFormats()[slug()] ?? null);
   const [time, setTime] = createSignal(0);
   const [playing, setPlaying] = createSignal(true);
+  const [externalChanges, setExternalChanges] = createSignal(0);
+  // What the app last saved, serialised — the watcher reports our own writes too.
+  let lastSaved: string | null = null;
 
   const win = () => frame()?.contentWindow as FilmWindow | null | undefined;
 
-  const src = () => {
+  // A memo, so the URL only changes when a new page is wanted. The iframe's
+  // attributes share one render effect, and setting src — even to the same
+  // page with a fresh `t` — navigates it: a plain function here reloaded the
+  // film whenever its loading class flipped.
+  const src = createMemo(() => {
     const query = new URLSearchParams({ embed: "1", v: String(reloadKey()) });
     const fmt = format();
     if (fmt) query.set("format", fmt);
     query.set("t", String(untrack(time)));
     return `/films/${encodeURIComponent(slug())}/index.html?${query}`;
-  };
+  });
 
   /** Draw the current time into the page, if it is ready to draw. */
   const draw = (t: number) => {
@@ -163,6 +179,7 @@ export function PlayerProvider(props: { children: JSX.Element }) {
       (current) => {
         setFilm(null);
         setJson(null);
+        lastSaved = null;
         setError(null);
         setTime(0);
         setPlaying(true);
@@ -187,16 +204,23 @@ export function PlayerProvider(props: { children: JSX.Element }) {
   // ── Live changes from the agent (or, later, the property panel) ────
   onServerEvent<FilmChange>("film:changed", async (change) => {
     if (change.slug !== slug() && change.slug !== "*") return;
-    if (change.kind === "doc") return;
+    if (change.kind === "doc" || change.kind === "out") return;
     if (change.kind === "code" || status() !== "ready") {
       // A reload keeps the time (src() carries it) and play state.
       setReloadKey((k) => k + 1);
-      void fetchFilmJson(slug()).then(setJson);
+      void fetchFilmJson(slug()).then((next) => {
+        setJson(next);
+        if (next && JSON.stringify(next) !== lastSaved) setExternalChanges((n) => n + 1);
+      });
       return;
     }
     const json = await fetchFilmJson(slug());
     const w = win();
     if (!json || !w?.Stage) return;
+    // Our own save coming back: the page already shows it, and a newer local
+    // edit may be on screen that this older copy would undo.
+    if (JSON.stringify(json) === lastSaved) return;
+    setExternalChanges((n) => n + 1);
     if (w.Stage.reload(json)) {
       setError(null);
       if (w.FILM) setFilm({ ...w.FILM });
@@ -252,6 +276,21 @@ export function PlayerProvider(props: { children: JSX.Element }) {
     seek(time() + n / (film()?.fps ?? 60));
   };
 
+  const applyLocal = (next: FilmJson): string | null => {
+    const w = win();
+    if (status() !== "ready" || !w?.Stage) return "필름이 아직 열리지 않았어요.";
+    if (!w.Stage.reload(next)) return w.LOAD_ERROR ?? "film.json 형식이 맞지 않아요.";
+    setJson(next);
+    if (w.FILM) setFilm({ ...w.FILM });
+    setError(null);
+    draw(time());
+    return null;
+  };
+
+  const markSaved = (saved: FilmJson) => {
+    lastSaved = JSON.stringify(saved);
+  };
+
   const stepBeats = (n: number) => {
     const f = film();
     if (!f) return;
@@ -280,6 +319,9 @@ export function PlayerProvider(props: { children: JSX.Element }) {
         seek,
         stepFrames,
         stepBeats,
+        applyLocal,
+        markSaved,
+        externalChanges,
       }}
     >
       {props.children}

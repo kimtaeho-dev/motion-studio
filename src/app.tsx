@@ -7,6 +7,7 @@ import { MediaViewer } from "@/components/media-viewer";
 import { ChatProvider } from "@/context/chat";
 import { FilesProvider } from "@/context/files";
 import { PlayerProvider } from "@/context/player";
+import { EditorProvider } from "@/context/editor";
 import { RenderProvider } from "@/context/render";
 
 /**
@@ -19,18 +20,20 @@ export function App() {
       <RenderProvider>
         <FilesProvider>
           <PlayerProvider>
-            <div class="flex h-screen gap-3 bg-canvas p-3">
-              <Sidebar />
-              <Player />
-              <div class="flex min-h-0 flex-col gap-3">
-                <StagePanel />
-                <Inspector />
-                <div class="flex min-h-0 flex-[1.3] flex-col">
-                  <ChatPanel />
+            <EditorProvider>
+              <div class="flex h-screen gap-3 bg-canvas p-3">
+                <Sidebar />
+                <Player />
+                <div class="flex min-h-0 flex-col gap-3">
+                  <StagePanel />
+                  <Inspector />
+                  <div class="flex min-h-0 flex-[1.3] flex-col">
+                    <ChatPanel />
+                  </div>
                 </div>
               </div>
-            </div>
-            <MediaViewer />
+              <MediaViewer />
+            </EditorProvider>
           </PlayerProvider>
         </FilesProvider>
       </RenderProvider>

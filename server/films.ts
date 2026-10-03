@@ -373,6 +373,22 @@ export function filmsPlugin(): Plugin {
         json(res, 201, attachment);
       });
 
+      // The property panel and timeline save here (PUT, body: { film, json }). The
+      // app has already applied the change to the open page with Stage.reload,
+      // which validates it fully; this only refuses what is not a film at all.
+      server.middlewares.use("/__films/json", async (req, res) => {
+        if (req.method !== "PUT") return json(res, 405, { error: "method not allowed" });
+        const body = await readJsonBody(req);
+        const slug = typeof body.film === "string" ? body.film : "";
+        const film = body.json as Record<string, unknown> | undefined;
+        if (!SLUG.test(slug) || !fs.existsSync(path.join(ws.filmsDir, slug, "film.json"))) return json(res, 404, { error: "film not found" });
+        if (!film || typeof film !== "object" || Array.isArray(film) || typeof film.dur !== "number" || !(film.dur > 0)) {
+          return json(res, 400, { error: "not a film.json" });
+        }
+        fs.writeFileSync(path.join(ws.filmsDir, slug, "film.json"), JSON.stringify(film, null, 2) + "\n");
+        json(res, 200, { ok: true });
+      });
+
       server.middlewares.use("/__films/files", (req, res) => {
         const slug = new URL(req.url ?? "", "http://localhost").searchParams.get("film") ?? "";
         if (!SLUG.test(slug) || !fs.existsSync(path.join(ws.filmsDir, slug))) return json(res, 404, { error: "film not found" });

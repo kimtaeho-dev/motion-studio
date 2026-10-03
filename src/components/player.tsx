@@ -1,12 +1,13 @@
-import { createMemo, For, onCleanup, onMount, Show } from "solid-js";
-import { Check, Film, Image, Pause, Play, X } from "lucide-solid";
+import { createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js";
+import { Check, Film, Image, Pause, Play, Redo2, Undo2, X } from "lucide-solid";
 import { Button } from "@/components/ui/button";
 import { usePlayer } from "@/context/player";
+import { cloneFilm, useEditor } from "@/context/editor";
 import { useFilms } from "@/context/films";
 import { useFiles } from "@/context/files";
 import { useRender } from "@/context/render";
 import { openMedia } from "@/components/media-viewer";
-import type { FilmFile, RenderJob } from "@/types";
+import type { FilmFile, FilmJson, RenderJob } from "@/types";
 import { useParams } from "@solidjs/router";
 
 const pct = (t: number, dur: number) => `${(t / dur) * 100}%`;
@@ -14,8 +15,16 @@ const pct = (t: number, dur: number) => `${(t / dur) * 100}%`;
 /** Keys that drive the player — ignored while the user is typing anywhere. */
 function usePlayerKeys() {
   const { toggle, stepFrames, stepBeats, seek } = usePlayer();
+  const { undo, redo } = useEditor();
   const onKey = (e: KeyboardEvent) => {
+    // Inside a text field, ⌘Z is the field's own undo; everything else here is the player's.
     if (e.target instanceof Element && e.target.closest("input, textarea, select, [contenteditable=true]")) return;
+    if ((e.metaKey || e.ctrlKey) && (e.code === "KeyZ" || e.code === "KeyY")) {
+      e.preventDefault();
+      if (e.code === "KeyY" || e.shiftKey) redo();
+      else undo();
+      return;
+    }
     if (e.code === "Space") {
       e.preventDefault();
       toggle();
@@ -31,6 +40,20 @@ function usePlayerKeys() {
   };
   onMount(() => window.addEventListener("keydown", onKey));
   onCleanup(() => window.removeEventListener("keydown", onKey));
+}
+
+function HistoryButtons() {
+  const { canUndo, canRedo, undo, redo } = useEditor();
+  return (
+    <div class="flex items-center">
+      <Button size="icon-sm" variant="ghost" onClick={undo} disabled={!canUndo()} aria-label="되돌리기 (⌘Z)" title="되돌리기 (⌘Z)">
+        <Undo2 />
+      </Button>
+      <Button size="icon-sm" variant="ghost" onClick={redo} disabled={!canRedo()} aria-label="다시 하기 (⇧⌘Z)" title="다시 하기 (⇧⌘Z)">
+        <Redo2 />
+      </Button>
+    </div>
+  );
 }
 
 function FormatSwitch() {
@@ -94,8 +117,15 @@ function Stage() {
   );
 }
 
+/** Pixels a press may wander before it counts as a drag rather than a click. */
+const DRAG_THRESHOLD_PX = 3;
+
+const round3 = (t: number) => Math.round(t * 1000) / 1000;
+
 function Timeline() {
-  const { film, markers, time, seek, playing, toggle } = usePlayer();
+  const { film, json, markers, time, seek, playing, toggle } = usePlayer();
+  const { locked, preview, commit } = useEditor();
+  const [drag, setDrag] = createSignal<{ label: string; t: number } | null>(null);
   let el: HTMLDivElement | undefined;
 
   const dur = () => film()?.dur ?? 1;
@@ -108,36 +138,89 @@ function Timeline() {
     return out;
   });
 
-  let wasPlaying = false;
-  const timeAt = (e: PointerEvent) => {
+  const rawTimeAt = (e: PointerEvent) => {
     const r = el!.getBoundingClientRect();
-    let t = Math.min(Math.max(0, (e.clientX - r.left) / r.width), 0.99999) * dur();
-    const f = film();
-    if (e.shiftKey && f) {
-      // Shift snaps to the beat grid, the unit everything in a film is laid out on.
-      const len = 60 / f.bpm;
-      t = f.beatOffset + Math.round((t - f.beatOffset) / len) * len;
-    }
-    return t;
+    return Math.min(Math.max(0, (e.clientX - r.left) / r.width), 0.99999) * dur();
   };
+  /** The beat grid is the unit a film is laid out on; Alt drops to single frames. */
+  const snap = (t: number, fine: boolean) => {
+    const f = film();
+    if (!f) return t;
+    if (fine) return Math.round(t * f.fps) / f.fps;
+    const len = 60 / f.bpm;
+    return Math.min(f.dur, Math.max(0, f.beatOffset + Math.round((t - f.beatOffset) / len) * len));
+  };
+
+  // ── Scrubbing (the background) ──────────────────────────────────────
+  let wasPlaying = false;
   const onDown = (e: PointerEvent) => {
     wasPlaying = playing();
     if (wasPlaying) toggle();
     el!.setPointerCapture(e.pointerId);
-    seek(timeAt(e));
+    const t = rawTimeAt(e);
+    seek(e.shiftKey ? snap(t, false) : t);
   };
   const onMove = (e: PointerEvent) => {
-    if (el!.hasPointerCapture(e.pointerId)) seek(timeAt(e));
+    if (!el!.hasPointerCapture(e.pointerId)) return;
+    const t = rawTimeAt(e);
+    seek(e.shiftKey ? snap(t, false) : t);
   };
   const onUp = (e: PointerEvent) => {
     el!.releasePointerCapture(e.pointerId);
     if (wasPlaying) toggle();
   };
 
+  // ── Dragging a scene time or a free-standing cue ────────────────────
+  /**
+   * A press on a handle: a click jumps to its time, a drag moves it. The whole
+   * drag previews live and lands as one undo step.
+   */
+  const dragHandle = (label: string, current: () => number, write: (draft: FilmJson, t: number) => void) => (e: PointerEvent) => {
+    e.stopPropagation();
+    const handle = e.currentTarget as HTMLElement;
+    const before = json();
+    if (!before) return;
+    if (playing()) toggle();
+    const startX = e.clientX;
+    let moved = false;
+    handle.setPointerCapture(e.pointerId);
+    const move = (ev: PointerEvent) => {
+      if (locked()) return;
+      if (!moved && Math.abs(ev.clientX - startX) < DRAG_THRESHOLD_PX) return;
+      moved = true;
+      const t = round3(snap(rawTimeAt(ev), ev.altKey));
+      const draft = cloneFilm(before);
+      write(draft, t);
+      if (preview(draft)) {
+        setDrag({ label, t });
+        seek(t);
+      }
+    };
+    const up = () => {
+      handle.removeEventListener("pointermove", move);
+      handle.removeEventListener("pointerup", up);
+      handle.removeEventListener("pointercancel", up);
+      setDrag(null);
+      const after = json();
+      if (moved && after) commit(after, before);
+      else seek(current());
+    };
+    handle.addEventListener("pointermove", move);
+    handle.addEventListener("pointerup", up);
+    handle.addEventListener("pointercancel", up);
+  };
+
+  // film.json's own cues come first in FILM.cues, in order; the rest are made in code.
+  const jsonCues = () => json()?.cues ?? [];
+  const codeCues = () => (film()?.cues ?? []).slice(jsonCues().length);
+  const cueTime = (c: NonNullable<FilmJson["cues"]>[number]) =>
+    c.at !== undefined ? (json()?.timeline?.[c.at]?.t ?? 0) + (c.dt ?? 0) : (c.t ?? 0);
+  const markerLabel = (key: string) => json()?.timeline?.[key]?.label ?? key;
+
   return (
     <div
       ref={el}
-      class="relative h-14 flex-1 cursor-pointer select-none touch-none"
+      class="relative h-16 flex-1 cursor-pointer select-none touch-none"
       onPointerDown={onDown}
       onPointerMove={onMove}
       onPointerUp={onUp}
@@ -146,28 +229,92 @@ function Timeline() {
       {/* Bars and beats */}
       <For each={beats()}>
         {(b) => (
-          <div class="absolute top-0 h-full" style={{ left: pct(b.t, dur()) }}>
-            <div class="absolute bottom-3 w-px" classList={{ "h-8 bg-muted-foreground/40": b.bar !== null, "h-2 bg-muted-foreground/20": b.bar === null }} />
+          <div class="pointer-events-none absolute top-0 h-full" style={{ left: pct(b.t, dur()) }}>
+            <div class="absolute bottom-4 w-px" classList={{ "h-8 bg-muted-foreground/40": b.bar !== null, "h-2 bg-muted-foreground/20": b.bar === null }} />
             <Show when={b.bar !== null}>
               <span class="absolute top-0 left-1 font-mono text-[9px] text-muted-foreground">{b.bar}</span>
             </Show>
           </div>
         )}
       </For>
-      {/* Named scene times from film.json */}
-      <For each={markers()}>
-        {(m) => (
-          <div class="group absolute top-3 bottom-3 w-2 -translate-x-1" style={{ left: pct(m.t, dur()) }} title={`${m.label} · ${m.t.toFixed(2)}s`}>
-            <div class="mx-auto h-full w-0.5 rounded-full bg-marker/50 group-hover:bg-marker" />
-          </div>
+
+      {/* Named scene times: drag to move, click to jump */}
+      <For each={markers().map((m) => m.key)}>
+        {(key) => {
+          const m = () => markers().find((x) => x.key === key);
+          return (
+            <Show when={m()}>
+              {(marker) => (
+                <div class="absolute top-3 bottom-4 -translate-x-1/2" style={{ left: pct(marker().t, dur()) }}>
+                  <div class="pointer-events-none absolute top-2 bottom-0 left-1/2 w-px -translate-x-1/2 bg-marker/50" />
+                  <div
+                    role="slider"
+                    aria-label={`장면 '${marker().label}'`}
+                    aria-valuenow={marker().t}
+                    title={`${marker().label} · ${marker().t.toFixed(2)}s${locked() ? "" : " — 끌어서 옮기기"}`}
+                    onPointerDown={dragHandle(marker().label, () => marker().t, (d, t) => (d.timeline![key].t = t))}
+                    class="relative size-2.5 rounded-[3px] bg-marker hover:scale-125"
+                    classList={{ "cursor-ew-resize": !locked() }}
+                  />
+                </div>
+              )}
+            </Show>
+          );
+        }}
+      </For>
+
+      {/* Sound cues: free-standing ones drag; scene-attached ones ride their scene; code ones are fixed */}
+      <For each={jsonCues().map((_, i) => i)}>
+        {(i) => (
+          <Show when={jsonCues()[i]}>
+            {(cue) => (
+              <Show
+                when={cue().at === undefined}
+                fallback={
+                  <div
+                    class="pointer-events-none absolute bottom-1 size-1.5 -translate-x-1/2 rotate-45 bg-cue/70"
+                    style={{ left: pct(cueTime(cue()), dur()) }}
+                    title={`${cue().type} · 장면 '${markerLabel(cue().at!)}'에 붙어 함께 움직여요`}
+                  />
+                }
+              >
+                <div
+                  role="slider"
+                  aria-label={`효과음 ${cue().type}`}
+                  title={`${cue().type} · ${cueTime(cue()).toFixed(2)}s${locked() ? "" : " — 끌어서 옮기기"}`}
+                  onPointerDown={dragHandle(cue().type, () => cueTime(cue()), (d, t) => (d.cues![i].t = t))}
+                  class="absolute bottom-0.5 size-2 -translate-x-1/2 rotate-45 bg-cue hover:scale-125"
+                  classList={{ "cursor-ew-resize": !locked() }}
+                  style={{ left: pct(cueTime(cue()), dur()) }}
+                />
+              </Show>
+            )}
+          </Show>
         )}
       </For>
-      {/* Sound cues */}
-      <For each={film()?.cues ?? []}>
-        {(c) => <div class="absolute bottom-1 size-1 -translate-x-1/2 rounded-full bg-cue" style={{ left: pct(c.t, dur()) }} title={c.type} />}
+      <For each={codeCues()}>
+        {(c) => (
+          <div
+            class="pointer-events-none absolute bottom-1 size-1 -translate-x-1/2 rounded-full bg-cue/50"
+            style={{ left: pct(c.t, dur()) }}
+            title={`${c.type} · 코드가 만드는 반복 효과음`}
+          />
+        )}
       </For>
+
       {/* Playhead */}
       <div class="pointer-events-none absolute top-0 bottom-0 w-0.5 -translate-x-1/2 bg-foreground" style={{ left: pct(time(), dur()) }} />
+
+      <Show when={drag()}>
+        {(d) => (
+          <div
+            class="pointer-events-none absolute -top-6 -translate-x-1/2 rounded-md bg-foreground px-1.5 py-0.5 font-mono text-[10px] whitespace-nowrap text-background"
+            style={{ left: pct(d().t, dur()) }}
+          >
+            {d().label} · {d().t.toFixed(2)}s
+          </div>
+        )}
+      </Show>
     </div>
   );
 }
@@ -345,6 +492,7 @@ export function Player() {
               </span>
             )}
           </Show>
+          <HistoryButtons />
           <FormatSwitch />
         </div>
       </div>
