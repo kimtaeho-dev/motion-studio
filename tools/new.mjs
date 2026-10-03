@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// 새 필름 만들기: npm run new -- <이름>
+// 새 필름 만들기: node tools/new.mjs <이름>
 import { cpSync, readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 const name = process.argv[2];
-if (!name || !/^[a-z0-9][a-z0-9-]*$/.test(name)) { console.error('사용법: npm run new -- <영문-소문자-이름>'); process.exit(1); }
+if (!name || !/^[a-z0-9][a-z0-9-]*$/.test(name)) { console.error('사용법: node tools/new.mjs <영문-소문자-이름>'); process.exit(1); }
 const dir = `films/${name}`;
 if (existsSync(dir)) { console.error(`${dir} 이미 있음`); process.exit(1); }
 cpSync('films/_template', dir, { recursive: true });

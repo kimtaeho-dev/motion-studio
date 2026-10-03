@@ -1,11 +1,12 @@
 import { createMemo, For, onCleanup, onMount, Show } from "solid-js";
-import { Film, Image, Pause, Play } from "lucide-solid";
+import { Check, Film, Image, Pause, Play, X } from "lucide-solid";
 import { Button } from "@/components/ui/button";
 import { usePlayer } from "@/context/player";
 import { useFilms } from "@/context/films";
 import { useFiles } from "@/context/files";
+import { useRender } from "@/context/render";
 import { openMedia } from "@/components/media-viewer";
-import type { FilmFile } from "@/types";
+import type { FilmFile, RenderJob } from "@/types";
 import { useParams } from "@solidjs/router";
 
 const pct = (t: number, dur: number) => `${(t / dur) * 100}%`;
@@ -204,6 +205,91 @@ function ago(ms: number): string {
   return `${Math.floor(s / 86400)}일 전`;
 }
 
+/** "1분 20초" — rounded, it is an estimate. */
+function eta(ms: number): string {
+  const s = Math.max(1, Math.round(ms / 1000));
+  return s < 60 ? `${s}초` : `${Math.floor(s / 60)}분 ${s % 60 ? `${s % 60}초` : ""}`.trim();
+}
+
+function JobChip(props: { job: RenderJob }) {
+  const { cancel } = useRender();
+  const pct = () => (props.job.total ? props.job.done / props.job.total : 0);
+  const remaining = () => {
+    const { startedAt, done, total } = props.job;
+    if (!startedAt || done < 2) return null;
+    return ((Date.now() - startedAt) / done) * (total - done);
+  };
+  const title = () => `${props.job.label}${props.job.format ? ` · ${props.job.format}` : ""}`;
+
+  return (
+    <div class="flex shrink-0 items-center gap-2 rounded-md bg-muted px-2 py-1 text-[10px] text-foreground">
+      <Show when={props.job.status === "done"}>
+        <Check class="size-3" />
+      </Show>
+      <span classList={{ "text-muted-foreground": props.job.status === "done" || props.job.status === "cancelled" }}>{title()}</span>
+      <Show when={props.job.status === "running"}>
+        <div class="h-1 w-24 overflow-hidden rounded-full bg-background">
+          <div class="h-full rounded-full bg-marker" style={{ width: `${pct() * 100}%` }} />
+        </div>
+        <span class="font-mono tabular-nums text-muted-foreground">{Math.floor(pct() * 100)}%</span>
+        <Show when={remaining()}>{(ms) => <span class="text-muted-foreground">남은 ~{eta(ms())}</span>}</Show>
+      </Show>
+      <Show when={props.job.status === "queued"}>
+        <span class="text-muted-foreground">대기 중</span>
+      </Show>
+      <Show when={props.job.status === "done"}>
+        <span class="text-muted-foreground">완료</span>
+      </Show>
+      <Show when={props.job.status === "cancelled"}>
+        <span class="text-muted-foreground">취소됨</span>
+      </Show>
+      <Show when={props.job.status === "error"}>
+        <span class="max-w-64 truncate text-destructive" title={props.job.error}>
+          실패 · {props.job.error}
+        </span>
+      </Show>
+      <Show when={props.job.status === "running" || props.job.status === "queued"}>
+        <button
+          type="button"
+          onClick={() => void cancel(props.job.id)}
+          class="rounded-sm text-muted-foreground hover:text-destructive focus-ring"
+          aria-label="렌더 취소"
+        >
+          <X class="size-3" />
+        </button>
+      </Show>
+    </div>
+  );
+}
+
+/**
+ * The render queue as it concerns this film: what is rendering, waiting, just
+ * finished or failed — and, briefly, that another film is holding the queue.
+ */
+function RenderQueue() {
+  const params = useParams();
+  const { jobs } = useRender();
+  const { findFilm } = useFilms();
+  const mine = () => jobs().filter((j) => j.film === params.film);
+  const elsewhere = () => jobs().find((j) => j.film !== params.film && j.status === "running");
+
+  return (
+    <Show when={mine().length > 0 || elsewhere()}>
+      <div class="flex min-h-7 items-center gap-2 overflow-x-auto px-1">
+        <span class="shrink-0 text-[10px] font-strong text-muted-foreground">렌더</span>
+        <For each={mine()}>{(job) => <JobChip job={job} />}</For>
+        <Show when={elsewhere()}>
+          {(job) => (
+            <span class="shrink-0 text-[10px] text-muted-foreground">
+              다른 필름 '{findFilm(job().film)?.title ?? job().film}' 렌더 중 · {job().total ? Math.floor((job().done / job().total) * 100) : 0}%
+            </span>
+          )}
+        </Show>
+      </div>
+    </Show>
+  );
+}
+
 /** Renders under out/<film>/, per format: the final with sound, the latest silent render, the poster. */
 function Outputs() {
   const { files } = useFiles();
@@ -212,7 +298,7 @@ function Outputs() {
       const list: { label: string; kind: "video" | "image"; file: FilmFile }[] = [];
       if (o.final) list.push({ label: `${o.format} 완성본`, kind: "video", file: o.final });
       // A silent render newer than the final is a work in progress worth looking at.
-      if (o.silent && (!o.final || o.silent.mtime > o.final.mtime + 1000)) list.push({ label: `${o.format} 초안`, kind: "video", file: o.silent });
+      if (o.silent && (!o.final || o.silent.mtime > o.final.mtime + 1000)) list.push({ label: `${o.format} 무음 영상`, kind: "video", file: o.silent });
       if (o.poster) list.push({ label: `${o.format} 포스터`, kind: "image", file: o.poster });
       return list;
     });
@@ -275,6 +361,7 @@ export function Player() {
         <Readout />
       </div>
 
+      <RenderQueue />
       <Outputs />
     </main>
   );

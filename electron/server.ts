@@ -6,6 +6,7 @@ import { WebSocketServer, type WebSocket } from "ws";
 import chokidar from "chokidar";
 import { filmsPlugin } from "../server/films";
 import { mailboxPlugin } from "../server/mailbox";
+import { renderPlugin, type WorkerCommand } from "../server/render";
 import { WORKSPACE_ENV } from "../server/workspace";
 
 /**
@@ -110,6 +111,8 @@ export interface StudioServerOptions {
   onSignInRequested?: () => void;
   /** Environment for the agent process (see MailboxOptions.agentEnv). */
   agentEnv?: () => NodeJS.ProcessEnv;
+  /** How to start a render worker — the app's own executable (see main.ts). */
+  workerCommand: () => WorkerCommand;
 }
 
 /**
@@ -182,7 +185,11 @@ export async function startStudioServer(options: StudioServerOptions): Promise<S
 
   const fakeConfig = { root: workspaceRoot, build: { outDir: distDir } };
 
-  for (const plugin of [filmsPlugin(), mailboxPlugin({ signIn: options.onSignInRequested, agentEnv: options.agentEnv })]) {
+  for (const plugin of [
+    filmsPlugin(),
+    mailboxPlugin({ signIn: options.onSignInRequested, agentEnv: options.agentEnv }),
+    renderPlugin({ workerCommand: options.workerCommand }),
+  ]) {
     const configResolved = plugin.configResolved;
     const configureServer = plugin.configureServer;
     if (typeof configResolved === "function") {
@@ -257,6 +264,9 @@ export async function startStudioServer(options: StudioServerOptions): Promise<S
       `No free port in ${firstPort}-${firstPort + attempts - 1}; is another copy of the studio already running?`,
     );
   }
+
+  // The agent's tools/render.mjs hands renders to this server's queue (server/render.ts).
+  process.env.MOTION_STUDIO_URL = `http://127.0.0.1:${port}`;
 
   return {
     url: `http://127.0.0.1:${port}`,

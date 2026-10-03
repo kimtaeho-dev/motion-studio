@@ -7,6 +7,7 @@ import { MediaViewer } from "@/components/media-viewer";
 import { ChatProvider } from "@/context/chat";
 import { FilesProvider } from "@/context/files";
 import { PlayerProvider } from "@/context/player";
+import { RenderProvider } from "@/context/render";
 
 /**
  * One film open (docs/APP_PLAN.md, 메인 화면): film list · player with
@@ -15,22 +16,24 @@ import { PlayerProvider } from "@/context/player";
 export function App() {
   return (
     <ChatProvider>
-      <FilesProvider>
-        <PlayerProvider>
-          <div class="flex h-screen gap-3 bg-canvas p-3">
-            <Sidebar />
-            <Player />
-            <div class="flex min-h-0 flex-col gap-3">
-              <StagePanel />
-              <Inspector />
-              <div class="flex min-h-0 flex-[1.3] flex-col">
-                <ChatPanel />
+      <RenderProvider>
+        <FilesProvider>
+          <PlayerProvider>
+            <div class="flex h-screen gap-3 bg-canvas p-3">
+              <Sidebar />
+              <Player />
+              <div class="flex min-h-0 flex-col gap-3">
+                <StagePanel />
+                <Inspector />
+                <div class="flex min-h-0 flex-[1.3] flex-col">
+                  <ChatPanel />
+                </div>
               </div>
             </div>
-          </div>
-          <MediaViewer />
-        </PlayerProvider>
-      </FilesProvider>
+            <MediaViewer />
+          </PlayerProvider>
+        </FilesProvider>
+      </RenderProvider>
     </ChatProvider>
   );
 }

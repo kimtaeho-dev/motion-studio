@@ -33,8 +33,8 @@ Claude가 순서대로 진행한다. 게이트마다 멈추고 확인을 받는�
 
 ```bash
 # macOS
-brew install node ffmpeg python
-npm install && npx playwright install chromium
+brew install node ffmpeg
+npm install          # Electron(렌더 엔진 겸 앱)까지 설치된다. ffmpeg는 따로 (brew install ffmpeg)
 ```
 
 ## 구조
@@ -48,10 +48,10 @@ lib/
   motion.js               스프링(닫힌 해), track/loopTrack, stretch, swapAlpha, rng …
   stage.js                film.json 로딩·검사, 캔버스·포맷·폰트·미리보기 UI·렌더 계약 (window.seek / FILM / READY / Stage.reload)
 tools/
-  render.mjs              Playwright 프레임 캡처 → ffmpeg (60fps, 4 서브프레임 모션블러)
+  render.mjs              렌더 명령 — 앱 안에서는 앱의 렌더 큐로, 혼자면 렌더 워커를 직접 띄운다
   sound.mjs               효과음·음악 합성, 믹스, -14 LUFS → final.mp4
-  critique.sh             contact / strip / phone / seam / loop_check
-  determinism.sh          같은 프레임 두 번 렌더 → 같은 픽셀인지
+  critique.mjs            contact / strip / phone / seam / loop_check
+  determinism.mjs         같은 프레임 두 번 렌더 → 같은 픽셀인지
   new.mjs, preview.mjs
 prompts/
   spec-template.md        XML 스펙 (inputs / direction / structure / build / gotchas / start)
@@ -59,7 +59,7 @@ prompts/
   reference.md            레퍼런스 → style_guide.md
   director-brief.md       30초 이상 긴 작업용 브리프
 films/
-  _template/              npm run new -- <이름> 이 복사하는 원본 (index.html + film.json)
+  _template/              node tools/new.mjs <이름> 이 복사하는 원본 (index.html + film.json)
   sample-morph/           샘플: 하나의 도형이 9개 UI 상태를 지나는 12초 루프
 assets/fonts/             Pretendard, Geist, Geist Mono (OFL) — 기기마다 결과가 같도록 레포에 포함
 
@@ -70,7 +70,9 @@ server/                   앱 서버 모듈 — 개발 서버(Vite)와 패키징
   mailbox.ts              /__chat 필름별 대화, claude -p 실행 큐, 진행 상황
   workspace.ts            작업공간 위치와 시드 (앱: ~/Library/Application Support/Motion Studio/workspace)
   claude-cli.ts           Claude Code 실행 파일 찾기, 로그인 상태
+  render.ts               /__render 렌더 큐 — 한 번에 하나, 진행률·취소를 화면과 render.mjs에 스트리밍
 electron/                 앱 진입점, 처음 실행 준비 화면(설치·로그인), 정적 서버
+  render-worker.ts        렌더 엔진: 숨김 창에서 seek(t) → 캔버스 픽셀 → ffmpeg (60fps, 4 서브프레임 모션블러)
 ```
 
 ## 엔진의 원리
@@ -97,7 +99,7 @@ electron/                 앱 진입점, 처음 실행 준비 화면(설치·로
 ```bash
 npm run dev                                           # 앱 화면 개발 서버 http://localhost:3040 (작업공간 = 이 레포)
 npm run app                                           # 빌드 후 Electron 앱으로 실행 (작업공간 = Application Support)
-npm run new -- <이름>
+node tools/new.mjs <이름>
 npm run preview
 node tools/render.mjs films/<이름> --stills beats     # 비트마다 스틸
 node tools/render.mjs films/<이름> --draft            # 빠른 초안 (30fps, 절반 해상도)
@@ -105,11 +107,12 @@ node tools/render.mjs films/<이름>                    # 최종
 node tools/render.mjs films/<이름> --from 4 --to 6    # 구간만
 node tools/render.mjs films/<이름> --all-formats
 node tools/sound.mjs films/<이름> [--format 9x16]
-bash tools/critique.sh films/<이름> [포맷] [시각]
-bash tools/determinism.sh films/<이름>
+node tools/render.mjs films/<이름> --codec prores    # ProRes 4444 (투명 유지) · webm · gif
+node tools/critique.mjs films/<이름> [포맷] [시각]
+node tools/determinism.mjs films/<이름>
 ```
 
-렌더 시간 참고: 1080×1080, 12초, 60fps, 4 서브프레임 ≈ 3분. 초안은 수십 초.
+렌더 시간 참고 (M 시리즈 맥): 1080×1080 12초 최종(60fps, 4 서브프레임) ≈ 22초, 1920×1080 20초 최종 ≈ 100초. 초안과 비트 스틸은 몇 초.
 
 ## lottie-studio와의 차이
 

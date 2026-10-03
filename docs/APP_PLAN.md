@@ -115,11 +115,12 @@ Node.js, Homebrew, Python, ffmpeg 어느 것도 사용자가 깔 필요 없다.
 - 나중 단계가 채울 자리: 렌더 진행률·취소(3단계, 결과물 줄), 속성 값·장면 시각·cue 직접 편집(4단계), 에이전트가 state.json에 단계를 기록하고 승인 버튼으로 멈추는 흐름(5단계)
 - 남은 것: 패키징된 앱의 에이전트는 아직 node·ffmpeg가 사용자 맥에 있어야 렌더할 수 있다(3단계에서 `MailboxOptions.agentEnv`로 앱의 bin/을 PATH에 붙인다). dmg 빌드 설정은 6단계
 
-### 3단계 — 렌더 엔진 교체
+### 3단계 — 렌더 엔진 교체 ✅ 완료
 - 숨김 창 렌더러, 렌더 API·큐·진행률·취소, `render.mjs` 클라이언트화, `bin/` shim, ffmpeg 번들
 - 내보내기 인코더: MP4, GIF(palettegen), ProRes 4444, WebM(VP9 알파), PNG
 - `critique.sh`·`determinism.sh` → Node
 - ✓ 1단계 기준 렌더와 픽셀 일치, `determinism` 통과, 에이전트가 앱 안에서 스틸·초안·최종을 렌더
+- 결과: electron/render-worker.ts(하드웨어 가속 끈 숨김 창 → 캔버스 RGBA → ffmpeg). 기존 렌더와 스틸 77장·영상 3구간·20초 전체 1200프레임 일치, 12초 1x1 최종 3분→22초. server/render.ts 큐(진행률·취소, 클라이언트가 끊기면 취소), 결과물 줄에 진행률·취소. 앱은 작업공간 .bin/에 node(앱 실행 파일, ELECTRON_RUN_AS_NODE)·ffmpeg 링크를 만들어 PATH 앞에 둔다 — 빈 PATH로 띄운 앱에서 에이전트가 스틸·초안 렌더, sound·critique까지 확인. critique·determinism은 Node로, Playwright 제거, --codec prores/webm/gif(알파 확인)
 
 ### 4단계 — 편집 UI
 - 속성 패널(`params`), 타임라인(비트 그리드, 장면 마커·cue 드래그, 비트 스냅, 되돌리기)
@@ -136,6 +137,7 @@ Node.js, Homebrew, Python, ffmpeg 어느 것도 사용자가 깔 필요 없다.
 - ✓ **node·Homebrew·Python이 없는 새 macOS 사용자 계정**에서 dmg 설치 → 온보딩 → 필름 완성 → 내보내기까지 통과. arm64, x64 둘 다
 
 ## 위험과 미리 정해 둘 것
+- **ffmpeg 바이너리**: ffmpeg-static의 맥 빌드는 --enable-nonfree라 재배포 불가. 지금 앱은 Homebrew ffmpeg를 찾아 쓴다. 6단계에서 nonfree 없는 GPL 빌드(arm64·x64)를 정해 resources/bin/ffmpeg로 넣는다.
 - **개발 환경의 Playwright 불일치**: `playwright` 1.63이 요구하는 Chromium(1243)이 설치돼 있지 않아 `render.mjs`가 기본 설정으로는 실패한다. 지금은 `CHROMIUM_PATH`로 설치된 1228을 지정해 돌린다. 3단계에서 Playwright를 없애면 사라지는 문제라 따로 고치지 않는다.
 - **ffmpeg 라이선스**: H.264(libx264)를 쓰려면 GPL 빌드가 필요하다. 별도 실행 파일로 넣고 라이선스 고지와 소스 출처를 README·앱 정보에 적는다.
 - **사용량**: '런칭용' 크리틱은 라운드 수에 상한(예: 6)을 두고, 넘으면 멈추고 사용자에게 묻는다.

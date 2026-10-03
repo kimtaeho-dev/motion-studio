@@ -9,13 +9,13 @@ description: 코드로 모션 영상(UI 모핑 루프, 프로덕트 릴, 런칭 
 규칙은 레포 루트 `CLAUDE.md`가 우선한다.
 
 ## 0. 필름 준비
-- `films/<이름>/`이 없으면 `npm run new -- <이름>`.
+- `films/<이름>/`이 없으면 `node tools/new.mjs <이름>`.
 - 디자이너가 레퍼런스(이미지, 영상)나 음악을 줬으면 `films/<이름>/refs/`, `films/<이름>/audio/track.wav`에 둔다.
 
 ## 1. 입력 받기 (brief.md)
 `prompts/spec-template.md`의 `<inputs>` 항목 중 빈 것을 한 번에 묻는다. 기본값을 제안하면서 묻는다
 (예: "포맷은 1x1 + 9x16, 음악은 합성으로 할까요?"). 답을 `brief.md`에 채운다.
-실제 프로덕트 화면이 필요하면 스크린샷을 달라고 하거나 URL에서 Playwright로 직접 캡처한다. 프로덕트 UI를 상상으로 그리지 않는다.
+실제 프로덕트 화면이 필요하면 디자이너에게 스크린샷을 달라고 한다(채팅창에 끌어다 놓으면 refs/에 저장된다). 프로덕트 UI를 상상으로 그리지 않는다.
 
 ## 2. 레퍼런스 → style_guide.md (있을 때만)
 `prompts/reference.md` 절차. 문법만 가져오고 내용은 가져오지 않는다.
@@ -45,12 +45,12 @@ description: 코드로 모션 영상(UI 모핑 루프, 프로덕트 릴, 런칭 
 
 ## 6. 렌더 + 사운드 + 크리틱 루프
 ```bash
-node tools/render.mjs films/<이름>          # 1x1 기준 12초 ≈ 3분
+node tools/render.mjs films/<이름>          # 1x1 기준 12초 ≈ 20초
 node tools/sound.mjs films/<이름>
-bash tools/critique.sh films/<이름> <포맷> <가장 빠른 동작 시각>
+node tools/critique.mjs films/<이름> <포맷> <가장 빠른 동작 시각>
 ```
 그다음 `/motion-critique` 절차(`prompts/critique-pass.md`)로 채점 → 수정 → 재렌더. 라운드 수는 `state.json`의 `quality`(CLAUDE.md 6번): fast 1 · standard 3 · launch 전 항목 8점 이상까지(6라운드 상한).
-`bash tools/determinism.sh films/<이름>`이 통과해야 한다.
+`node tools/determinism.mjs films/<이름>`이 통과해야 한다.
 
 ## 7. 전달
 - 요청된 포맷 전부 렌더 (`--all-formats` 또는 `--format`)하고 포맷마다 `sound.mjs --format`.

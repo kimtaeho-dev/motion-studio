@@ -39,7 +39,7 @@ After Effects를 쓰지 않는다. 모든 영상은 HTML 한 장에 들어 있�
 3. **숏리스트**: `films/<이름>/shotlist.md`에 비트 그리드 위의 상태 목록을 적는다. 시각, 상태, 커서 동작, 효과음. **디자이너 OK를 받기 전에는 코드를 쓰지 않는다.**
 4. **스틸**: `node tools/render.mjs films/<이름> --stills beats`로 비트마다 1장 → `contact-beats.png`를 **직접 열어서 본다.** 그리드에서 벗어남, 답답함, 읽기 어려움을 고친다.
 5. **초안**: `--draft`로 빠르게 렌더해서 타이밍을 확인한다.
-6. **크리틱 루프**: 풀 렌더 → `tools/sound.mjs` → `tools/critique.sh` → `prompts/critique-pass.md` 기준으로 점수를 매긴다. 라운드 수는 `films/<이름>/state.json`의 `quality`를 따른다: `fast` 1라운드 · `standard`(없을 때 기본) 3라운드 · `launch` 모든 항목이 8점 이상이 될 때까지(최소 3라운드, 6라운드를 넘기면 멈추고 디자이너에게 묻는다). 매 라운드 `films/<이름>/review_log.md`에 점수와 고친 점을 남긴다.
+6. **크리틱 루프**: 풀 렌더 → `tools/sound.mjs` → `node tools/critique.mjs` → `prompts/critique-pass.md` 기준으로 점수를 매긴다. 라운드 수는 `films/<이름>/state.json`의 `quality`를 따른다: `fast` 1라운드 · `standard`(없을 때 기본) 3라운드 · `launch` 모든 항목이 8점 이상이 될 때까지(최소 3라운드, 6라운드를 넘기면 멈추고 디자이너에게 묻는다). 매 라운드 `films/<이름>/review_log.md`에 점수와 고친 점을 남긴다.
 7. **전달**: `out/<이름>/<포맷>/final.mp4`, `contact-beats.png`, 포스터 프레임(`--stills <시각>`)을 전달하고, 다음에 개선할 점을 한 줄 덧붙인다.
 
 수정할 때는 바뀐 구간만 `--from/--to`로 다시 렌더해서 확인한 뒤, 마지막에 전체를 렌더한다.
@@ -47,15 +47,16 @@ After Effects를 쓰지 않는다. 모든 영상은 HTML 한 장에 들어 있�
 ## 명령어
 
 ```bash
-npm run new -- <이름>                              # films/_template 복사
+node tools/new.mjs <이름>                          # films/_template 복사 (앱에서는 디자이너가 새 필름 창으로 만든다)
 npm run preview                                    # http://localhost:4173 — 브라우저 미리보기 (스크러버, 비트 그리드)
 node tools/render.mjs films/<이름> --stills beats  # 비트마다 스틸 + 컨택트 시트
 node tools/render.mjs films/<이름> --draft         # 빠른 초안
 node tools/render.mjs films/<이름>                 # 최종 (60fps, 4 서브프레임 모션블러)
 node tools/render.mjs films/<이름> --all-formats   # 모든 포맷
+node tools/render.mjs films/<이름> --codec prores  # 편집용 ProRes 4444 (투명 배경 유지) · --codec webm / gif
 node tools/sound.mjs films/<이름> [--format 9x16]  # 음악+효과음 합성, 믹스 → final.mp4
-bash tools/critique.sh films/<이름> [포맷] [빠른동작시각]
-bash tools/determinism.sh films/<이름>             # 같은 프레임 두 번 → 같은 픽셀인지
+node tools/critique.mjs films/<이름> [포맷] [빠른동작시각]
+node tools/determinism.mjs films/<이름>            # 같은 프레임 두 번 → 같은 픽셀인지
 ```
 
 ## effort

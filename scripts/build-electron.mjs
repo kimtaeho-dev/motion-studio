@@ -15,6 +15,7 @@ await build({
   entryPoints: {
     main: resolve(repoRoot, "electron/main.ts"),
     preload: resolve(repoRoot, "electron/preload.ts"),
+    "render-worker": resolve(repoRoot, "electron/render-entry.ts"),
   },
   outdir: outDir,
   outExtension: { ".js": ".cjs" },

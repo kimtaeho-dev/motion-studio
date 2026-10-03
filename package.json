@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "코드로 만드는 모션 스튜디오 — seek(t) 렌더러, 스프링, 비트 그리드, 합성 사운드, 크리틱 루프",
   "scripts": {
-    "dev": "vite",
+    "dev": "npm run build:electron && vite",
     "app": "npm run build && npm run build:electron && electron .",
     "build": "tsc -b && vite build",
     "build:electron": "node scripts/build-electron.mjs",
@@ -13,8 +13,8 @@
     "render": "node tools/render.mjs",
     "draft": "node tools/render.mjs --draft",
     "sound": "node tools/sound.mjs",
-    "critique": "bash tools/critique.sh",
-    "check": "bash tools/determinism.sh"
+    "critique": "node tools/critique.mjs",
+    "check": "node tools/determinism.mjs"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.13",
@@ -22,7 +22,6 @@
     "@types/ws": "^8.18.1",
     "electron": "^44.3.0",
     "esbuild": "^0.28.2",
-    "playwright": "^1.63.0",
     "tailwindcss": "^4.1.13",
     "typescript": "^5.9.2",
     "vite": "^7.1.4",

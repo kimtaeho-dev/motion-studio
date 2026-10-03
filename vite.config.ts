@@ -5,9 +5,10 @@ import solidSvg from "vite-plugin-solid-svg";
 import solidPlugin from "vite-plugin-solid";
 import { filmsPlugin } from "./server/films";
 import { mailboxPlugin } from "./server/mailbox";
+import { renderPlugin } from "./server/render";
 
 export default defineConfig({
-  plugins: [solidPlugin(), tailwindcss(), solidSvg({ defaultAsComponent: true }), filmsPlugin(), mailboxPlugin()],
+  plugins: [solidPlugin(), tailwindcss(), solidSvg({ defaultAsComponent: true }), filmsPlugin(), mailboxPlugin(), renderPlugin()],
   server: {
     port: 3040,
     // films/ and out/ are the agent's working files, served raw by filmsPlugin

@@ -1,8 +1,10 @@
+import fs from "node:fs";
 import path from "node:path";
 import { app, BrowserWindow, ipcMain, shell } from "electron";
 import { startStudioServer, type StudioServer } from "./server";
 import { WORKSPACE_ENV, defaultWorkspaceDir, resolveWorkspace, seedWorkspace } from "../server/workspace";
 import { cancelLogin, installClaudeCode, readSetupStatus, startLogin, submitLoginCode } from "./setup";
+import { runRenderWorker } from "./render-worker";
 
 /**
  * Packaged entry point.
@@ -139,11 +141,58 @@ function openSetupWindow(): Promise<boolean> {
   });
 }
 
+/** How this app starts a render worker: its own executable in worker mode. */
+function workerCommand(): { command: string; args: string[] } {
+  return { command: process.execPath, args: app.isPackaged ? ["--render-worker"] : [app.getAppPath(), "--render-worker"] };
+}
+
+/**
+ * ffmpeg for renders and sound: the copy shipped in the bundle, else one the
+ * user already has. A Finder-launched app gets a bare PATH, so the usual
+ * install locations are looked up directly.
+ */
+function findFfmpeg(): string | null {
+  const candidates = [
+    process.env.MOTION_FFMPEG?.trim(),
+    path.join(process.resourcesPath, "bin", "ffmpeg"),
+    "/opt/homebrew/bin/ffmpeg",
+    "/usr/local/bin/ffmpeg",
+  ];
+  return candidates.find((c): c is string => !!c && fs.existsSync(c)) ?? null;
+}
+
+/**
+ * The designer's Mac has no Node and no ffmpeg, but CLAUDE.md's tools are
+ * `node tools/….mjs` and call `ffmpeg`. A `.bin/` in the workspace provides
+ * both — `node` is this executable in Node mode — and goes first on the PATH
+ * every child process (the agent included) inherits.
+ */
+function prepareAgentTools(workspaceRoot: string): void {
+  const bin = path.join(workspaceRoot, ".bin");
+  fs.mkdirSync(bin, { recursive: true });
+  fs.writeFileSync(path.join(bin, "node"), `#!/bin/sh\nELECTRON_RUN_AS_NODE=1 exec "${process.execPath}" "$@"\n`, { mode: 0o755 });
+
+  const ffmpeg = findFfmpeg();
+  const link = path.join(bin, "ffmpeg");
+  fs.rmSync(link, { force: true });
+  if (ffmpeg) {
+    fs.symlinkSync(ffmpeg, link);
+    process.env.MOTION_FFMPEG = ffmpeg;
+  } else {
+    console.error("[motion-studio] ffmpeg not found: renders will fail until one is installed");
+  }
+
+  process.env.PATH = [bin, process.env.PATH].filter(Boolean).join(path.delimiter);
+  const worker = workerCommand();
+  process.env.MOTION_RENDER_CMD = JSON.stringify([worker.command, ...worker.args]);
+}
+
 async function boot(): Promise<void> {
   const workspaceRoot = process.env[WORKSPACE_ENV]?.trim() || defaultWorkspaceDir();
   const workspace = resolveWorkspace(workspaceRoot);
 
   seedWorkspace(seedRoot(), workspace);
+  prepareAgentTools(workspace.root);
 
   if (!(await ensureSetup())) {
     app.quit();
@@ -153,6 +202,7 @@ async function boot(): Promise<void> {
   studio = await startStudioServer({
     distDir: distRoot(),
     workspaceRoot: workspace.root,
+    workerCommand,
     // A session that expires while the app is open reopens the same setup
     // window the first run uses — it already handles "installed but signed
     // out". Unlike at startup, closing it without signing in is not fatal:
@@ -167,33 +217,47 @@ async function boot(): Promise<void> {
   createWindow(studio.url);
 }
 
-// A second launch focuses the window that already exists rather than starting
-// a second server against the same workspace.
-if (!app.requestSingleInstanceLock()) {
-  app.quit();
+/**
+ * The same executable doubles as the render worker: the studio server starts
+ * it with `--render-worker <render.mjs args>` for every render job, so a
+ * packaged app needs no second binary and no browser download.
+ */
+const workerFlag = process.argv.indexOf("--render-worker");
+if (workerFlag !== -1) {
+  runRenderWorker(process.argv.slice(workerFlag + 1));
 } else {
-  app.on("second-instance", () => {
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore();
-      mainWindow.focus();
-    }
-  });
+  startStudio();
+}
 
-  app.whenReady().then(boot).catch((err) => {
-    console.error("[motion-studio] failed to start:", err);
+function startStudio(): void {
+  // A second launch focuses the window that already exists rather than starting
+  // a second server against the same workspace.
+  if (!app.requestSingleInstanceLock()) {
     app.quit();
-  });
+  } else {
+    app.on("second-instance", () => {
+      if (mainWindow) {
+        if (mainWindow.isMinimized()) mainWindow.restore();
+        mainWindow.focus();
+      }
+    });
 
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0 && studio) createWindow(studio.url);
-  });
+    app.whenReady().then(boot).catch((err) => {
+      console.error("[motion-studio] failed to start:", err);
+      app.quit();
+    });
 
-  app.on("window-all-closed", () => {
-    if (process.platform !== "darwin") app.quit();
-  });
+    app.on("activate", () => {
+      if (BrowserWindow.getAllWindows().length === 0 && studio) createWindow(studio.url);
+    });
 
-  app.on("before-quit", () => {
-    void studio?.close();
-    studio = null;
-  });
+    app.on("window-all-closed", () => {
+      if (process.platform !== "darwin") app.quit();
+    });
+
+    app.on("before-quit", () => {
+      void studio?.close();
+      studio = null;
+    });
+  }
 }

@@ -1,6 +1,6 @@
 # 크리틱 패스 — 자기 프레임을 보고 고치기
 
-먼저 실행: `bash tools/critique.sh films/<이름> [포맷] [빠른동작시각]`
+먼저 실행: `node tools/critique.mjs films/<이름> [포맷] [빠른동작시각]`
 
 그다음 아래 프롬프트대로 한다.
 

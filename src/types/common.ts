@@ -81,11 +81,11 @@ export interface FilmFile {
 export interface FilmOutput {
   format: string;
   final?: FilmFile;
-  /** The latest video without sound — a draft or a full render before sound.mjs. */
+  /** The latest video without sound — a draft, or a full render before sound.mjs. */
   silent?: FilmFile;
   poster?: FilmFile;
   contact?: FilmFile;
-  /** Images critique.sh makes for review: contact, strip, phone, seam. */
+  /** Images tools/critique.mjs makes for review: contact, strip, phone, seam. */
   critique: (FilmFile & { name: string })[];
 }
 
@@ -99,6 +99,27 @@ export interface FilmFiles {
    */
   stage: FilmStage;
   quality: FilmQuality;
+}
+
+/** One render in the studio's queue (server/render.ts), pushed as `render:update`. */
+export interface RenderJob {
+  id: string;
+  film: string;
+  /** "최종 렌더", "초안 · 2–4초", "비트 스틸", … */
+  label: string;
+  mode: "video" | "stills";
+  status: "queued" | "running" | "done" | "error" | "cancelled";
+  /** The format being rendered right now (an --all-formats job goes through several). */
+  format: string | null;
+  /** Frames (or stills) done and total, for the current format. */
+  done: number;
+  total: number;
+  createdAt: number;
+  startedAt?: number;
+  finishedAt?: number;
+  error?: string;
+  /** Workspace-relative paths of what the job wrote. */
+  files: string[];
 }
 
 /** A file the user attached to a chat message, already saved inside the film folder. */
