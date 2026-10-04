@@ -36,7 +36,7 @@ npm run dist:mac
 `releases/latest`를 가리킨다.
 
 ```bash
-gh release create v0.1.0 "release/Motion Studio-0.1.0-arm64.dmg" "release/Motion Studio-0.1.0.dmg" --title "Motion Studio 0.1.0" --notes-file docs/RELEASE_NOTES.md
+gh release create v<버전> "release/Motion Studio-<버전>-arm64.dmg" "release/Motion Studio-<버전>.dmg" --target main --title "Motion Studio <버전>" --notes-file docs/RELEASE_NOTES.md
 ```
 
 GPL 의무: 릴리스 노트나 README에서 [LICENSES/README.md](../LICENSES/README.md)로 가는 링크를 유지한다
