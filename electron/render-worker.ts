@@ -377,10 +377,11 @@ function cleanup(): void {
 /** Entry point for a worker process. Must run before `app` is ready. */
 export function runRenderWorker(argv: string[]): void {
   const emit = (e: WorkerEvent) => process.stdout.write(JSON.stringify(e) + "\n");
-  app.disableHardwareAcceleration();
-  // Software raster needs no GPU process at all; without it Chromium also stops
-  // logging GPU cache warnings into every render's output.
-  app.commandLine.appendSwitch("disable-gpu");
+  // 2D canvases stay on the CPU rasteriser, so the same t gives the same pixels
+  // on every Mac. WebGL (3D films) needs the GPU: macOS Chromium has no CPU
+  // fallback for it. GPU output is the same run to run on one Mac, but can
+  // differ slightly between GPU models.
+  app.commandLine.appendSwitch("disable-accelerated-2d-canvas");
   app.commandLine.appendSwitch("disable-gpu-shader-disk-cache");
   app.dock?.hide();
   // Hidden windows open and close per format; that must not end the process.
