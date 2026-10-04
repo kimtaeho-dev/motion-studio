@@ -9,3 +9,9 @@ release/
 .mailbox/
 .trash/
 vendor/
+# Films are the designer's own work, made in the app or by the agent. Only the
+# template new films are copied from and the sample shipped with the app are
+# part of the repo.
+films/*
+!films/_template/
+!films/sample-morph/
