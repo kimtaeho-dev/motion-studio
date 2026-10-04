@@ -41,7 +41,7 @@ const EFFORTS: ChatEffort[] = ["low", "medium", "high", "max"];
 // A film is designed, not tweaked: the default leans toward the careful end.
 const DEFAULT_SETTINGS: ChatSettings = { model: "opus", effort: "high" };
 
-const ATTACHMENT_KINDS: ChatAttachment["kind"][] = ["image", "video", "audio"];
+const ATTACHMENT_KINDS: ChatAttachment["kind"][] = ["image", "video"];
 
 /** Gates the app can approve with a button (CLAUDE.md, 작업 순서). */
 const APPROVALS = { shotlist: "숏리스트" } as const;
@@ -167,7 +167,6 @@ function describeTool(name: string, input: Record<string, unknown> = {}): { step
       if (/render\.mjs[^|;&]*--stills/.test(command)) return { step: "스틸을 렌더하는 중" };
       if (/render\.mjs[^|;&]*--draft/.test(command)) return { step: "초안을 렌더하는 중" };
       if (/render\.mjs/.test(command)) return { step: "영상을 렌더하는 중", detail: "몇 분 걸릴 수 있어요" };
-      if (/sound\.mjs/.test(command)) return { step: "음악과 효과음을 입히는 중" };
       if (/critique/.test(command)) return { step: "검수용 이미지를 만드는 중" };
       if (/determinism/.test(command)) return { step: "같은 프레임이 나오는지 검사하는 중" };
       if (/\bffmpeg\b|\bffprobe\b/.test(command)) return { step: "영상 파일을 다루는 중" };
@@ -199,12 +198,7 @@ function buildPrompt(item: QueueItem, filmsDir: string): string {
   if (item.attachments.length > 0) {
     const lines = item.attachments.map((a) => `- ${a.path} (${a.kind}, 원본 파일명: ${a.name})`).join("\n");
     prompt += `디자이너가 파일을 첨부했다. 이미 필름 폴더에 저장돼 있다:\n${lines}\n`;
-    if (item.attachments.some((a) => a.kind === "audio")) {
-      prompt += "음악 파일이 있으면 audio/track.wav로 변환해 두고(ffmpeg), BPM과 첫 다운비트 시각은 디자이너에게 묻는다. ";
-    }
-    if (item.attachments.some((a) => a.kind !== "audio")) {
-      prompt += "이미지·영상은 레퍼런스다. CLAUDE.md의 레퍼런스 규칙대로 문법만 가져온다. ";
-    }
+    prompt += "이미지·영상은 레퍼런스다. CLAUDE.md의 레퍼런스 규칙대로 문법만 가져온다. ";
   }
   prompt += item.userText || "첨부한 파일을 보고 어떻게 쓰면 좋을지 제안해줘.";
   return prompt;

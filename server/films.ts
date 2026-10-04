@@ -16,7 +16,6 @@ const MAX_UPLOAD_BYTES = 500 * 1024 * 1024;
 const UPLOAD_KINDS: Record<string, ChatAttachment["kind"]> = {
   ".png": "image", ".jpg": "image", ".jpeg": "image", ".webp": "image", ".gif": "image", ".svg": "image",
   ".mp4": "video", ".mov": "video", ".webm": "video", ".m4v": "video",
-  ".wav": "audio", ".mp3": "audio", ".m4a": "audio", ".aac": "audio", ".aif": "audio", ".aiff": "audio", ".flac": "audio",
 };
 
 /** Folder names the agent and the tools rely on — a film slug must be a plain lowercase name. */
@@ -135,7 +134,7 @@ function createFilm(ws: Workspace, { name, formats, dur, quality }: NewFilm): st
     const full = path.join(dir, file);
     if (fs.existsSync(full)) fs.writeFileSync(full, fs.readFileSync(full, "utf8").replaceAll("__NAME__", value));
   }
-  for (const sub of ["refs", "audio"]) fs.mkdirSync(path.join(dir, sub), { recursive: true });
+  fs.mkdirSync(path.join(dir, "refs"), { recursive: true });
 
   // The template is a working 8-second loop; stretch its scene times to the
   // chosen length so it still loops cleanly until the agent rewrites it.
@@ -186,7 +185,7 @@ function readOutputs(ws: Workspace, slug: string): FilmOutput[] {
       return {
         format: e.name,
         final: fileInfo(ws, path.join(dir, "final.mp4")),
-        silent: fileInfo(ws, path.join(dir, "silent.mp4")),
+        draft: fileInfo(ws, path.join(dir, "draft.mp4")),
         poster: fileInfo(ws, path.join(dir, "poster.png")),
         contact: fileInfo(ws, path.join(dir, "contact-beats.png")),
         critique,
@@ -203,9 +202,9 @@ function readOutputs(ws: Workspace, slug: string): FilmOutput[] {
 function inferStage(docs: FilmFiles["docs"], outputs: FilmOutput[], state: Record<string, unknown>): FilmStage {
   const recorded = FILM_STAGES.find((s) => s === state.stage);
   if (recorded) return recorded;
-  return outputs.some((o) => o.final) ? "deliver"
+  return outputs.some((o) => o.poster) ? "deliver"
     : docs.review ? "critique"
-    : outputs.some((o) => o.silent) ? "draft"
+    : outputs.some((o) => o.final || o.draft) ? "draft"
     : outputs.some((o) => o.contact) ? "stills"
     : docs.shotlist ? "shotlist"
     : "brief";
@@ -346,7 +345,7 @@ export function filmsPlugin(): Plugin {
         if (!SLUG.test(slug) || !fs.existsSync(path.join(ws.filmsDir, slug))) return json(res, 404, { error: "film not found" });
         if (!kind) return json(res, 400, { error: "unsupported file type" });
 
-        const dir = path.join(ws.filmsDir, slug, kind === "audio" ? "audio" : "refs");
+        const dir = path.join(ws.filmsDir, slug, "refs");
         fs.mkdirSync(dir, { recursive: true });
         const file = freePath(dir, name);
         try {

@@ -20,7 +20,7 @@ import { inside, sendFile } from "../server/http";
  */
 
 export type WorkerEvent =
-  | { type: "start"; title: string; format: string; W: number; H: number; dur: number; bpm: number; cues: number; mode: "video" | "stills"; total: number }
+  | { type: "start"; title: string; format: string; W: number; H: number; dur: number; bpm: number; mode: "video" | "stills"; total: number }
   | { type: "progress"; format: string; done: number; total: number }
   | { type: "file"; format: string; kind: "video" | "stills" | "contact"; path: string; count?: number; seconds: number }
   | { type: "warn"; message: string }
@@ -56,7 +56,6 @@ interface StageFilm {
   format: string;
   formats: string[];
   transparent: boolean;
-  cues: unknown[];
 }
 
 const CODECS: Codec[] = ["h264", "prores", "webm", "gif"];
@@ -208,7 +207,7 @@ function encoder(codec: Codec, draft: boolean, transparent: boolean): { ext: str
     default:
       return {
         ext: "mp4",
-        base: "silent",
+        base: draft ? "draft" : "final",
         pixFmt: "yuv420p",
         args: ["-c:v", "libx264", "-preset", draft ? "veryfast" : "slow", "-crf", draft ? "22" : "16", "-movflags", "+faststart"],
       };
@@ -353,10 +352,9 @@ async function render(job: Job, emit: (e: WorkerEvent) => void): Promise<void> {
         if (errors.length) emit({ type: "warn", message: "페이지 오류:\n  " + errors.join("\n  ") });
         const outDir = path.join(root, "out", name, film.format);
         fs.mkdirSync(outDir, { recursive: true });
-        fs.writeFileSync(path.join(outDir, "film.json"), JSON.stringify({ ...film, cues: undefined }, null, 1));
-        fs.writeFileSync(path.join(outDir, "cues.json"), JSON.stringify(film.cues, null, 1));
+        fs.writeFileSync(path.join(outDir, "film.json"), JSON.stringify(film, null, 1));
         const total = job.stills ? 0 : Math.round(((job.to ?? film.dur) - (job.from ?? 0)) * (job.fps ?? (job.draft ? 30 : film.fps || 60)) * (job.sub ?? (job.draft ? 1 : 4)));
-        emit({ type: "start", title: film.title, format: film.format, W: film.W, H: film.H, dur: film.dur, bpm: film.bpm, cues: film.cues.length, mode: job.stills ? "stills" : "video", total });
+        emit({ type: "start", title: film.title, format: film.format, W: film.W, H: film.H, dur: film.dur, bpm: film.bpm, mode: job.stills ? "stills" : "video", total });
         if (job.stills) await renderStills(win, film, job.stills, outDir, emit, !job.noContact);
         else await renderVideo(win, film, job, outDir, emit);
       } finally {

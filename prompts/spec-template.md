@@ -7,7 +7,7 @@
 ```xml
 <inputs>
 먼저 물어볼 것: 무엇에 대한 영상인지 + URL, 이야기를 전하는 8~12개 UI 상태, 각 상태에 보일 실제 데이터,
-브랜드 색 + 서체 + 포인트 컬러 1개, 120BPM 근처 음악(파일) 또는 "합성", 포맷.
+브랜드 색 + 서체 + 포인트 컬러 1개, 템포(기본 120BPM), 포맷.
 </inputs>
 
 <direction>
@@ -24,12 +24,12 @@
 </structure>
 
 <build>
-1. films/<이름>/film.json(데이터: params·timeline·cues) + index.html(코드: Stage.film((film) => ({ draw(g, t, S) }))). CSS transition, 타이머, 누적 상태 없음.
+1. films/<이름>/film.json(데이터: params·timeline) + index.html(코드: Stage.film((film) => ({ draw(g, t, S) }))). CSS transition, 타이머, 누적 상태 없음.
 2. 닫힌 해 스프링. 목표가 여러 번 바뀌는 값 = 변화마다 스프링 하나씩 더하기 (M.track / M.loopTrack).
 3. 모핑 컨테이너 안 텍스트는 모핑 시작 후 들어오고 다음 모핑 전에 나간다 (M.swapAlpha).
 4. 탭 인디케이터와 토글 노브는 앞/뒤 끝이 다른 스프링을 탄다 (M.stretch).
 5. 드래그는 직접 조작: 누르고 있는 동안 값은 커서 위치에서 계산, 놓으면 그 자리에서 스프링으로 복귀.
-6. 음악이 있으면 디자이너가 알려준 BPM·첫 다운비트로 비트 그리드를 잡고, 다운비트에서 시작. 효과음은 그 그리드에.
+6. film.json의 BPM으로 비트 그리드를 잡는다. 장면 전환과 큰 동작은 비트에 맞춘다. 영상에는 소리를 넣지 않는다.
 7. 풀 렌더 전에 비트마다 1장씩 스틸을 렌더해서 그리드에서 벗어남, 답답함, 읽기 어려움을 고친다.
 </build>
 

@@ -18,7 +18,7 @@ const ChatContext = createContext<{
   typicalDurationMs: () => number | undefined;
   settings: () => ChatSettings;
   setSettings: (next: ChatSettings) => void;
-  /** Saves a file into the current film's refs/ or audio/ folder, ready to attach. */
+  /** Saves a file into the current film's refs/ folder, ready to attach. */
   upload: (file: File) => Promise<ChatAttachment>;
   send: (text: string, attachments?: ChatAttachment[]) => Promise<void>;
   /** The app's approve button for a pipeline gate (server/mailbox.ts records it in state.json). */

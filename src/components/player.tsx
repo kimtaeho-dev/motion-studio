@@ -174,7 +174,7 @@ function Timeline() {
     if (wasPlaying) toggle();
   };
 
-  // ── Dragging a scene time or a free-standing cue ────────────────────
+  // ── Dragging a scene time ────────────────────────────────────────────
   /**
    * A press on a handle: a click jumps to its time, a drag moves it. The whole
    * drag previews live and lands as one undo step.
@@ -214,12 +214,6 @@ function Timeline() {
     handle.addEventListener("pointercancel", up);
   };
 
-  // film.json's own cues come first in FILM.cues, in order; the rest are made in code.
-  const jsonCues = () => json()?.cues ?? [];
-  const codeCues = () => (film()?.cues ?? []).slice(jsonCues().length);
-  const cueTime = (c: NonNullable<FilmJson["cues"]>[number]) =>
-    c.at !== undefined ? (json()?.timeline?.[c.at]?.t ?? 0) + (c.dt ?? 0) : (c.t ?? 0);
-  const markerLabel = (key: string) => json()?.timeline?.[key]?.label ?? key;
 
   return (
     <div
@@ -265,45 +259,6 @@ function Timeline() {
             </Show>
           );
         }}
-      </For>
-
-      {/* Sound cues: free-standing ones drag; scene-attached ones ride their scene; code ones are fixed */}
-      <For each={jsonCues().map((_, i) => i)}>
-        {(i) => (
-          <Show when={jsonCues()[i]}>
-            {(cue) => (
-              <Show
-                when={cue().at === undefined}
-                fallback={
-                  <div
-                    class="pointer-events-none absolute bottom-1 size-1.5 -translate-x-1/2 rotate-45 bg-cue/70"
-                    style={{ left: pct(cueTime(cue()), dur()) }}
-                    title={`${cue().type} · 장면 '${markerLabel(cue().at!)}'에 붙어 함께 움직여요`}
-                  />
-                }
-              >
-                <div
-                  role="slider"
-                  aria-label={`효과음 ${cue().type}`}
-                  title={`${cue().type} · ${cueTime(cue()).toFixed(2)}s${locked() ? "" : " — 끌어서 옮기기"}`}
-                  onPointerDown={dragHandle(cue().type, () => cueTime(cue()), (d, t) => (d.cues![i].t = t))}
-                  class="absolute bottom-0.5 size-2 -translate-x-1/2 rotate-45 bg-cue hover:scale-125"
-                  classList={{ "cursor-ew-resize": !locked() }}
-                  style={{ left: pct(cueTime(cue()), dur()) }}
-                />
-              </Show>
-            )}
-          </Show>
-        )}
-      </For>
-      <For each={codeCues()}>
-        {(c) => (
-          <div
-            class="pointer-events-none absolute bottom-1 size-1 -translate-x-1/2 rounded-full bg-cue/50"
-            style={{ left: pct(c.t, dur()) }}
-            title={`${c.type} · 코드가 만드는 반복 효과음`}
-          />
-        )}
       </For>
 
       {/* Playhead */}
@@ -441,7 +396,7 @@ function RenderQueue() {
   );
 }
 
-/** Renders under out/<film>/, per format: the final with sound, the latest silent render, the poster. */
+/** Renders under out/<film>/, per format: the full render, the latest draft, the poster. */
 function Outputs() {
   const { files } = useFiles();
   // One group per format, so two or three formats still fit on one line.
@@ -450,8 +405,8 @@ function Outputs() {
       .map((o) => {
         const items: { label: string; kind: "video" | "image"; file: FilmFile }[] = [];
         if (o.final) items.push({ label: "완성본", kind: "video", file: o.final });
-        // A silent render newer than the final is a work in progress worth looking at.
-        if (o.silent && (!o.final || o.silent.mtime > o.final.mtime + 1000)) items.push({ label: "무음", kind: "video", file: o.silent });
+        // A draft newer than the final is a work in progress worth looking at.
+        if (o.draft && (!o.final || o.draft.mtime > o.final.mtime + 1000)) items.push({ label: "초안", kind: "video", file: o.draft });
         if (o.poster) items.push({ label: "포스터", kind: "image", file: o.poster });
         return { format: o.format, items };
       })

@@ -147,7 +147,7 @@ function workerCommand(): { command: string; args: string[] } {
 }
 
 /**
- * ffmpeg for renders and sound: the copy shipped in the bundle, else one the
+ * ffmpeg for renders: the copy shipped in the bundle, else one the
  * user already has. A Finder-launched app gets a bare PATH, so the usual
  * install locations are looked up directly.
  */

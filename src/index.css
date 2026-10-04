@@ -18,7 +18,6 @@
   --font-sans: 'Pretendard', ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji";
   --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
   --font-weight-strong: 600;
-  --color-cue: var(--cue);
   --color-marker: var(--marker);
   --color-stage: var(--stage);
   --color-overlay: var(--overlay);
@@ -111,7 +110,6 @@
   --selection: hsla(207, 100%, 50%, 1);
   --selection-foreground: hsla(207, 100%, 90%, 1);
   --selection-muted-foreground: hsla(0, 0%, 45%, 1);
-  --cue: hsla(16, 62%, 59%, 1);
   --marker: hsla(207, 100%, 50%, 1);
   --stage: hsla(0, 0%, 86%, 1);
 }
@@ -163,7 +161,6 @@
   --selection-foreground: hsla(207, 100%, 90%, 1);
   --selection-muted-foreground: hsla(0, 0%, 16%, 1);
   --inset: hsla(0, 0%, 25%, 1);
-  --cue: hsla(16, 62%, 62%, 1);
   --marker: hsla(207, 100%, 62%, 1);
   --stage: hsla(0, 0%, 6%, 1);
 }

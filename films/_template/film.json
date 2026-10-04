@@ -15,9 +15,5 @@
   "timeline": {
     "morph1": { "t": 2, "label": "두 번째 상태로 모핑" },
     "morph2": { "t": 6, "label": "처음 상태로 (루프)" }
-  },
-  "cues": [
-    { "at": "morph1", "type": "swish" },
-    { "at": "morph2", "type": "swish" }
-  ]
+  }
 }

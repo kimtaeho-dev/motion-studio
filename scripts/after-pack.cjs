@@ -14,7 +14,7 @@ exports.default = async function afterPack(context) {
 
   const appPath = path.join(context.appOutDir, `${context.packager.appInfo.productFilename}.app`);
 
-  // Renders and sound need the bundled ffmpeg (scripts/fetch-ffmpeg.mjs), and
+  // Renders need the bundled ffmpeg (scripts/fetch-ffmpeg.mjs), and
   // it has to be the one for this build's architecture.
   const ffmpeg = path.join(appPath, "Contents", "Resources", "bin", "ffmpeg");
   const expected = { 1: "x86_64", 3: "arm64" }[context.arch];

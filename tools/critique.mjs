@@ -29,9 +29,9 @@ if (!existsSync(base)) {
 }
 const format = formatArg ?? readdirSync(base).sort()[0];
 const dir = join(base, format);
-const video = [join(dir, 'final.mp4'), join(dir, 'silent.mp4')].find(existsSync);
+const video = [join(dir, 'final.mp4'), join(dir, 'draft.mp4')].find(existsSync);
 if (!video) {
-  console.error(`❌ ${dir}에 final.mp4나 silent.mp4가 없습니다.`);
+  console.error(`❌ ${dir}에 final.mp4나 draft.mp4가 없습니다.`);
   process.exit(1);
 }
 

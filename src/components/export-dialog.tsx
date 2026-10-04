@@ -15,7 +15,7 @@ import { onServerEvent } from "@/lib/live";
 import type { ExportJob, ExportKind } from "@/types";
 
 const KINDS: { value: ExportKind; label: string; hint: string }[] = [
-  { value: "mp4", label: "MP4", hint: "소리 포함 · SNS·발표용" },
+  { value: "mp4", label: "MP4", hint: "SNS·발표용" },
   { value: "gif", label: "GIF", hint: "소리 없음 · 슬랙·노션용" },
   { value: "prores", label: "ProRes 4444", hint: "편집 툴용 · 투명 배경 유지" },
   { value: "webm", label: "WebM", hint: "웹용 · 투명 배경 유지" },

@@ -284,7 +284,7 @@ interface ScoreRound {
 
 /**
  * The scores out of review_log.md: under each "## 라운드 N" heading, a line
- * "점수: 훅 8 · 가독성 7 · … · 사운드 —" (CLAUDE.md 6번, prompts/critique-pass.md).
+ * "점수: 훅 8 · 가독성 7 · … · 리듬 —" (CLAUDE.md 6번, prompts/critique-pass.md).
  */
 export function parseScores(markdown: string): ScoreRound[] {
   const rounds: ScoreRound[] = [];

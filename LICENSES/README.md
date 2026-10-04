@@ -5,7 +5,7 @@ Motion Studio 앱(dmg)에는 아래 프로그램과 글꼴이 들어 있다. 앱
 
 ## FFmpeg 9.0.2 — GPL 3.0
 
-앱은 영상 인코딩(H.264, ProRes, VP9, GIF)과 음악·효과음 믹스에 FFmpeg를 별도
+앱은 영상 인코딩(H.264, ProRes, VP9, GIF)에 FFmpeg를 별도
 실행 파일로 쓴다(`Contents/Resources/bin/ffmpeg`).
 
 - 빌드: Martin Riedl의 macOS 정적 빌드 (<https://ffmpeg.martin-riedl.de>),

@@ -78,7 +78,6 @@ function workspaceManifest(): string {
         stills: "node tools/render.mjs --stills beats",
         render: "node tools/render.mjs",
         draft: "node tools/render.mjs --draft",
-        sound: "node tools/sound.mjs",
         critique: "node tools/critique.mjs",
         check: "node tools/determinism.mjs",
       },

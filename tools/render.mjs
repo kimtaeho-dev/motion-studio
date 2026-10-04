@@ -2,9 +2,9 @@
 /*
  * render.mjs — 필름을 프레임 단위로 렌더해서 영상이나 스틸로 만든다.
  *
- *   node tools/render.mjs films/<이름>                    # 전체 렌더 (60fps, 모션블러 4서브프레임) → silent.mp4
+ *   node tools/render.mjs films/<이름>                    # 전체 렌더 (60fps, 모션블러 4서브프레임) → final.mp4
  *   node tools/render.mjs films/<이름> --format 9x16      # 다른 포맷
- *   node tools/render.mjs films/<이름> --draft            # 빠른 초안 (30fps, 서브프레임 1, 절반 해상도)
+ *   node tools/render.mjs films/<이름> --draft            # 빠른 초안 (30fps, 서브프레임 1, 절반 해상도) → draft.mp4
  *   node tools/render.mjs films/<이름> --from 4 --to 6    # 일부 구간만 (수정 확인용) → part_4-6.mp4
  *   node tools/render.mjs films/<이름> --stills beats     # 비트마다 1장 → 컨택트 시트 (풀 렌더 전에 꼭)
  *   node tools/render.mjs films/<이름> --stills 0.5,2,4.25 # 지정 시각 스틸
@@ -13,7 +13,7 @@
  *   node tools/render.mjs films/<이름> --codec webm       # 투명 배경 WebM (VP9) → alpha.webm
  *   node tools/render.mjs films/<이름> --codec gif        # 미리보기 GIF (30fps 이하, 720px 이하) → preview.gif
  *
- * 결과: out/<이름>/<포맷>/ 에 영상, cues.json, film.json, stills/, contact-*.png
+ * 결과: out/<이름>/<포맷>/ 에 영상, film.json, stills/, contact-*.png
  *
  * 렌더 자체는 Electron 렌더 워커(electron/render-worker.ts)가 한다. Motion Studio
  * 앱 안에서 실행되면(MOTION_STUDIO_URL) 앱의 렌더 큐에 맡겨서 화면에 진행률이
@@ -47,7 +47,7 @@ function print(event) {
     case 'start':
       started = Date.now();
       lastStep = -1;
-      console.log(`▶ ${event.title} · ${event.format} ${event.W}x${event.H} · ${event.dur}s · ${event.bpm}BPM · 효과음 ${event.cues}개`);
+      console.log(`▶ ${event.title} · ${event.format} ${event.W}x${event.H} · ${event.dur}s · ${event.bpm}BPM`);
       break;
     case 'progress': {
       if (!event.total) break;

@@ -1,6 +1,6 @@
 import { createEffect, createSignal, For, on, onCleanup, Show } from "solid-js";
 import { useParams } from "@solidjs/router";
-import { ChevronDown, Film, Image, Music, Paperclip, RotateCcw, Send, X } from "lucide-solid";
+import { ChevronDown, Film, Image, Paperclip, RotateCcw, Send, X } from "lucide-solid";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -33,9 +33,9 @@ const MAX_TEXTAREA_HEIGHT = 128; // px — grows up to this, then scrolls intern
 // too so a huge file fails before it is streamed anywhere.
 const MAX_ATTACHMENT_BYTES = 500 * 1024 * 1024;
 const MAX_ATTACHMENTS = 10;
-const ACCEPT = "image/*,video/*,audio/*,.svg";
+const ACCEPT = "image/*,video/*,.svg";
 
-const KIND_ICON = { image: Image, video: Film, audio: Music } as const;
+const KIND_ICON = { image: Image, video: Film } as const;
 
 /** A file being uploaded (no attachment yet) or ready to send. */
 interface Staged {
@@ -286,8 +286,8 @@ export function ChatPanel() {
         setAttachError(`한 번에 ${MAX_ATTACHMENTS}개까지 첨부할 수 있어요.`);
         break;
       }
-      if (!/^(image|video|audio)\//.test(file.type) && !/\.svg$/i.test(file.name)) {
-        setAttachError("이미지·영상·음악 파일만 첨부할 수 있어요.");
+      if (!/^(image|video)\//.test(file.type) && !/\.svg$/i.test(file.name)) {
+        setAttachError("이미지·영상 파일만 첨부할 수 있어요.");
         continue;
       }
       if (file.size > MAX_ATTACHMENT_BYTES) {
@@ -483,7 +483,8 @@ export function ChatPanel() {
                             class="flex max-w-full items-center gap-1 underline underline-offset-2 opacity-80 hover:opacity-100"
                           >
                             {(() => {
-                              const C = KIND_ICON[att.kind];
+                              // Older chats can hold kinds the app no longer takes (music).
+                              const C = KIND_ICON[att.kind] ?? Paperclip;
                               return <C class="size-3 shrink-0" />;
                             })()}
                             <span class="truncate">{att.name}</span>

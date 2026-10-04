@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import crypto from "node:crypto";
-import { spawn, spawnSync, type ChildProcess } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import type { Plugin, ViteDevServer } from "vite";
 import type { ExportJob, ExportKind, ExportStep } from "../src/types/common";
 import { json, readJsonBody } from "./http";
@@ -15,8 +15,7 @@ import { resolveWorkspace, type Workspace } from "./workspace";
  * Every file is checked before it is copied: a render older than the film's
  * code, its film.json or lib/, or at the wrong size (a half-size draft sitting
  * where the full render goes), is made again — through the render queue, so
- * it shows up in the app like any other render. MP4s get their sound mixed
- * by tools/sound.mjs.
+ * it shows up in the app like any other render.
  */
 
 export interface ExportOptions {
@@ -28,7 +27,7 @@ const KINDS: ExportKind[] = ["mp4", "gif", "prores", "webm", "png"];
 
 /** Where each kind lives in out/<film>/<format>/, and what it is called in the export. */
 const OUTPUT: Record<Exclude<ExportKind, "png">, { file: string; ext: string; codec: string | null; label: string }> = {
-  mp4: { file: "final.mp4", ext: "mp4", codec: null, label: "MP4 (소리 포함)" },
+  mp4: { file: "final.mp4", ext: "mp4", codec: null, label: "MP4" },
   gif: { file: "preview.gif", ext: "gif", codec: "gif", label: "GIF" },
   prores: { file: "master.mov", ext: "mov", codec: "prores", label: "ProRes 4444" },
   webm: { file: "alpha.webm", ext: "webm", codec: "webm", label: "WebM" },
@@ -80,24 +79,9 @@ function readMeta(ws: Workspace, slug: string): FilmMeta {
 
 export function exportPlugin(options: ExportOptions = {}): Plugin {
   let ws: Workspace;
-  let current: { job: ExportJob; cancelled: boolean; renderId: string | null; child: ChildProcess | null } | null = null;
+  let current: { job: ExportJob; cancelled: boolean; renderId: string | null } | null = null;
 
   const push = (server: ViteDevServer) => server.ws.send({ type: "custom", event: "export:update", data: { job: current?.job ?? null } });
-
-  /** Runs tools/sound.mjs for one format — the agent's own tool, so the mix is the same one it checks. */
-  function mixSound(slug: string, format: string): Promise<string | null> {
-    return new Promise((resolve) => {
-      const child = spawn("node", [path.join("tools", "sound.mjs"), path.join("films", slug), "--format", format], {
-        cwd: ws.root,
-        stdio: ["ignore", "pipe", "pipe"],
-      });
-      if (current) current.child = child;
-      let stderr = "";
-      child.stderr!.on("data", (d) => (stderr = (stderr + d).slice(-2000)));
-      child.on("error", (err) => resolve(`사운드를 입히지 못했습니다: ${err.message}`));
-      child.on("close", (code) => resolve(code === 0 ? null : `사운드를 입히지 못했습니다\n${stderr.trim()}`));
-    });
-  }
 
   async function render(args: string[]): Promise<string | null> {
     if (!enqueueRender) return "렌더 큐가 준비되지 않았습니다";
@@ -169,19 +153,8 @@ export function exportPlugin(options: ExportOptions = {}): Plugin {
           status: "pending",
           run: async () => {
             const file = path.join(outDir, spec.file);
-            if (kind === "mp4") {
-              // final.mp4 is silent.mp4 plus sound: both must be current.
-              const silent = path.join(outDir, "silent.mp4");
-              if (!fresh(silent, true)) {
-                const failed = await render([filmArg, "--format", format]);
-                if (failed) return failed;
-              }
-              if (mtime(file) < mtime(path.join(outDir, "silent.mp4")) || !fresh(file, true)) {
-                const failed = await mixSound(slug, format);
-                if (failed) return failed;
-              }
-            } else if (!fresh(file, true)) {
-              const failed = await render([filmArg, "--format", format, "--codec", spec.codec!]);
+            if (!fresh(file, true)) {
+              const failed = await render([filmArg, "--format", format, ...(spec.codec ? ["--codec", spec.codec] : [])]);
               if (failed) return failed;
             }
             copyTo(file, `${base}.${spec.ext}`);
@@ -250,7 +223,6 @@ export function exportPlugin(options: ExportOptions = {}): Plugin {
         if (current && current.job.status === "running") {
           current.cancelled = true;
           if (current.renderId) cancelRenderJob?.(current.renderId);
-          current.child?.kill("SIGTERM");
         }
         json(res, 200, { ok: true });
       });
@@ -282,7 +254,6 @@ export function exportPlugin(options: ExportOptions = {}): Plugin {
           job: { id: crypto.randomUUID(), film: slug, title: meta.title, status: "running", steps: [], startedAt: Date.now() },
           cancelled: false,
           renderId: null,
-          child: null,
         };
         push(server);
         void run(server, slug, formats, kinds, body.zip === true).catch((err) => {

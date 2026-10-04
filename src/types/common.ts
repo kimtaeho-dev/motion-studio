@@ -37,7 +37,6 @@ export interface FilmJson {
   transparent?: boolean;
   params?: Record<string, FilmParam>;
   timeline?: Record<string, { t: number; label?: string }>;
-  cues?: ({ t?: number; at?: string; dt?: number; type: string } & Record<string, unknown>)[];
 }
 
 /** window.FILM inside a loaded film page (lib/stage.js). */
@@ -52,7 +51,6 @@ export interface StageFilm {
   format: string;
   formats: string[];
   transparent: boolean;
-  cues: { t: number; type: string }[];
 }
 
 /** Pushed as `film:changed` when files inside a film folder (or its renders) change. */
@@ -81,8 +79,8 @@ export interface FilmFile {
 export interface FilmOutput {
   format: string;
   final?: FilmFile;
-  /** The latest video without sound — a draft, or a full render before sound.mjs. */
-  silent?: FilmFile;
+  /** The latest quick render (--draft): half size, 30fps. */
+  draft?: FilmFile;
   poster?: FilmFile;
   contact?: FilmFile;
   /** Images tools/critique.mjs makes for review: contact, strip, phone, seam. */
@@ -166,7 +164,7 @@ export interface ChatAttachment {
   path: string;
   /** URL the app can show it from. */
   url: string;
-  kind: "image" | "video" | "audio";
+  kind: "image" | "video";
 }
 
 /** Which Claude model a turn runs on. Mirrors the CLI's `--model` aliases. */
