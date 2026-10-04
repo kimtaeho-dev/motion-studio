@@ -93,6 +93,9 @@ function Stage() {
         ref={attach}
         src={src()}
         title="필름 미리보기"
+        // Same colour scheme as the film page inside: when they differ, Chrome
+        // paints the frame opaque (white) instead of letting the stage show through.
+        style={{ "color-scheme": "normal" }}
         class="absolute inset-4 h-[calc(100%-2rem)] w-[calc(100%-2rem)] border-0 bg-transparent"
         classList={{ "opacity-0": status() !== "ready" }}
       />
@@ -423,7 +426,7 @@ function RenderQueue() {
 
   return (
     <Show when={mine().length > 0 || elsewhere()}>
-      <div class="flex min-h-7 items-center gap-2 overflow-x-auto px-1">
+      <div class="flex min-h-7 flex-wrap items-center gap-x-2 gap-y-1 px-1">
         <span class="shrink-0 text-[10px] font-strong text-muted-foreground">렌더</span>
         <For each={mine()}>{(job) => <JobChip job={job} />}</For>
         <Show when={elsewhere()}>
@@ -441,33 +444,43 @@ function RenderQueue() {
 /** Renders under out/<film>/, per format: the final with sound, the latest silent render, the poster. */
 function Outputs() {
   const { files } = useFiles();
-  const items = () =>
-    (files()?.outputs ?? []).flatMap((o) => {
-      const list: { label: string; kind: "video" | "image"; file: FilmFile }[] = [];
-      if (o.final) list.push({ label: `${o.format} 완성본`, kind: "video", file: o.final });
-      // A silent render newer than the final is a work in progress worth looking at.
-      if (o.silent && (!o.final || o.silent.mtime > o.final.mtime + 1000)) list.push({ label: `${o.format} 무음 영상`, kind: "video", file: o.silent });
-      if (o.poster) list.push({ label: `${o.format} 포스터`, kind: "image", file: o.poster });
-      return list;
-    });
+  // One group per format, so two or three formats still fit on one line.
+  const groups = () =>
+    (files()?.outputs ?? [])
+      .map((o) => {
+        const items: { label: string; kind: "video" | "image"; file: FilmFile }[] = [];
+        if (o.final) items.push({ label: "완성본", kind: "video", file: o.final });
+        // A silent render newer than the final is a work in progress worth looking at.
+        if (o.silent && (!o.final || o.silent.mtime > o.final.mtime + 1000)) items.push({ label: "무음", kind: "video", file: o.silent });
+        if (o.poster) items.push({ label: "포스터", kind: "image", file: o.poster });
+        return { format: o.format, items };
+      })
+      .filter((g) => g.items.length > 0);
 
   return (
-    <div class="flex min-h-7 items-center gap-2 overflow-x-auto px-1">
+    <div class="flex min-h-7 flex-wrap items-center gap-x-2 gap-y-1 px-1">
       <span class="shrink-0 text-[10px] font-strong text-muted-foreground">결과물</span>
-      <Show when={items().length > 0} fallback={<span class="text-[10px] text-muted-foreground">아직 렌더한 영상이 없어요.</span>}>
-        <For each={items()}>
-          {(item) => (
-            <button
-              type="button"
-              onClick={() => openMedia({ kind: item.kind, url: item.file.url, title: item.label })}
-              class="flex shrink-0 items-center gap-1.5 rounded-md bg-muted px-2 py-1 text-[10px] text-foreground hover:bg-foreground/10 focus-ring"
-            >
-              <Show when={item.kind === "video"} fallback={<Image class="size-3" />}>
-                <Film class="size-3" />
-              </Show>
-              {item.label}
-              <span class="text-muted-foreground">{ago(item.file.mtime)}</span>
-            </button>
+      <Show when={groups().length > 0} fallback={<span class="text-[10px] text-muted-foreground">아직 렌더한 영상이 없어요.</span>}>
+        <For each={groups()}>
+          {(group) => (
+            <div class="flex shrink-0 items-center rounded-md bg-muted text-[10px]">
+              <span class="pl-2 pr-1 font-mono text-muted-foreground">{group.format}</span>
+              <For each={group.items}>
+                {(item) => (
+                  <button
+                    type="button"
+                    onClick={() => openMedia({ kind: item.kind, url: item.file.url, title: `${group.format} ${item.label}` })}
+                    title={`${group.format} ${item.label} · ${ago(item.file.mtime)}`}
+                    class="flex items-center gap-1 rounded-md px-1.5 py-1 text-foreground hover:bg-foreground/10 focus-ring"
+                  >
+                    <Show when={item.kind === "video"} fallback={<Image class="size-3" />}>
+                      <Film class="size-3" />
+                    </Show>
+                    {item.label}
+                  </button>
+                )}
+              </For>
+            </div>
           )}
         </For>
       </Show>

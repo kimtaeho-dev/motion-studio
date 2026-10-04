@@ -66,6 +66,8 @@
 }
 
 :root {
+  color-scheme: light;
+  --scrollbar: hsla(0, 0%, 0%, 0.18);
   --canvas: hsla(0, 0%, 91%, 1);
   --background: hsla(0, 0%, 100%, 1);
   --foreground: hsla(240, 5%, 9%, 1);
@@ -115,6 +117,8 @@
 }
 
 .dark {
+  color-scheme: dark;
+  --scrollbar: hsla(0, 0%, 100%, 0.16);
   --canvas: hsla(0, 0%, 9%, 1);
   --background: hsla(0, 0%, 11%, 1);
   --foreground: hsla(0, 0%, 95%, 1);
@@ -167,6 +171,19 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    /* Thin, theme-coloured scrollbars: the default ones are wide and, without
+       color-scheme, drawn light even in the dark theme. */
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar) transparent;
+  }
+
+  /* The window itself never scrolls: every panel scrolls on its own. Without
+     this, reaching the end of a panel rubber-bands the whole app. */
+  html,
+  body {
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
   }
 
   /* Default focus indicator for the app: match the `.focus-ring` utility
@@ -212,6 +229,14 @@
 }
 
 @layer utilities {
+
+  /* A panel that scrolls: its scroll stays inside it, and the scrollbar's room
+     is kept so content does not shift when it appears. */
+  .panel-scroll {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
 
   /* Behind a transparent film, so "no background" reads as a choice, not a blank. */
   .checkerboard {

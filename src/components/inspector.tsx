@@ -1,4 +1,6 @@
-import { createResource, createSignal, For, Match, Show, Switch, type JSX } from "solid-js";
+import { createEffect, createResource, createSignal, For, Match, on, Show, Switch, type JSX } from "solid-js";
+import { useParams } from "@solidjs/router";
+import { ChevronRight } from "lucide-solid";
 import { Markdown } from "@/lib/markdown";
 import { useFiles } from "@/context/files";
 import { usePlayer, type Marker } from "@/context/player";
@@ -35,12 +37,35 @@ function readable(markdown: string): string {
     .join("\n");
 }
 
-function Section(props: { title: string; children: JSX.Element; empty?: string; when: unknown }) {
+function Section(props: {
+  title: string;
+  children: JSX.Element;
+  empty?: string;
+  when: unknown;
+  /** Given, the section folds: a long shotlist need not push everything else out of reach. */
+  fold?: { open: boolean; toggle: () => void };
+}) {
+  const open = () => !props.fold || props.fold.open;
   return (
     <section class="flex flex-col gap-1.5">
-      <span class="text-[10px] font-strong uppercase tracking-wide text-muted-foreground">{props.title}</span>
-      <Show when={props.when} fallback={<span class="text-xxs text-muted-foreground">{props.empty}</span>}>
-        {props.children}
+      <Show
+        when={props.fold}
+        fallback={<span class="text-[10px] font-strong uppercase tracking-wide text-muted-foreground">{props.title}</span>}
+      >
+        <button
+          type="button"
+          onClick={() => props.fold!.toggle()}
+          aria-expanded={open()}
+          class="-mx-1 flex items-center gap-1 rounded-sm px-1 py-0.5 text-left text-[10px] font-strong uppercase tracking-wide text-muted-foreground hover:text-foreground focus-ring"
+        >
+          <ChevronRight class="size-3 shrink-0 transition-transform" classList={{ "rotate-90": open() }} />
+          {props.title}
+        </button>
+      </Show>
+      <Show when={open()}>
+        <Show when={props.when} fallback={<span class="text-xxs text-muted-foreground">{props.empty}</span>}>
+          {props.children}
+        </Show>
       </Show>
     </section>
   );
@@ -325,6 +350,31 @@ function ReviewTab() {
   const { files } = useFiles();
   const { format } = usePlayer();
   // The format on screen, or whichever one has renders.
+  const params = useParams();
+  type Part = "shotlist" | "contact" | "review" | "brief";
+  // What the stage calls for is open; the designer's own clicks win until the film changes.
+  const opensAt = (part: Part): boolean => {
+    const f = files();
+    if (!f) return part === "shotlist";
+    if (f.waiting === "approval") return part === "shotlist";
+    return {
+      brief: part === "brief" || part === "shotlist",
+      shotlist: part === "shotlist",
+      stills: part === "contact",
+      draft: part === "contact",
+      critique: part === "review",
+      deliver: part === "review",
+    }[f.stage];
+  };
+  const [chosen, setChosen] = createSignal<Partial<Record<Part, boolean>>>({});
+  createEffect(on(() => params.film, () => setChosen({}), { defer: true }));
+  const fold = (part: Part) => ({
+    get open() {
+      return chosen()[part] ?? opensAt(part);
+    },
+    toggle: () => setChosen((c) => ({ ...c, [part]: !(c[part] ?? opensAt(part)) })),
+  });
+
   const [review] = createResource(() => files()?.docs.review?.url, loadText);
   const scores = () => parseScores(review.latest ?? "");
   const output = (): FilmOutput | undefined => {
@@ -334,15 +384,15 @@ function ReviewTab() {
 
   return (
     <div class="flex flex-col gap-4">
-      <Section title="숏리스트" when={files()?.docs.shotlist} empty="브리프가 정해지면 에이전트가 비트별 장면 목록을 써요.">
+      <Section title="숏리스트" fold={fold("shotlist")} when={files()?.docs.shotlist} empty="브리프가 정해지면 에이전트가 비트별 장면 목록을 써요.">
         <Doc file={files()?.docs.shotlist} />
       </Section>
 
-      <Section title={`컨택트 시트${output() ? ` · ${output()!.format}` : ""}`} when={output()?.contact} empty="숏리스트가 승인되면 비트마다 한 장씩 렌더해요.">
+      <Section title={`컨택트 시트${output() ? ` · ${output()!.format}` : ""}`} fold={fold("contact")} when={output()?.contact} empty="숏리스트가 승인되면 비트마다 한 장씩 렌더해요.">
         <Thumb file={output()!.contact!} title={`컨택트 시트 · ${output()!.format}`} />
       </Section>
 
-      <Section title="검수" when={files()?.docs.review} empty="완성본을 렌더하면 점수와 고친 점이 여기에 쌓여요.">
+      <Section title="검수" fold={fold("review")} when={files()?.docs.review} empty="완성본을 렌더하면 점수와 고친 점이 여기에 쌓여요.">
         <Show when={scores().length > 0}>
           <ScoreTable rounds={scores()} />
         </Show>
@@ -361,7 +411,7 @@ function ReviewTab() {
         <Doc file={files()?.docs.review} />
       </Section>
 
-      <Section title="브리프" when={files()?.docs.brief} empty="">
+      <Section title="브리프" fold={fold("brief")} when={files()?.docs.brief} empty="">
         <Doc file={files()?.docs.brief} transform={readable} />
       </Section>
     </div>
@@ -371,6 +421,9 @@ function ReviewTab() {
 export function Inspector() {
   // Each tab starts at its top; the other tab's scroll position means nothing here.
   const setTab = showInspectorTab;
+  // Nor does the last film's.
+  const params = useParams();
+  createEffect(on(() => params.film, () => scrollBody?.scrollTo({ top: 0 }), { defer: true }));
   const TABS: { value: Tab; label: string }[] = [
     { value: "review", label: "리뷰" },
     { value: "props", label: "속성" },
@@ -395,7 +448,7 @@ export function Inspector() {
           )}
         </For>
       </div>
-      <div ref={scrollBody} class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+      <div ref={scrollBody} class="panel-scroll min-h-0 flex-1 px-4 py-3">
         <Show when={tab() === "review"} fallback={<PropsTab />}>
           <ReviewTab />
         </Show>

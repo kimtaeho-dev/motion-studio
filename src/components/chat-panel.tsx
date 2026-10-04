@@ -1,4 +1,5 @@
-import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
+import { createEffect, createSignal, For, on, onCleanup, Show } from "solid-js";
+import { useParams } from "@solidjs/router";
 import { ChevronDown, Film, Image, Music, Paperclip, RotateCcw, Send, X } from "lucide-solid";
 import { Button } from "@/components/ui/button";
 import {
@@ -255,6 +256,7 @@ function SettingsMenu() {
 }
 
 export function ChatPanel() {
+  const params = useParams();
   const { messages, sending, send, cancel, reset, upload, composeRequest } = useChat();
   const [text, setText] = createSignal("");
   const [staged, setStaged] = createSignal<Staged[]>([]);
@@ -350,6 +352,8 @@ export function ChatPanel() {
     setStaged([]);
     setAttachError(null);
     autoGrow();
+    followBottom = true;
+    toBottom();
     await send(value, attachments);
   };
 
@@ -377,11 +381,25 @@ export function ChatPanel() {
     });
   });
 
-  // Keep the latest message in view as the thread grows.
-  createEffect(() => {
-    messages();
-    listRef?.scrollTo({ top: listRef.scrollHeight });
-  });
+  // Follow the thread down only while the designer is already at the bottom:
+  // someone scrolled up to reread the shotlist must not be yanked away by the
+  // next reply. Their own message and a switch of film always go to the end.
+  let followBottom = true;
+  const atBottom = () => !listRef || listRef.scrollHeight - listRef.scrollTop - listRef.clientHeight < 48;
+  const toBottom = () => queueMicrotask(() => listRef?.scrollTo({ top: listRef.scrollHeight }));
+  createEffect(
+    on(
+      () => params.film,
+      () => {
+        followBottom = true;
+      },
+    ),
+  );
+  createEffect(
+    on(messages, () => {
+      if (followBottom) toBottom();
+    }),
+  );
 
   return (
     <div
@@ -423,7 +441,11 @@ export function ChatPanel() {
         </div>
       </div>
 
-      <div ref={listRef} class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2 px-3 py-3">
+      <div
+        ref={listRef}
+        onScroll={() => (followBottom = atBottom())}
+        class="panel-scroll flex-1 min-h-0 flex flex-col gap-2 px-3 py-3"
+      >
         <Show
           when={messages().length > 0}
           fallback={
