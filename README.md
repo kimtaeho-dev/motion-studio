@@ -51,7 +51,7 @@
 ### A. 앱 받아서 열기
 
 1. [Releases](https://github.com/kimtaeho-dev/motion-studio/releases/latest)에서 dmg를 받습니다.
-   M1 이후 맥은 `Motion Studio-<버전>-arm64.dmg`, 인텔 맥은 `arm64`가 없는 쪽입니다.
+   M1 이후 맥은 이름이 `-arm64.dmg`로 끝나는 파일, 인텔 맥은 `arm64`가 없는 쪽입니다.
 2. dmg를 열고 **Motion Studio**를 **응용 프로그램** 폴더로 끌어다 놓습니다.
 3. 처음 열 때 "확인되지 않은 개발자" 안내가 뜨면: **시스템 설정 → 개인정보 보호 및 보안**
    아래쪽의 **그래도 열기**를 누릅니다. 유료 배포자 서명이 없어서 뜨는 안내이고, 한 번만 나옵니다.
