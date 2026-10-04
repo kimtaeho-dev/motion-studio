@@ -41,7 +41,7 @@ const EFFORTS: ChatEffort[] = ["low", "medium", "high", "max"];
 // A film is designed, not tweaked: the default leans toward the careful end.
 const DEFAULT_SETTINGS: ChatSettings = { model: "opus", effort: "high" };
 
-const ATTACHMENT_KINDS: ChatAttachment["kind"][] = ["image", "video"];
+const ATTACHMENT_KINDS: ChatAttachment["kind"][] = ["image", "video", "model"];
 
 /** Gates the app can approve with a button (CLAUDE.md, 작업 순서). */
 const APPROVALS = { shotlist: "숏리스트" } as const;
@@ -198,7 +198,12 @@ function buildPrompt(item: QueueItem, filmsDir: string): string {
   if (item.attachments.length > 0) {
     const lines = item.attachments.map((a) => `- ${a.path} (${a.kind}, 원본 파일명: ${a.name})`).join("\n");
     prompt += `디자이너가 파일을 첨부했다. 이미 필름 폴더에 저장돼 있다:\n${lines}\n`;
-    prompt += "이미지·영상은 레퍼런스다. CLAUDE.md의 레퍼런스 규칙대로 문법만 가져온다. ";
+    if (item.attachments.some((a) => a.kind !== "model")) {
+      prompt += "이미지·영상은 레퍼런스다. CLAUDE.md의 레퍼런스 규칙대로 문법만 가져온다. ";
+    }
+    if (item.attachments.some((a) => a.kind === "model")) {
+      prompt += "3D 모델(.glb)은 필름에 직접 쓰는 소재다. lib/stage3d.js의 model()로 불러온다(CLAUDE.md, 3D). ";
+    }
   }
   prompt += item.userText || "첨부한 파일을 보고 어떻게 쓰면 좋을지 제안해줘.";
   return prompt;

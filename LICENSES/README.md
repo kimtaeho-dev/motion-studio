@@ -28,7 +28,14 @@ FFmpeg는 Motion Studio와 별개의 프로그램이며, Motion Studio는 FFmpeg
 앱 셸과 렌더 엔진. Electron과 Chromium의 라이선스는 electron-builder가 앱에
 함께 넣는 `LICENSE.electron.txt`, `LICENSES.chromium.html`에 있다.
 
+## three.js r186 — MIT
+
+3D 필름의 렌더러(`lib/three/`). 라이선스: `lib/three/LICENSE`.
+`lib/three/addons/libs/`의 opentype.js(MIT, `LICENSE-opentype`), meshoptimizer 디코더(MIT),
+Draco 디코더(Apache 2.0)도 three.js 배포본에 들어 있는 그대로 함께 들어간다.
+
 ## 글꼴 — SIL Open Font License 1.1
 
-필름과 앱 화면에 쓰는 Pretendard, Geist, Geist Mono.
+필름과 앱 화면에 쓰는 Pretendard, Geist, Geist Mono. `assets/fonts/ttf/`는 입체 글자용으로
+같은 글꼴을 WOFF2에서 TTF로 풀어 둔 것이다(글리프는 바꾸지 않았다).
 라이선스: `assets/fonts/LICENSE-Pretendard.txt`, `assets/fonts/LICENSE-Geist.txt`.

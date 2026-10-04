@@ -164,7 +164,7 @@ export interface ChatAttachment {
   path: string;
   /** URL the app can show it from. */
   url: string;
-  kind: "image" | "video";
+  kind: "image" | "video" | "model";
 }
 
 /** Which Claude model a turn runs on. Mirrors the CLI's `--model` aliases. */

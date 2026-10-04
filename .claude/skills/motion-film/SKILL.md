@@ -10,7 +10,7 @@ description: 코드로 모션 영상(UI 모핑 루프, 프로덕트 릴, 런칭 
 
 ## 0. 필름 준비
 - `films/<이름>/`이 없으면 `node tools/new.mjs <이름>`.
-- 디자이너가 레퍼런스(이미지, 영상)를 줬으면 `films/<이름>/refs/`에 둔다.
+- 디자이너가 레퍼런스(이미지, 영상)나 3D 모델(.glb)을 줬으면 `films/<이름>/refs/`에 둔다.
 
 ## 1. 입력 받기 (brief.md)
 `prompts/spec-template.md`의 `<inputs>` 항목 중 빈 것을 한 번에 묻는다. 기본값을 제안하면서 묻는다
@@ -39,6 +39,7 @@ description: 코드로 모션 영상(UI 모핑 루프, 프로덕트 릴, 런칭 
 - 상태 안 내용: `swapAlpha` + `swapBlur`
 - 인디케이터/노브: `stretch`
 - 소리는 만들지 않는다 (CLAUDE.md, 소리와 템포)
+- 3D(기기 목업, 제품 모델, 입체 글자, 재질 도형)가 있으면 `films/sample-3d/`를 구조 참고로 읽고 `lib/stage3d.js`를 쓴다 (CLAUDE.md, 3D). 포맷별 배치 표 + `W.fit`, 화면 속 UI는 `screen().draw`에서 2D로.
 
 ## 5. 스틸 → 직접 보기
 `stage=stills`. `node tools/render.mjs films/<이름> --stills beats` → `out/<이름>/<포맷>/contact-beats.png`를 Read로 열어서 본다.

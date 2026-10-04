@@ -98,6 +98,10 @@
         "to": "seed/films/sample-morph"
       },
       {
+        "from": "films/sample-3d",
+        "to": "seed/films/sample-3d"
+      },
+      {
         "from": "vendor/ffmpeg/${arch}/ffmpeg",
         "to": "bin/ffmpeg"
       },

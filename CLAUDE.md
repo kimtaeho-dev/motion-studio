@@ -5,8 +5,8 @@ After Effects를 쓰지 않는다. 모든 영상은 HTML 한 장에 들어 있�
 
 ## 렌더 계약 (절대 규칙)
 
-- 작업 대상 필름 폴더(`films/<이름>/`, `out/<이름>/`)만 고친다. 다른 필름(`films/sample-morph` 같은 참고용 포함)은 읽기만 한다.
-- 필름 한 편 = `films/<이름>/index.html`(코드) + `films/<이름>/film.json`(데이터). `lib/motion.js`, `lib/stage.js`만 불러온다. 다른 라이브러리는 사람이 명시적으로 요청한 경우만.
+- 작업 대상 필름 폴더(`films/<이름>/`, `out/<이름>/`)만 고친다. 다른 필름(`films/sample-morph`, `films/sample-3d` 같은 참고용 포함)은 읽기만 한다.
+- 필름 한 편 = `films/<이름>/index.html`(코드) + `films/<이름>/film.json`(데이터). `lib/motion.js`, `lib/stage.js`만 불러온다. 3D가 필요하면 `lib/stage3d.js`(안에 three.js가 들어 있다)를 더한다. 그 밖의 라이브러리는 사람이 명시적으로 요청한 경우만.
 - `film.json`에 길이·BPM·포맷·`transparent`·`params`(디자이너가 바꿀 문구·색·숫자)·`timeline`(이름 붙은 장면 시각)을 둔다. 형식은 `lib/stage.js` 맨 위 주석. 앱의 속성 패널과 타임라인이 이 파일을 고치므로, 디자이너가 바꿀 만한 값은 코드에 박지 말고 여기로 뺀다.
 - 디자이너는 앱에서 `params` 값과 `timeline` 시각을 직접 바꾼다. 작업을 시작할 때마다 `film.json`을 새로 읽고, 디자이너가 바꾼 값을 말없이 되돌리지 않는다. 꼭 바꿔야 하면 왜 바꾸는지 먼저 말한다.
 - 코드는 `Stage.film((film) => { ...; return { draw(g, t, S) {} }; })`. `film.P`(params 값), `film.T`(timeline 시각)로 상수와 표를 만들고, 장면 시각은 반드시 `film.T`에서 읽는다(타임라인에서 끌어 옮기면 따라오도록).
@@ -26,6 +26,18 @@ After Effects를 쓰지 않는다. 모든 영상은 HTML 한 장에 들어 있�
 - 모핑하는 컨테이너 안 텍스트는 `M.swapAlpha`로 들어오고 나간다. 모핑 시작 직후 등장, 다음 모핑 직전 퇴장. 겹치면 안 된다.
 - 카메라가 스케일하는 요소에 `will-change`나 비트맵 캐시를 쓰지 않는다(텍스트가 흐려진다).
 - 루프 영상은 마지막 프레임 = 첫 프레임(커서 위치·속도 포함). `loopTrack`을 쓰면 자동으로 맞춰진다.
+
+## 3D
+
+- 기기 목업(폰·노트북), 제품 모델(.glb), 입체 글자, 재질이 있는 도형이 필요하면 3D를 쓴다. 평면 UI 모핑만이면 2D로 충분하다.
+- `lib/stage3d.js`만 쓴다: `world`(장면·카메라·조명 프리셋 studio/soft/dramatic), `phone`·`laptop`(화면 = `screen()` 2D 캔버스), `text3d`·`fonts3d`, `material`(plastic·matte·clay·metal·chrome·glass·pearl), `model`, `set`. 쓰는 법은 파일 맨 위 주석과 `films/sample-3d/`.
+- 3D 장면을 three.js로 직접 새로 짜지 않는다. 프리셋에 없는 모양은 `THREE`의 기본 지오메트리에 `material()`을 입혀 만든다.
+- 순수 함수 규칙은 그대로다. `draw` 안에서 모든 물체의 위치·회전·스케일과 카메라를 t로부터 다시 정한다(`set`, `W.fit`). 이전 프레임 값에 더하지 않는다. 움직임은 2D와 같이 `track`·`loopTrack` 스프링.
+- `world()`·재질·기기·글자는 `Stage.film` 함수 안에서 만든다. 폰트(`await fonts3d()`)와 모델(`await model('refs/x.glb')`)만 그 밖에서 한 번 불러온다.
+- 기기 화면 속 UI는 `screen().draw((g, w, h) => ...)`에서 2D로 그린다. 2D 규칙(swapAlpha, 스프링)이 그대로 적용된다. 화면 글자는 폰이 가장 작게 보이는 프레임에서도 읽혀야 한다.
+- 포맷마다 배치 표를 따로 두고(`S.portrait`/`S.landscape`), `W.fit(S, { width, height })`로 그 영역이 화면에 다 들어오게 한다. 크롭하지 않는다.
+- 3D 모델은 디자이너가 준 .glb(`refs/`)만 쓴다. 인터넷에서 받지 않는다.
+- 룩: 조명 프리셋 하나, 재질은 2~3종. 블룸·글로우·렌즈 플레어 같은 후처리는 쓰지 않는다. 그림자가 화면 밖에서 잘리면 `world({ shadowArea })`를 키운다.
 
 ## 소리와 템포
 

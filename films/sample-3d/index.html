@@ -1,0 +1,138 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Sample · 3D product</title>
+<!--
+  3D 샘플: 폰 목업(화면 = 2D로 그린 결제 UI) + 입체 글자 + 떠 있는 도형.
+  3D 쓰는 법의 기준 예시다. lib/stage3d.js 맨 위 주석과 CLAUDE.md의 3D 규칙을 함께 본다.
+  데이터(문구·색·장면 시각)는 film.json, 움직임은 여기.
+-->
+<script src="../../lib/motion.js"></script>
+<script src="../../lib/stage.js"></script>
+<script type="importmap">
+{ "imports": { "three": "../../lib/three/three.module.js", "three/addons/": "../../lib/three/addons/" } }
+</script>
+<script type="module">
+import { THREE, world, phone, screen, text3d, fonts3d, material, set, deg } from '../../lib/stage3d.js';
+const { loopTrack, sp, clamp, lerp, range, swapAlpha, swapBlur, ease } = M;
+
+await fonts3d();
+
+Stage.film((film) => {
+  const { P, T, dur: DUR, bpm } = film;
+  const CAM = sp('camera'), UI = sp('ui'), SNAP = sp('snappy');
+  const BEAT = 60 / bpm;
+
+  /* ── 장면 ───────────────────────────────────────────── */
+  const W = world({ light: 'studio', ground: -1.75 });
+  const ui = screen();
+  const ph = phone({ screen: ui, color: 'graphite' });
+  const word = text3d(P.word, { size: 0.55, mat: material('plastic', P.accent) });
+  const shapes = [
+    new THREE.Mesh(new THREE.CapsuleGeometry(0.22, 0.5, 12, 32), material('plastic', P.accent)),
+    new THREE.Mesh(new THREE.SphereGeometry(0.32, 48, 32), material('pearl', '#F2F0EC')),
+    new THREE.Mesh(new THREE.TorusGeometry(0.26, 0.11, 32, 64), material('clay', '#F7F5F1')),
+  ];
+  for (const s of shapes) s.castShadow = true;
+  W.add(ph, word, ...shapes);
+
+  /* ── 포맷별 배치: 크롭하지 않고 다시 놓는다 ───────────────── */
+  const LAYOUT = {
+    square: {
+      phone: [-0.85, 0, 0], word: [1.15, 0.75, 0], frame: { width: 4.3, height: 3.9, at: [0.15, -0.05, 0] },
+      A: [[1.45, -0.35, 0.3], [0.55, -1.05, 0.9], [1.75, -1.2, 0.2]],
+      B: [[0.45, -0.85, 0.8], [1.6, -0.6, 0.3], [1.15, -1.25, 0.6]],
+    },
+    landscape: {
+      phone: [-1.3, 0, 0], word: [1.3, 0.7, 0], frame: { width: 6.2, height: 3.9, at: [0, -0.05, 0] },
+      A: [[1.7, -0.4, 0.3], [0.6, -1.05, 0.9], [2.4, -1.15, 0.1]],
+      B: [[0.55, -0.85, 0.8], [2.1, -0.6, 0.3], [1.4, -1.25, 0.6]],
+    },
+    portrait: {
+      phone: [0, -0.75, 0], word: [0, 1.75, 0], frame: { width: 3.3, height: 5.8, at: [0, 0.2, 0] },
+      A: [[1.05, -1.7, 0.7], [-1.05, -1.25, 0.5], [1.05, 0.9, -0.3]],
+      B: [[-0.95, -1.75, 0.6], [1.1, -1.1, 0.6], [-1.0, 0.95, -0.3]],
+    },
+  };
+
+  /* ── 폰 화면: 버튼 → 로딩 → 체크 → 버튼 (2D) ─────────────── */
+  function drawScreen(g, w, h, t) {
+    g.fillStyle = '#F6F4F0'; g.fillRect(0, 0, w, h);
+    g.fillStyle = '#111'; g.font = '600 30px Geist'; g.fillText('9:41', 64, 72);
+    g.font = '600 60px Pretendard'; g.fillText('결제', 56, 230);
+    g.fillStyle = '#8B8A86'; g.font = '400 32px Pretendard'; g.fillText('주문 #2048 · 상품 3개', 56, 290);
+    const items = [['노트', '₩18,000'], ['펜 세트', '₩24,000'], ['스티커', '₩6,000']];
+    items.forEach(([name, price], i) => {
+      const y = 360 + i * 156;
+      g.fillStyle = '#fff'; g.beginPath(); g.roundRect(48, y, w - 96, 128, 26); g.fill();
+      g.fillStyle = '#E4E1DB'; g.beginPath(); g.roundRect(76, y + 28, 72, 72, 16); g.fill();
+      g.fillStyle = '#1a1a1a'; g.font = '500 34px Pretendard'; g.fillText(name, 176, y + 76);
+      g.textAlign = 'right'; g.fillText(price, w - 80, y + 76); g.textAlign = 'left';
+    });
+    g.fillStyle = '#8B8A86'; g.font = '400 32px Pretendard'; g.fillText('합계', 56, 900);
+    g.fillStyle = '#111'; g.font = '600 44px Pretendard'; g.textAlign = 'right'; g.fillText(P.total, w - 56, 904); g.textAlign = 'left';
+
+    // 버튼 컨테이너: 넓은 버튼 ↔ 원
+    const full = w - 112, dot = 150;
+    const bw = loopTrack(t, [[0, full], [T.tap, dot], [T.back, full]], DUR, ...UI);
+    const by = h - 300, cx = w / 2, cy = by + 75;
+    g.fillStyle = P.accent; g.beginPath(); g.roundRect(cx - bw / 2, by, bw, 150, Math.min(75, bw / 2)); g.fill();
+
+    // 내용: 모핑 시작 직후 들어오고 다음 모핑 직전에 나간다
+    const labelA = Math.max(swapAlpha(t, T.back - DUR, T.tap), swapAlpha(t, T.back, T.tap + DUR));
+    const loadA = swapAlpha(t, T.tap, T.done), checkA = swapAlpha(t, T.done, T.back);
+    Stage.text(g, P.button, cx, cy + 2, { font: '600 46px Pretendard', color: '#fff', alpha: labelA, blur: swapBlur(labelA, 8) });
+    if (loadA > 0.001) {
+      g.save(); g.globalAlpha = loadA; g.strokeStyle = '#fff'; g.lineWidth = 9; g.lineCap = 'round';
+      const a0 = (t - T.tap) * Math.PI * 2.4;
+      g.beginPath(); g.arc(cx, cy, 34, a0, a0 + Math.PI * 1.3); g.stroke(); g.restore();
+    }
+    if (checkA > 0.001) {
+      const p = ease.outCubic(range(T.done + 0.06, T.done + 0.36, t));
+      const pts = [[cx - 30, cy + 2], [cx - 8, cy + 24], [cx + 34, cy - 22]];
+      const l1 = Math.hypot(22, 22), l2 = Math.hypot(42, 46), d = p * (l1 + l2);
+      g.save(); g.globalAlpha = checkA; g.strokeStyle = '#fff'; g.lineWidth = 12; g.lineCap = g.lineJoin = 'round';
+      g.beginPath(); g.moveTo(...pts[0]);
+      if (d <= l1) g.lineTo(lerp(pts[0][0], pts[1][0], d / l1), lerp(pts[0][1], pts[1][1], d / l1));
+      else { g.lineTo(...pts[1]); g.lineTo(lerp(pts[1][0], pts[2][0], (d - l1) / l2), lerp(pts[1][1], pts[2][1], (d - l1) / l2)); }
+      g.stroke(); g.restore();
+    }
+  }
+
+  // 비트마다 번갈아 오르내리는 값 (마지막 키 = 첫 키라 루프가 이어진다)
+  const bob = (phase) => Array.from({ length: Math.round(DUR / BEAT) + 1 }, (_, i) => [i * BEAT, ((i + phase) % 2 ? 1 : -1) * 0.06]);
+  const BOBS = [bob(0), bob(1), bob(0)];
+
+  return {
+    draw(g, t, S) {
+      if (!S.transparent) { g.fillStyle = P.bg; g.fillRect(0, 0, S.W, S.H); }
+      const L = LAYOUT[S.portrait ? 'portrait' : S.landscape ? 'landscape' : 'square'];
+
+      ui.draw((sg, w, h) => drawScreen(sg, w, h, t));
+
+      const lift = loopTrack(t, [[0, 0], [T.lift, 0.32], [T.back, 0]], DUR, ...CAM);
+      const press = loopTrack(t, [[0, 0], [T.tap - 0.04, 0.07], [T.tap + 0.12, 0]], DUR, ...SNAP);
+      set(ph, {
+        pos: [L.phone[0], L.phone[1] + lift, L.phone[2] - press],
+        rot: [deg(-4) - press, loopTrack(t, [[0, 0.42], [T.turn, -0.36], [T.back, 0.42]], DUR, ...CAM), 0],
+      });
+
+      const fwd = loopTrack(t, [[0, 0], [T.done, 1], [T.back, 0]], DUR, ...UI);
+      set(word, {
+        pos: [L.word[0], L.word[1] + fwd * 0.08, L.word[2] + fwd * 0.45],
+        rot: [0, loopTrack(t, [[0, -0.3], [T.done, 0.1], [T.back, -0.3]], DUR, ...UI), 0],
+      });
+
+      const swap = loopTrack(t, [[0, 0], [T.lift, 1], [T.back + 0.5, 0]], DUR, ...CAM);
+      shapes.forEach((s, i) => {
+        const a = L.A[i], b = L.B[i], y = loopTrack(t, BOBS[i], DUR, ...UI);
+        set(s, { pos: [lerp(a[0], b[0], swap), lerp(a[1], b[1], swap) + y, lerp(a[2], b[2], swap)],
+          rot: [deg(30) + swap * Math.PI, deg(-20) + i, swap * Math.PI * 0.5] });
+      });
+
+      const near = loopTrack(t, [[0, 0], [T.turn, 1], [T.back, 0]], DUR, ...CAM);
+      W.fit(S, { ...L.frame, margin: lerp(1.12, 1.0, near), dir: [near * 0.18, 0.14, 1] });
+      W.render(g, S);
+    },
+  };
+});
+</script>

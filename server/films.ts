@@ -16,6 +16,7 @@ const MAX_UPLOAD_BYTES = 500 * 1024 * 1024;
 const UPLOAD_KINDS: Record<string, ChatAttachment["kind"]> = {
   ".png": "image", ".jpg": "image", ".jpeg": "image", ".webp": "image", ".gif": "image", ".svg": "image",
   ".mp4": "video", ".mov": "video", ".webm": "video", ".m4v": "video",
+  ".glb": "model",
 };
 
 /** Folder names the agent and the tools rely on — a film slug must be a plain lowercase name. */

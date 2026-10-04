@@ -1,0 +1,71 @@
+{
+  "title": "Sample · 3D product",
+  "dur": 8,
+  "bpm": 120,
+  "beatOffset": 0,
+  "fps": 60,
+  "formats": {
+    "1x1": [
+      1080,
+      1080
+    ],
+    "9x16": [
+      1080,
+      1920
+    ],
+    "16x9": [
+      1920,
+      1080
+    ]
+  },
+  "transparent": false,
+  "params": {
+    "bg": {
+      "type": "color",
+      "value": "#E9E6E0",
+      "label": "배경"
+    },
+    "accent": {
+      "type": "color",
+      "value": "#2F6BFF",
+      "label": "포인트 컬러"
+    },
+    "word": {
+      "type": "text",
+      "value": "Ship",
+      "label": "입체 글자"
+    },
+    "button": {
+      "type": "text",
+      "value": "결제하기",
+      "label": "버튼 문구"
+    },
+    "total": {
+      "type": "text",
+      "value": "₩48,000",
+      "label": "결제 금액"
+    }
+  },
+  "timeline": {
+    "tap": {
+      "t": 1,
+      "label": "버튼 누름 → 로딩"
+    },
+    "done": {
+      "t": 2,
+      "label": "체크 + 글자 앞으로"
+    },
+    "turn": {
+      "t": 3,
+      "label": "폰 회전, 카메라 다가감"
+    },
+    "lift": {
+      "t": 4.5,
+      "label": "폰이 떠오름, 도형 자리 바꿈"
+    },
+    "back": {
+      "t": 6,
+      "label": "처음 자리로 (루프)"
+    }
+  }
+}

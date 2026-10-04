@@ -63,8 +63,12 @@ export function resolveWorkspace(repoRoot: string): Workspace {
  */
 const AGENT_ASSETS = ["CLAUDE.md", ".claude/skills", "prompts", "lib", "tools", "assets", "films/_template"] as const;
 
-/** Copied once, when the workspace is first created — a working film to look at and to learn from. */
-const FIRST_RUN_FILMS = ["sample-morph"] as const;
+/**
+ * Working films to look at and to learn from. Each is copied once — on the
+ * first launch that ships it — and is the designer's from then on: deleting
+ * one does not bring it back. `.seeded-films` remembers what was copied.
+ */
+const SAMPLE_FILMS = ["sample-morph", "sample-3d"] as const;
 
 /** Minimal package.json so the `npm run …` names in CLAUDE.md mean the same thing in the workspace. */
 function workspaceManifest(): string {
@@ -101,12 +105,17 @@ export function seedWorkspace(sourceRoot: string, ws: Workspace): void {
     fs.cpSync(from, to, { recursive: true });
   }
 
-  if (firstRun) {
-    for (const film of FIRST_RUN_FILMS) {
-      const from = path.join(sourceRoot, "films", film);
-      if (fs.existsSync(from)) fs.cpSync(from, path.join(ws.filmsDir, film), { recursive: true });
-    }
+  const seededFile = path.join(ws.root, ".seeded-films");
+  // Workspaces made before this list existed got sample-morph on their first run.
+  const seeded = new Set(fs.existsSync(seededFile) ? fs.readFileSync(seededFile, "utf8").split("\n").filter(Boolean) : firstRun ? [] : ["sample-morph"]);
+  for (const film of SAMPLE_FILMS) {
+    if (seeded.has(film)) continue;
+    const from = path.join(sourceRoot, "films", film);
+    const to = path.join(ws.filmsDir, film);
+    if (fs.existsSync(from) && !fs.existsSync(to)) fs.cpSync(from, to, { recursive: true });
+    seeded.add(film);
   }
+  fs.writeFileSync(seededFile, [...seeded].join("\n") + "\n");
 
   fs.writeFileSync(path.join(ws.root, "package.json"), workspaceManifest());
 }
