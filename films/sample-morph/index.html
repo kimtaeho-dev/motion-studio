@@ -63,12 +63,6 @@ Stage.film((film) => {
   const CLICKS = [T.click1, T.toggle, T.tab1, T.tab2];
   const press = (t) => CLICKS.reduce((m, c) => Math.max(m, range(c - 0.06, c, t) * (1 - range(c + 0.04, c + 0.16, t))), 0);
 
-  /* ── 효과음 큐: 단발은 film.json cues, 반복 패턴만 코드로 ─── */
-  const cues = [
-    ...[0, 1, 2, 3, 4, 5, 6].map((i) => ({ t: T.chart + 0.1 + i * 0.125, type: 'tick', pitch: 0.8 + i * 0.07, gain: 0.7 })),
-    ...T.keys.map((k, i) => ({ t: k, type: 'type', pitch: 1 + (i % 2) * 0.08 })),
-  ];
-
   /* ── 내용 레이어들 (각 상태의 안쪽) ─────────────────── */
   // 상태 i 의 들어오는/나가는 시각
   const win = (i) => [STATES[i][0], STATES[i + 1] ? STATES[i + 1][0] : null];
@@ -187,7 +181,6 @@ Stage.film((film) => {
 
   /* ── 프레임 ───────────────────────────────────────── */
   return {
-    cues,
     draw(g, t, S) {
       g.fillStyle = C.bg; g.fillRect(0, 0, S.W, S.H);
 

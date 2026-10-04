@@ -1,6 +1,6 @@
 {
   "name": "motion-studio",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "코드로 만드는 모션 스튜디오 — seek(t) 렌더러, 스프링, 비트 그리드, 합성 사운드, 크리틱 루프",
   "scripts": {
     "dev": "npm run build:electron && vite",

@@ -25,7 +25,7 @@ npm run dist:mac
 5. 샘플 필름(Sample · One shape morph)이 재생되는지.
 6. `+` → 새 필름(1x1, 6초, 빠르게) → 채팅으로 요청 → 숏리스트에서 멈추는지 → 승인 →
    렌더 줄에 진행률이 뜨는지 → 진행 단계가 전달까지 가는지.
-7. 내보내기 → MP4·GIF → 다운로드/Motion Studio에 파일이 생기고 MP4에 소리가 있는지 → Finder에서 보기.
+7. 내보내기 → MP4·GIF → 다운로드/Motion Studio에 파일이 생기는지 → Finder에서 보기.
 8. 속성 탭에서 색을 바꾸고 ⌘Z로 되돌려 본다.
 
 인텔 맥이 있으면 같은 순서를 Intel dmg로 한 번 더.
