@@ -230,6 +230,7 @@ lib/
   stage.js                film.json 로딩·검사, 캔버스·포맷·폰트·미리보기 UI·렌더 계약 (window.seek / FILM / READY / Stage.reload)
   stage3d.js              3D 레이어: 조명 프리셋, 폰·노트북 목업, 입체 글자, 재질, GLB, 접지 그림자 (three.js r186 → lib/three/)
   stage3d-physics.js      물리 미리 굽기: 중력·마찰·충돌·착지 비트 맞추기 (Rapier 결정적 빌드 → lib/rapier/)
+  stage3d-physics-core.js 굽기 계산 (숫자만 주고받음) · stage3d-physics-worker.js 그걸 백그라운드에서
   stage3d-inspect.js      --check3d: 파고듦·바닥 아래·가림·잘림 + 정면·옆·위 그림, 높이·속도 그래프
 tools/
   render.mjs              렌더 명령 — 앱 안에서는 앱의 렌더 큐로, 혼자면 렌더 워커를 직접 띄운다
