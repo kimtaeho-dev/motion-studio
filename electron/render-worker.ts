@@ -348,7 +348,9 @@ interface CheckIssue {
 async function check3d(win: BrowserWindow, film: StageFilm, outDir: string, emit: (e: WorkerEvent) => void): Promise<void> {
   const started = Date.now();
   const result = (await win.webContents.executeJavaScript(`(async () => {
-    const m = await import(new URL('../../lib/stage3d-inspect.js', location.href).href);
+    // 필름이 실제로 쓰는 엔진 폴더의 검사 코드를 쓴다 (전달해서 엔진이 고정된 필름은 lib-versions/<지문>/lib/)
+    const used = performance.getEntriesByType('resource').map((e) => e.name).find((n) => n.split('?')[0].endsWith('/stage3d.js'));
+    const m = await import(new URL('stage3d-inspect.js', used || new URL('../../lib/', location.href).href).href);
     return await m.check(${JSON.stringify({ dur: film.dur, bpm: film.bpm, beatOffset: film.beatOffset })});
   })()`)) as { objects: string[]; issues: CheckIssue[]; impacts: { t: number; name: string; speed: number }[]; notes: string[]; offscreen: { a: string; from: number; to: number }[]; warns: string[]; natural: number;
     composition: { beats: { beat: number; t: number; margins?: number[]; fill3d?: number; flags: string[] }[]; fixes: { from: number; to: number; what: string; fix: string }[]; overlaps: { str: string; from: number; to: number; max: number }[] };
@@ -381,7 +383,7 @@ async function check3d(win: BrowserWindow, film: StageFilm, outDir: string, emit
   const cp = result.composition;
   if (cp && cp.beats.length) {
     const bad = cp.fixes.length + cp.overlaps.length;
-    lines.push(bad ? `구도: 손볼 곳 ${bad}개 — 숫자대로 고치고 다시 검사 (컨택트 시트는 마지막에 한 번)` : `구도: 좋음 — 비트 ${cp.beats.length}개 모두 여백 3–30% 안`);
+    lines.push(bad ? `구도: 손볼 곳 ${bad}개 — 숫자대로 고치고 다시 검사 (컨택트 시트는 마지막에 한 번)` : `구도: 좋음 — 비트 ${cp.beats.length}개 모두 여백 5–30% 안`);
     lines.push(`  여백 위/아래/왼/오 %: ${cp.beats.map((b) => (b.margins ? `b${b.beat} ${b.margins.join("/")}` : `b${b.beat} 없음`)).join(" · ")}`);
     for (const f of cp.fixes) lines.push(`  ${f.from.toFixed(2)}–${f.to.toFixed(2)}s ${f.what}\n    → ${f.fix}`);
     for (const o of cp.overlaps) lines.push(`  글자 '${o.str.slice(0, 16)}'이(가) 3D 물체와 최대 ${Math.round(o.max * 100)}% 겹침 ${o.from.toFixed(2)}–${o.to.toFixed(2)}s → 글자 자리나 물체 배치를 옮긴다 (의도면 그대로)`);
