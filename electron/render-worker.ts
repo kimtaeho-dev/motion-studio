@@ -332,7 +332,7 @@ async function renderStills(
 }
 
 interface CheckIssue {
-  kind: "penetrate" | "below" | "occluded" | "cropped" | "floaty";
+  kind: "penetrate" | "below" | "occluded" | "cropped" | "floaty" | "jam";
   a: string;
   b?: string;
   from: number;
@@ -340,6 +340,8 @@ interface CheckIssue {
   max: number;
   at: number;
   fix?: string;
+  pairs?: string[];
+  count?: number;
 }
 
 /** Runs lib/stage3d-inspect.js inside the film page and writes out/<film>/<format>/check3d/. */
@@ -348,7 +350,7 @@ async function check3d(win: BrowserWindow, film: StageFilm, outDir: string, emit
   const result = (await win.webContents.executeJavaScript(`(async () => {
     const m = await import(new URL('../../lib/stage3d-inspect.js', location.href).href);
     return await m.check(${JSON.stringify({ dur: film.dur, bpm: film.bpm, beatOffset: film.beatOffset })});
-  })()`)) as { objects: string[]; issues: CheckIssue[]; impacts: { t: number; name: string; speed: number }[]; notes: string[]; offscreen: { a: string; from: number; to: number }[]; warns: string[]; allowed: { kind: string; a: string }[]; pass: boolean; images: Record<string, string> };
+  })()`)) as { objects: string[]; issues: CheckIssue[]; impacts: { t: number; name: string; speed: number }[]; notes: string[]; offscreen: { a: string; from: number; to: number }[]; warns: string[]; natural: number; allowed: { kind: string; a: string }[]; pass: boolean; images: Record<string, string> };
   const dir = path.join(outDir, "check3d");
   fs.mkdirSync(dir, { recursive: true });
   for (const [name, url] of Object.entries(result.images)) fs.writeFileSync(path.join(dir, `${name}.png`), Buffer.from(url.split(",")[1], "base64"));
@@ -363,6 +365,7 @@ async function check3d(win: BrowserWindow, film: StageFilm, outDir: string, emit
     occluded: (x) => `가림  ${span(x)}  ${x.a}이(가) ${x.b}에 최대 ${pct(x.max)} 가려짐 (${x.at.toFixed(2)}s)`,
     cropped: (x) => `잘림  ${span(x)}  ${x.a} 최대 ${pct(x.max)} 화면 밖 (${x.at.toFixed(2)}s)`,
     floaty: (x) => `무게감  ${span(x)}  ${x.a}이(가) 바닥에 닿기 전 ${pct(x.max)} 느려짐`,
+    jam: (x) => `끼임  ${span(x)}  물리 물체끼리 계속 파고든 채 있음 (${x.count}개) — 심한 쌍: ${(x.pairs ?? []).join(" · ")}`,
   };
   // 첫 줄이 판정: 통과면 그림을 열 필요가 없다
   const lines = [result.pass ? "판정: 통과 — 그림을 열지 않아도 된다" : `판정: 고칠 것 ${result.issues.length}개 — 아래 → 줄의 제안대로 고치고 한 번 더 검사`];
@@ -372,6 +375,7 @@ async function check3d(win: BrowserWindow, film: StageFilm, outDir: string, emit
     if (x.fix) lines.push(`    → ${x.fix}`);
   }
   for (const w of result.warns) lines.push(`비트  ${w}`);
+  if (result.natural) lines.push(`그릇에 담기거나 물리로 쌓여 가려진 것 ${result.natural}건 — 정상으로 봤다`);
   if (result.allowed.length) lines.push(`의도로 표시됨(W.allow) ${result.allowed.length}건 — 실패에서 뺐다`);
   for (const note of result.notes) lines.push(`물리 설정  ${note}`);
   if (result.offscreen.length) {
