@@ -13,9 +13,13 @@
  *   waiting: approval(승인 대기) · answer(답변 대기) · none
  *
  * quality(검수 라운드 수)와 approved(디자이너가 통과시킨 관문)는 앱이 쓴다. 여기서 바꾸지 않는다.
+ *
+ * 엔진 고정: stage=deliver면 필름을 지금 엔진으로 고정하고(나중에 앱이 업데이트돼도 같은 결과),
+ * 다시 deliver 밖의 단계로 가면 최신 엔진으로 푼다 (tools/engine.mjs). 고친 뒤엔 검사를 다시 돈다.
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { pin, unpin } from './engine.mjs';
 
 const STAGES = ['brief', 'shotlist', 'stills', 'draft', 'critique', 'deliver'];
 const WAITING = ['approval', 'answer', 'none'];
@@ -55,5 +59,14 @@ function fail(message) {
   process.exit(1);
 }
 
-if (pairs.length) writeFileSync(file, JSON.stringify(state, null, 2) + '\n');
+if (pairs.length) {
+  if (state.stage === 'deliver') {
+    state.engine = pin(filmArg, process.cwd());
+    console.log(`🔒 엔진 ${state.engine}로 고정 — 앱이 업데이트돼도 이 필름은 같은 결과`);
+  } else if (unpin(filmArg)) {
+    delete state.engine;
+    console.log('🔓 최신 엔진으로 풀었다 — 결과가 달라질 수 있으니 검사를 다시 돈다');
+  }
+  writeFileSync(file, JSON.stringify(state, null, 2) + '\n');
+}
 console.log(`${filmArg}: ${JSON.stringify(state)}`);

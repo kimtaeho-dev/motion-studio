@@ -20,3 +20,6 @@ films/*
 
 # Local dev-server config for the Claude desktop preview pane.
 .claude/launch.json
+
+# Engine snapshots for delivered films (tools/engine.mjs)
+lib-versions/
