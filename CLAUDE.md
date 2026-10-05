@@ -50,6 +50,8 @@ After Effects를 쓰지 않는다. 모든 영상은 HTML 한 장에 들어 있�
 - 느낌은 `feel` 프리셋(snappy 기본 · heavy · floaty · real)으로 고르고, 중력 숫자를 직접 넣지 않는다(단위가 자동 환산된다). 세울 물체(밑이 둥근 글자 등)는 `upright: true`.
 - 기다리는 자리를 손으로 정하면 너무 높아 세게 떨어지거나(튀어 나감), 서로 겹쳐 놓는 순간 튕긴다. `pos: 'above'`를 쓰면 둘 다 코드가 막는다.
 - 그릇에 담거나 쌓을 때는 착지 자리를 `pile(objs, { radius, radiusTop, on, size, height })`로 받는다. 같은 자리에 여러 개를 떨어뜨리면 서로 끼어 끝없이 부딪힌다(보고서 `물리 설정`·`끼임` 줄). pile이 돌려주는 층 수로 담길 높이를 먼저 확인하고, 그릇보다 높으면 개수·크기를 줄인다.
+- 쌓을 물체(상자, 코인 탑)는 `bounce: 0.02, friction: 0.95, upright: true`로 놓는다. 기본값으로 떨어뜨리면 위 물체가 아래 물체를 치고 흩어진다.
+- `pos: 'above'`로 기다리는 물체는 엔진이 놓기 직전까지 숨긴다(그림자가 미리 비치지 않게). 따로 숨길 필요 없다.
 - 그릇이 "가득 차 보이게" 하려면 실제로 채우지 말고 **가짜 바닥**을 쓴다: 그릇 안 높은 곳에 안 보이는 원판(`visible = false`, 그릇과 같은 키프레임 물체에 붙인다)을 두고 그 위에 pile로 쌓는다. 적은 개수로 넘칠 듯 보인다.
 - 물리로 쌓인 장면은 처음으로 저절로 돌아가지 않는다. 루프가 필요하면 화면 밖으로 치우는 연출을 넣거나, 마지막 구간만 스프링으로 되돌린다. 아니면 루프가 아닌 필름으로 만든다.
 
@@ -75,7 +77,7 @@ After Effects를 쓰지 않는다. 모든 영상은 HTML 한 장에 들어 있�
 1. **브리프** (`stage=brief`): `films/<이름>/brief.md` (템플릿: `prompts/spec-template.md`). 빈칸이 있으면 디자이너에게 먼저 묻고, `waiting=answer`로 기록한 뒤 **턴을 끝낸다.**
 2. **레퍼런스가 있으면**: `films/<이름>/refs/`에서 `style_guide.md`를 먼저 쓴다(`prompts/reference.md`). 레퍼런스의 문법만 가져오고 내용·로고·캐릭터는 가져오지 않는다.
 3. **숏리스트** (`stage=shotlist`): `films/<이름>/shotlist.md`에 비트 그리드 위의 상태 목록을 마크다운 표로 적는다(비트 | 시각 | 상태 / 동작 | 커서). 다 쓰면 `waiting=approval`로 기록하고, 채팅에 표를 보여주고 승인을 부탁한 뒤 **턴을 끝낸다.** **디자이너 승인 전에는 코드를 쓰지 않는다.** 승인은 앱의 승인 버튼(`state.json`의 `approved`에 `shotlist`가 들어간다) 또는 채팅의 분명한 OK다. 수정 요청이 오면 숏리스트를 고치고 다시 `waiting=approval`.
-4. **스틸** (`stage=stills`): `node tools/render.mjs films/<이름> --stills beats`로 비트마다 1장 → `contact-beats.png`를 **직접 열어서 본다.** 그리드에서 벗어남, 답답함, 읽기 어려움을 고친다. 3D 필름은 주 포맷 하나로 `--check3d`도 돌린다(판정이 통과면 끝, 아래 3D 검사 규칙).
+4. **스틸** (`stage=stills`): `node tools/render.mjs films/<이름> --stills beats`로 비트마다 1장 → `contact-beats.png`를 **직접 열어서 본다.** 그리드에서 벗어남, 답답함, 읽기 어려움을 고친다. 고칠 점은 한 번에 모아서 고치고, 확인은 바뀐 비트만 `--stills 2.5,3` 처럼 몇 장으로 본다(컨택트 시트 전체를 고칠 때마다 다시 열지 않는다 — 이미지 한 장 한 장이 이후 모든 단계의 비용이 된다). 3D 필름은 주 포맷 하나로 `--check3d`도 돌린다(판정이 통과면 끝, 아래 3D 검사 규칙).
 5. **초안** (`stage=draft`): `--draft`로 빠르게 렌더해서 타이밍을 확인한다.
 6. **크리틱 루프** (라운드마다 `stage=critique round=<N>`): 풀 렌더 → `node tools/critique.mjs` (3D면 마지막 라운드에 모든 포맷 `--check3d`) → `prompts/critique-pass.md` 기준으로 점수를 매긴다. 라운드 수는 `films/<이름>/state.json`의 `quality`를 따른다: `fast` 1라운드 · `standard`(없을 때 기본) 3라운드 · `launch` 모든 항목이 8점 이상이 될 때까지(최소 3라운드, 6라운드를 넘기면 멈추고 `waiting=answer`로 디자이너에게 묻는다). 매 라운드 `films/<이름>/review_log.md`에 `## 라운드 N` 제목 아래 점수와 고친 점을 남긴다.
 7. **전달** (`stage=deliver waiting=none`): `out/<이름>/<포맷>/final.mp4`, `contact-beats.png`, 포스터 프레임(`--stills <시각>` 결과를 `poster.png`로 복사)을 전달하고, 다음에 개선할 점을 한 줄 덧붙인다.
