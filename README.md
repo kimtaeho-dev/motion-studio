@@ -102,6 +102,7 @@ Node.js, Homebrew, ffmpeg 같은 것을 따로 설치할 필요가 없습니다.
 
 실제 서비스 화면이 필요하면 스크린샷을 끌어다 놓으세요. 에이전트는 화면을 상상해서 그리지 않습니다.
 3D도 됩니다: 폰·노트북 목업(화면 속 UI까지 움직임), 입체 글자, 재질이 있는 도형, 직접 준 제품 모델(.glb).
+떨어지고 튀고 부딪히는 움직임은 물리로 계산하고, 착지를 비트에 맞춥니다. 에이전트가 물체끼리 파고들거나 가려지는 곳을 직접 검사해서 고칩니다.
 영상에는 소리가 들어가지 않습니다. 음악은 편집 툴에서 얹으세요. 얹을 곡이 정해져 있으면 BPM과 첫 박 시각을 알려 주세요. 장면을 그 박자에 맞춥니다.
 
 ### E. 진행 단계와 승인
@@ -227,7 +228,9 @@ CLAUDE.md                 하우스 룰. Claude가 매번 읽는다 (렌더 계�
 lib/
   motion.js               스프링(닫힌 해), track/loopTrack, stretch, swapAlpha, rng …
   stage.js                film.json 로딩·검사, 캔버스·포맷·폰트·미리보기 UI·렌더 계약 (window.seek / FILM / READY / Stage.reload)
-  stage3d.js              3D 레이어: 조명 프리셋, 폰·노트북 목업, 입체 글자, 재질, GLB (three.js r186 → lib/three/)
+  stage3d.js              3D 레이어: 조명 프리셋, 폰·노트북 목업, 입체 글자, 재질, GLB, 접지 그림자 (three.js r186 → lib/three/)
+  stage3d-physics.js      물리 미리 굽기: 중력·마찰·충돌·착지 비트 맞추기 (Rapier 결정적 빌드 → lib/rapier/)
+  stage3d-inspect.js      --check3d: 파고듦·바닥 아래·가림·잘림 + 정면·옆·위 그림, 높이·속도 그래프
 tools/
   render.mjs              렌더 명령 — 앱 안에서는 앱의 렌더 큐로, 혼자면 렌더 워커를 직접 띄운다
   critique.mjs            contact / strip / phone / seam / loop_check
@@ -242,6 +245,7 @@ films/
   _template/              node tools/new.mjs <이름> 이 복사하는 원본 (index.html + film.json)
   sample-morph/           샘플: 하나의 도형이 9개 UI 상태를 지나는 12초 루프
   sample-3d/              샘플: 폰 목업(화면 속 결제 UI) + 입체 글자 + 재질 도형, 8초 루프
+  sample-physics/         샘플: 글자가 비트마다 떨어져 서고 구슬이 튀어 멈추는 6초 물리
 assets/fonts/             Pretendard, Geist, Geist Mono (OFL) — 기기마다 결과가 같도록 레포에 포함
 
 # 설치형 앱 (docs/APP_PLAN.md)
@@ -264,6 +268,8 @@ electron/                 앱 진입점, 처음 실행 준비 화면(설치·로
 - **모션 블러**: 프레임마다 4장의 서브프레임을 렌더해서 ffmpeg `tmix`로 평균낸다.
 - **코드와 데이터 분리**: 움직임은 `index.html`, 바꿀 만한 값(문구·색·장면 시각)은 `film.json`. 장면 시각을 옮기면 거기 붙은 움직임이 함께 따라온다.
 - **3D**: three.js 장면을 따로 그려서 2D 캔버스에 얹는다. 기기 화면은 2D 캔버스 텍스처라서 2D UI 모핑을 그대로 폰·노트북 안에 넣을 수 있다. 2D는 CPU, 3D는 GPU로 그린다(macOS Chromium에는 CPU용 WebGL이 없다). 같은 맥에서는 몇 번을 렌더해도 같은 픽셀이다.
+- **물리는 미리 굽는다**: 물리 엔진은 앞 프레임을 이어받지만 필름은 t만 보고 그려야 한다. 그래서 필름을 열 때 0초부터 끝까지 1/960초 간격으로 한 번 계산해 표로 두고, seek(t)는 표에서 꺼내 쓴다. 같은 입력이면 같은 표라서 여전히 t의 순수 함수다. 단위(폰 높이 3 ≈ 15cm)에 맞춰 중력을 환산하고, 착지 비트를 주면 놓는 시각을 거꾸로 계산한다.
+- **3D 검사**: `--check3d`가 시간을 촘촘히 훑으며 볼록 껍질끼리의 침투 깊이, 바닥 아래, 물체별 색으로 그린 ID 패스로 가림·잘림 비율을 잰다. 에이전트는 이 보고서와 정면·옆·위 그림, 높이·속도 그래프를 보고 고친다.
 - **소리 없음**: 영상에는 소리를 넣지 않는다. 음악·효과음은 편집 단계의 몫이고, BPM은 리듬을 짜는 그리드로만 쓴다.
 
 스프링 프리셋 (`M.sp('이름')`):
@@ -289,6 +295,7 @@ node tools/render.mjs films/<이름>                    # 최종 → final.mp4
 node tools/render.mjs films/<이름> --from 4 --to 6    # 구간만
 node tools/render.mjs films/<이름> --all-formats
 node tools/render.mjs films/<이름> --codec prores    # ProRes 4444 (투명 유지) · webm · gif
+node tools/render.mjs films/<이름> --check3d          # 3D 검사 → out/<이름>/<포맷>/check3d/
 node tools/critique.mjs films/<이름> [포맷] [시각]
 node tools/determinism.mjs films/<이름>
 ```

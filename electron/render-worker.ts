@@ -22,7 +22,8 @@ import { inside, sendFile } from "../server/http";
 export type WorkerEvent =
   | { type: "start"; title: string; format: string; W: number; H: number; dur: number; bpm: number; mode: "video" | "stills"; total: number }
   | { type: "progress"; format: string; done: number; total: number }
-  | { type: "file"; format: string; kind: "video" | "stills" | "contact"; path: string; count?: number; seconds: number }
+  | { type: "file"; format: string; kind: "video" | "stills" | "contact" | "check"; path: string; count?: number; seconds: number }
+  | { type: "report"; format: string; lines: string[] }
   | { type: "warn"; message: string }
   | { type: "error"; message: string }
   | { type: "done" };
@@ -43,6 +44,8 @@ interface Job {
   codec: Codec;
   /** Stills only, no contact sheet — for checks that must not touch the sheets the agent reads. */
   noContact: boolean;
+  /** 3D scene check (lib/stage3d-inspect.js): overlaps, occlusion, cropping, motion graphs. */
+  check3d: boolean;
 }
 
 interface StageFilm {
@@ -96,6 +99,7 @@ function parseJob(argv: string[]): Job {
     to: num("to"),
     codec: (codec as Codec | undefined) ?? "h264",
     noContact: opt("no-contact") !== undefined,
+    check3d: opt("check3d") !== undefined,
   };
 }
 
@@ -327,6 +331,50 @@ async function renderStills(
   emit({ type: "file", format: film.format, kind: "contact", path: out, count: times.length, seconds: (Date.now() - started) / 1000 });
 }
 
+interface CheckIssue {
+  kind: "penetrate" | "below" | "occluded" | "cropped";
+  a: string;
+  b?: string;
+  from: number;
+  to: number;
+  max: number;
+  at: number;
+}
+
+/** Runs lib/stage3d-inspect.js inside the film page and writes out/<film>/<format>/check3d/. */
+async function check3d(win: BrowserWindow, film: StageFilm, outDir: string, emit: (e: WorkerEvent) => void): Promise<void> {
+  const started = Date.now();
+  const result = (await win.webContents.executeJavaScript(`(async () => {
+    const m = await import(new URL('../../lib/stage3d-inspect.js', location.href).href);
+    return await m.check(${JSON.stringify({ dur: film.dur, bpm: film.bpm, beatOffset: film.beatOffset })});
+  })()`)) as { objects: string[]; issues: CheckIssue[]; impacts: { t: number; name: string; speed: number }[]; notes: string[]; offscreen: { a: string; from: number; to: number }[]; images: Record<string, string> };
+  const dir = path.join(outDir, "check3d");
+  fs.mkdirSync(dir, { recursive: true });
+  for (const [name, url] of Object.entries(result.images)) fs.writeFileSync(path.join(dir, `${name}.png`), Buffer.from(url.split(",")[1], "base64"));
+  const { images, ...report } = result;
+  fs.writeFileSync(path.join(dir, "report.json"), JSON.stringify(report, null, 1));
+
+  const span = (x: CheckIssue) => (x.to - x.from < 0.01 ? `${x.from.toFixed(2)}s` : `${x.from.toFixed(2)}–${x.to.toFixed(2)}s`);
+  const pct = (v: number) => `${Math.round(v * 100)}%`;
+  const text: Record<CheckIssue["kind"], (x: CheckIssue) => string> = {
+    penetrate: (x) => `파고듦  ${span(x)}  ${x.a} ↔ ${x.b}  최대 ${x.max.toFixed(3)} (${x.at.toFixed(2)}s)`,
+    below: (x) => `바닥 아래  ${span(x)}  ${x.a}  최대 ${x.max.toFixed(3)}`,
+    occluded: (x) => `가림  ${span(x)}  ${x.a}이(가) ${x.b}에 최대 ${pct(x.max)} 가려짐 (${x.at.toFixed(2)}s)`,
+    cropped: (x) => `잘림  ${span(x)}  ${x.a} 최대 ${pct(x.max)} 화면 밖 (${x.at.toFixed(2)}s)`,
+  };
+  const lines = [`물체: ${result.objects.join(", ")}`];
+  if (!result.issues.length) lines.push("문제 없음: 파고듦·바닥 아래·가림·잘림 없음");
+  for (const x of result.issues) lines.push(text[x.kind](x));
+  for (const note of result.notes) lines.push(`물리 설정  ${note}`);
+  if (result.offscreen.length) {
+    const t = (x: number) => x.toFixed(2);
+    lines.push(`화면 밖 (등장 전·퇴장 후라면 정상): ${result.offscreen.map((o) => `${o.a} ${t(o.from)}–${t(o.to)}s`).join(" · ")}`);
+  }
+  if (result.impacts.length) lines.push(`충돌: ${result.impacts.map((i) => `${i.t.toFixed(2)}s ${i.name}`).join(" · ")}`);
+  emit({ type: "report", format: film.format, lines });
+  emit({ type: "file", format: film.format, kind: "check", path: dir, seconds: (Date.now() - started) / 1000 });
+}
+
 async function render(job: Job, emit: (e: WorkerEvent) => void): Promise<void> {
   const root = process.cwd();
   const html = fs.existsSync(path.join(job.film, "index.html")) ? path.join(job.film, "index.html") : job.film;
@@ -353,9 +401,10 @@ async function render(job: Job, emit: (e: WorkerEvent) => void): Promise<void> {
         const outDir = path.join(root, "out", name, film.format);
         fs.mkdirSync(outDir, { recursive: true });
         fs.writeFileSync(path.join(outDir, "film.json"), JSON.stringify(film, null, 1));
-        const total = job.stills ? 0 : Math.round(((job.to ?? film.dur) - (job.from ?? 0)) * (job.fps ?? (job.draft ? 30 : film.fps || 60)) * (job.sub ?? (job.draft ? 1 : 4)));
-        emit({ type: "start", title: film.title, format: film.format, W: film.W, H: film.H, dur: film.dur, bpm: film.bpm, mode: job.stills ? "stills" : "video", total });
-        if (job.stills) await renderStills(win, film, job.stills, outDir, emit, !job.noContact);
+        const total = job.stills || job.check3d ? 0 : Math.round(((job.to ?? film.dur) - (job.from ?? 0)) * (job.fps ?? (job.draft ? 30 : film.fps || 60)) * (job.sub ?? (job.draft ? 1 : 4)));
+        emit({ type: "start", title: film.title, format: film.format, W: film.W, H: film.H, dur: film.dur, bpm: film.bpm, mode: job.stills || job.check3d ? "stills" : "video", total });
+        if (job.check3d) await check3d(win, film, outDir, emit);
+        else if (job.stills) await renderStills(win, film, job.stills, outDir, emit, !job.noContact);
         else await renderVideo(win, film, job, outDir, emit);
       } finally {
         win.destroy();

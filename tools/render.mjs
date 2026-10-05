@@ -12,6 +12,7 @@
  *   node tools/render.mjs films/<이름> --codec prores     # 편집용 ProRes 4444 (투명 배경 유지) → master.mov
  *   node tools/render.mjs films/<이름> --codec webm       # 투명 배경 WebM (VP9) → alpha.webm
  *   node tools/render.mjs films/<이름> --codec gif        # 미리보기 GIF (30fps 이하, 720px 이하) → preview.gif
+ *   node tools/render.mjs films/<이름> --check3d          # 3D 검사: 파고듦·바닥 아래·가림·잘림 + views.png·motion.png → check3d/
  *
  * 결과: out/<이름>/<포맷>/ 에 영상, film.json, stills/, contact-*.png
  *
@@ -66,11 +67,15 @@ function print(event) {
     case 'file': {
       if (tty) process.stdout.write('\n');
       const where = relative(process.cwd(), event.path);
-      if (event.kind === 'contact') console.log(`🖼  스틸 ${event.count}장 → ${where}`);
+      if (event.kind === 'check') console.log(`🔍 ${where}/  views.png · motion.png · report.json`);
+      else if (event.kind === 'contact') console.log(`🖼  스틸 ${event.count}장 → ${where}`);
       else if (event.kind === 'stills') console.log(`🖼  스틸 ${event.count}장 → ${where}/`);
       else console.log(`🎞  ${where}  (${Math.round(event.seconds)}초)`);
       break;
     }
+    case 'report':
+      for (const line of event.lines) console.log(`   ${line}`);
+      break;
     case 'warn':
       console.warn(`⚠️  ${event.message}`);
       break;

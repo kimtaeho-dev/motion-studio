@@ -68,7 +68,7 @@ const AGENT_ASSETS = ["CLAUDE.md", ".claude/skills", "prompts", "lib", "tools", 
  * first launch that ships it — and is the designer's from then on: deleting
  * one does not bring it back. `.seeded-films` remembers what was copied.
  */
-const SAMPLE_FILMS = ["sample-morph", "sample-3d"] as const;
+const SAMPLE_FILMS = ["sample-morph", "sample-3d", "sample-physics"] as const;
 
 /** Minimal package.json so the `npm run …` names in CLAUDE.md mean the same thing in the workspace. */
 function workspaceManifest(): string {

@@ -51,6 +51,7 @@ function describe(args: string[]): Pick<RenderJob, "label" | "mode"> {
     const i = args.indexOf(`--${flag}`);
     return i >= 0 ? args[i + 1] : undefined;
   };
+  if (args.includes("--check3d")) return { mode: "stills", label: "3D 검사" };
   if (args.includes("--stills")) {
     const spec = value("stills");
     return { mode: "stills", label: !spec || spec === "beats" || spec.startsWith("--") ? "비트 스틸" : spec === "bars" ? "마디 스틸" : "스틸" };

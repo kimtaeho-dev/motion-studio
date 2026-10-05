@@ -1,0 +1,88 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Sample · Physics drop</title>
+<!--
+  물리 샘플: 미리 구운 물리(physics)로 글자가 비트마다 떨어져 서고, 구슬이 튀고 굴러 폰에 부딪혀 멈춘다.
+  물리 쓰는 법의 기준 예시다. lib/stage3d-physics.js 맨 위 주석과 CLAUDE.md의 3D·물리 규칙을 함께 본다.
+  검사: node tools/render.mjs films/sample-physics --check3d
+-->
+<script src="../../lib/motion.js"></script>
+<script src="../../lib/stage.js"></script>
+<script type="importmap">
+{ "imports": { "three": "../../lib/three/three.module.js", "three/addons/": "../../lib/three/addons/" } }
+</script>
+<script type="module">
+import { THREE, world, phone, screen, text3d, fonts3d, material, physics, physicsReady, deg } from '../../lib/stage3d.js';
+const { track, sp, clamp, lerp, range, ease } = M;
+
+await Promise.all([fonts3d(), physicsReady()]);
+
+Stage.film((film) => {
+  const { P, T, dur: DUR, bpm } = film;
+  const BEAT = 60 / bpm, CAM = sp('camera');
+  const W = world({ light: 'studio', ground: -1.6 });
+
+  const ui = screen();
+  const ph = phone({ screen: ui });
+  // 글자마다 따로 떨어지도록 한 글자씩 만든다
+  const letters = [...P.word].map((ch) => text3d(ch, { size: 0.85, depth: 0.4, mat: material('plastic', P.accent) }));
+  const pearl = new THREE.Mesh(new THREE.SphereGeometry(0.26, 48, 32), material('pearl', '#F2F0EC'));
+  W.add({ 폰: ph, 구슬: pearl });
+  letters.forEach((m, i) => W.add({ [`글자${i + 1}`]: m }));
+
+  /* ── 포맷별 배치: 크롭하지 않고 다시 놓는다 ── */
+  const widths = letters.map((m) => { m.geometry.computeBoundingBox(); const b = m.geometry.boundingBox; return b.max.x - b.min.x; });
+  const GAP = 0.18, rowW = widths.reduce((a, b) => a + b, 0) + GAP * (letters.length - 1);
+  const LAYOUT = {
+    // 글자가 주인공(앞), 폰은 뒤에서 진행을 보여준다. 구슬은 폰과 글자 사이에 떨어져 폰 쪽으로 굴러간다
+    square:    { phone: [-1.75, -1.2], row: [0.55, 0.7], pearl: [-0.75, 1.5], frame: { width: 4.6, height: 3.3, at: [-0.25, -0.15, 0] } },
+    landscape: { phone: [-2.3, -1.0], row: [0.6, 0.7], pearl: [-1.05, 0.95], frame: { width: 6.4, height: 3.3, at: [-0.5, -0.15, 0] } },
+    portrait:  { phone: [0, -1.3], row: [0, 1.1], pearl: [-1.0, 2.1], frame: { width: 3.3, height: 5.4, at: [0, 0.0, 0] } },
+  };
+  // 물리는 배치대로 미리 굽기 때문에 포맷을 여기서(draw 전에) 고른다
+  const L = LAYOUT[film.portrait ? 'portrait' : film.landscape ? 'landscape' : 'square'];
+  // 놓기 전 기다리는 높이: 화면 위로 벗어나되 너무 높지 않게 (높을수록 세게 떨어져 튀어 나간다)
+  const SKY = 4.2;
+
+  /* ── 물리 ── */
+  const sim = physics(W, { feel: 'snappy' });
+  const phoneY = -1.6 + 1.52 + 0.004;   // 바닥에 선다 (폰 높이의 절반 + 여유)
+  const turn = (t) => track(t, [[0, deg(28)], [T.turn, deg(-22)]], ...CAM);
+  sim.kinematic(ph, (t) => ({ pos: [L.phone[0], phoneY, L.phone[1]], rot: [0, turn(t), 0] }));
+  let x = L.row[0] - rowW / 2;
+  letters.forEach((m, i) => {
+    const cx = x + widths[i] / 2;
+    x += widths[i] + GAP;
+    // land만 주면 "그냥 놓아서 그 비트에 닿는" 시각에 놓는다. upright: 밑이 둥근 S도 서서 착지한다
+    sim.body(m, { pos: [cx, SKY, L.row[1]], land: { at: T.first + i * BEAT, pos: [cx, L.row[1]] }, upright: true, bounce: 0.12, squash: 0.1 });
+  });
+  // 구슬: 위에서 떨어져 비트에 글자 앞 바닥에 닿고, 튀다가 굴러 멈춘다
+  // 기다리는 자리(화면 위)도 글자와 겹치지 않게: 착지점 바로 위, 글자 줄보다 뒤
+  sim.body(pearl, { pos: [L.pearl[0], SKY + 1.5, L.pearl[1]],   // 글자들보다 높은 곳에서 기다린다 (기다리는 자리끼리 겹치면 놓는 순간 튕긴다)
+    land: { at: T.toss, pos: L.pearl }, bounce: 0.5, squash: 0.08 });
+  sim.bake(DUR);
+
+  function drawScreen(g, w, h, t) {
+    g.fillStyle = '#F6F4F0'; g.fillRect(0, 0, w, h);
+    g.fillStyle = '#111'; g.font = '600 30px Geist'; g.fillText('9:41', 64, 72);
+    g.font = '600 64px Pretendard'; g.fillText('배송 준비 완료', 56, 240);
+    // 글자가 착지할 때마다 진행 막대가 한 칸씩
+    const landed = letters.filter((_, i) => t >= T.first + i * BEAT).length;
+    const p = track(t, [[0, 0], ...letters.map((_, i) => [T.first + i * BEAT, (i + 1) / letters.length])], ...sp('snappy'));
+    g.fillStyle = '#E4E1DB'; g.beginPath(); g.roundRect(56, 300, w - 112, 22, 11); g.fill();
+    g.fillStyle = P.accent; g.beginPath(); g.roundRect(56, 300, Math.max(22, (w - 112) * clamp(p)), 22, 11); g.fill();
+    g.fillStyle = '#8B8A86'; g.font = '400 34px Pretendard'; g.fillText(`${landed} / ${letters.length}`, 56, 380);
+  }
+
+  return {
+    draw(g, t, S) {
+      if (!S.transparent) { g.fillStyle = P.bg; g.fillRect(0, 0, S.W, S.H); }
+      ui.draw((sg, w, h) => drawScreen(sg, w, h, t));
+      sim.apply(t);
+      const near = track(t, [[0, 0], [T.turn, 1]], ...CAM);
+      W.fit(S, { ...L.frame, margin: lerp(1.1, 1.03, near), dir: [lerp(0.1, -0.05, near), 0.28, 1] });
+      W.render(g, S);
+    },
+  };
+});
+</script>

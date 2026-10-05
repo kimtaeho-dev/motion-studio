@@ -33,7 +33,7 @@ Stage.film((film) => {
     new THREE.Mesh(new THREE.TorusGeometry(0.26, 0.11, 32, 64), material('clay', '#F7F5F1')),
   ];
   for (const s of shapes) s.castShadow = true;
-  W.add(ph, word, ...shapes);
+  W.add({ 폰: ph, 글자: word, 캡슐: shapes[0], 진주: shapes[1], 링: shapes[2] });
 
   /* ── 포맷별 배치: 크롭하지 않고 다시 놓는다 ───────────────── */
   const LAYOUT = {
@@ -48,9 +48,11 @@ Stage.film((film) => {
       B: [[0.55, -0.85, 0.8], [2.1, -0.6, 0.3], [1.4, -1.25, 0.6]],
     },
     portrait: {
-      phone: [0, -0.75, 0], word: [0, 1.75, 0], frame: { width: 3.3, height: 5.8, at: [0, 0.2, 0] },
-      A: [[1.05, -1.7, 0.7], [-1.05, -1.25, 0.5], [1.05, 0.9, -0.3]],
-      B: [[-0.95, -1.75, 0.6], [1.1, -1.1, 0.6], [-1.0, 0.95, -0.3]],
+      phone: [0, -0.15, 0], word: [0, 2.3, 0], frame: { width: 3.3, height: 5.8, at: [0, 0.6, 0] },
+      // 세로에선 폰이 가운데라 좌우를 건너가지 않고 같은 쪽에서 자리를 바꾼다
+      A: [[1.05, -1.15, 0.7], [-1.05, -0.9, 0.5], [1.05, 1.35, -0.3]],
+      B: [[1.05, 1.3, 0.7], [-1.0, 1.2, 0.4], [1.1, -1.05, -0.3]],
+      lane: [[0, 0.9, -0.3], [0, -0.7, 0], [0, 0.25, 0.35]],   // 위아래로 엇갈릴 때 옆으로도 비켜 간다
     },
   };
 
@@ -123,9 +125,11 @@ Stage.film((film) => {
       });
 
       const swap = loopTrack(t, [[0, 0], [T.lift, 1], [T.back + 0.5, 0]], DUR, ...CAM);
+      // 자리를 바꿀 때 서로 다른 높이·깊이·옆으로 지나가게 (부딪히거나 가리지 않게). 캡슐은 위로 넘어간다
+      const LANE = L.lane || [[0.8, 0.9, 0], [0, -0.7, 0], [0, 0.25, 0]];
       shapes.forEach((s, i) => {
-        const a = L.A[i], b = L.B[i], y = loopTrack(t, BOBS[i], DUR, ...UI);
-        set(s, { pos: [lerp(a[0], b[0], swap), lerp(a[1], b[1], swap) + y, lerp(a[2], b[2], swap)],
+        const a = L.A[i], b = L.B[i], y = loopTrack(t, BOBS[i], DUR, ...UI), arc = 4 * swap * (1 - swap);
+        set(s, { pos: [lerp(a[0], b[0], swap) + LANE[i][2] * arc, lerp(a[1], b[1], swap) + y + LANE[i][0] * arc, lerp(a[2], b[2], swap) + LANE[i][1] * arc],
           rot: [deg(30) + swap * Math.PI, deg(-20) + i, swap * Math.PI * 0.5] });
       });
 

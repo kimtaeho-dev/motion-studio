@@ -39,11 +39,13 @@ description: 코드로 모션 영상(UI 모핑 루프, 프로덕트 릴, 런칭 
 - 상태 안 내용: `swapAlpha` + `swapBlur`
 - 인디케이터/노브: `stretch`
 - 소리는 만들지 않는다 (CLAUDE.md, 소리와 템포)
-- 3D(기기 목업, 제품 모델, 입체 글자, 재질 도형)가 있으면 `films/sample-3d/`를 구조 참고로 읽고 `lib/stage3d.js`를 쓴다 (CLAUDE.md, 3D). 포맷별 배치 표 + `W.fit`, 화면 속 UI는 `screen().draw`에서 2D로.
+- 3D(기기 목업, 제품 모델, 입체 글자, 재질 도형)가 있으면 `films/sample-3d/`를 구조 참고로 읽고 `lib/stage3d.js`를 쓴다 (CLAUDE.md, 3D). 포맷별 배치 표 + `W.fit`, 화면 속 UI는 `screen().draw`에서 2D로. 물체는 이름을 붙여 `W.add({ 이름: obj })`.
+- 떨어지고 부딪히고 쌓이는 동작은 `films/sample-physics/`를 읽고 `physics()`로 (CLAUDE.md, 물리). 착지는 `land: { at: 비트 }`로 비트에 맞춘다.
 
 ## 5. 스틸 → 직접 보기
 `stage=stills`. `node tools/render.mjs films/<이름> --stills beats` → `out/<이름>/<포맷>/contact-beats.png`를 Read로 열어서 본다.
 비트에 아무것도 없는 칸, 너무 작은 글자, 화면 밖으로 나간 커서, 겹침을 고친다. 깨끗해질 때까지 반복.
+3D면 포맷마다 `node tools/render.mjs films/<이름> --format <포맷> --check3d` → 보고서와 `check3d/views.png`·`motion.png`를 열어 파고듦·바닥 아래가 0이 될 때까지 고친다.
 
 ## 6. 렌더 + 크리틱 루프
 초안은 `stage=draft`, 크리틱은 라운드마다 `stage=critique round=<N>`.

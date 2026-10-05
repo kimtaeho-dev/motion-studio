@@ -102,6 +102,10 @@
         "to": "seed/films/sample-3d"
       },
       {
+        "from": "films/sample-physics",
+        "to": "seed/films/sample-physics"
+      },
+      {
         "from": "vendor/ffmpeg/${arch}/ffmpeg",
         "to": "bin/ffmpeg"
       },

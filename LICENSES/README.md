@@ -34,6 +34,10 @@ FFmpeg는 Motion Studio와 별개의 프로그램이며, Motion Studio는 FFmpeg
 `lib/three/addons/libs/`의 opentype.js(MIT, `LICENSE-opentype`), meshoptimizer 디코더(MIT),
 Draco 디코더(Apache 2.0)도 three.js 배포본에 들어 있는 그대로 함께 들어간다.
 
+## Rapier 0.21 (결정적 빌드) — Apache 2.0
+
+3D 필름의 물리(`lib/rapier/`, `@dimforge/rapier3d-deterministic-compat`). 라이선스: `lib/rapier/LICENSE`.
+
 ## 글꼴 — SIL Open Font License 1.1
 
 필름과 앱 화면에 쓰는 Pretendard, Geist, Geist Mono. `assets/fonts/ttf/`는 입체 글자용으로

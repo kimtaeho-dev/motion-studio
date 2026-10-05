@@ -1,0 +1,53 @@
+{
+  "title": "Sample · Physics drop",
+  "dur": 6,
+  "bpm": 120,
+  "beatOffset": 0,
+  "fps": 60,
+  "formats": {
+    "1x1": [
+      1080,
+      1080
+    ],
+    "9x16": [
+      1080,
+      1920
+    ],
+    "16x9": [
+      1920,
+      1080
+    ]
+  },
+  "transparent": false,
+  "params": {
+    "bg": {
+      "type": "color",
+      "value": "#E9E6E0",
+      "label": "배경"
+    },
+    "accent": {
+      "type": "color",
+      "value": "#2F6BFF",
+      "label": "포인트 컬러"
+    },
+    "word": {
+      "type": "text",
+      "value": "SHIP",
+      "label": "떨어지는 글자"
+    }
+  },
+  "timeline": {
+    "first": {
+      "t": 1,
+      "label": "첫 글자 착지 (다음 글자는 한 비트씩)"
+    },
+    "toss": {
+      "t": 3.5,
+      "label": "구슬이 바닥에 닿음"
+    },
+    "turn": {
+      "t": 4,
+      "label": "폰이 돌아섬"
+    }
+  }
+}

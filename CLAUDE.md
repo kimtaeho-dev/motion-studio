@@ -5,7 +5,7 @@ After Effects를 쓰지 않는다. 모든 영상은 HTML 한 장에 들어 있�
 
 ## 렌더 계약 (절대 규칙)
 
-- 작업 대상 필름 폴더(`films/<이름>/`, `out/<이름>/`)만 고친다. 다른 필름(`films/sample-morph`, `films/sample-3d` 같은 참고용 포함)은 읽기만 한다.
+- 작업 대상 필름 폴더(`films/<이름>/`, `out/<이름>/`)만 고친다. 다른 필름(`films/sample-morph`, `films/sample-3d`, `films/sample-physics` 같은 참고용 포함)은 읽기만 한다.
 - 필름 한 편 = `films/<이름>/index.html`(코드) + `films/<이름>/film.json`(데이터). `lib/motion.js`, `lib/stage.js`만 불러온다. 3D가 필요하면 `lib/stage3d.js`(안에 three.js가 들어 있다)를 더한다. 그 밖의 라이브러리는 사람이 명시적으로 요청한 경우만.
 - `film.json`에 길이·BPM·포맷·`transparent`·`params`(디자이너가 바꿀 문구·색·숫자)·`timeline`(이름 붙은 장면 시각)을 둔다. 형식은 `lib/stage.js` 맨 위 주석. 앱의 속성 패널과 타임라인이 이 파일을 고치므로, 디자이너가 바꿀 만한 값은 코드에 박지 말고 여기로 뺀다.
 - 디자이너는 앱에서 `params` 값과 `timeline` 시각을 직접 바꾼다. 작업을 시작할 때마다 `film.json`을 새로 읽고, 디자이너가 바꾼 값을 말없이 되돌리지 않는다. 꼭 바꿔야 하면 왜 바꾸는지 먼저 말한다.
@@ -30,14 +30,32 @@ After Effects를 쓰지 않는다. 모든 영상은 HTML 한 장에 들어 있�
 ## 3D
 
 - 기기 목업(폰·노트북), 제품 모델(.glb), 입체 글자, 재질이 있는 도형이 필요하면 3D를 쓴다. 평면 UI 모핑만이면 2D로 충분하다.
-- `lib/stage3d.js`만 쓴다: `world`(장면·카메라·조명 프리셋 studio/soft/dramatic), `phone`·`laptop`(화면 = `screen()` 2D 캔버스), `text3d`·`fonts3d`, `material`(plastic·matte·clay·metal·chrome·glass·pearl), `model`, `set`. 쓰는 법은 파일 맨 위 주석과 `films/sample-3d/`.
+- `lib/stage3d.js`만 쓴다: `world`(장면·카메라·조명 프리셋 studio/soft/dramatic), `phone`·`laptop`(화면 = `screen()` 2D 캔버스), `text3d`·`fonts3d`, `material`(plastic·matte·clay·metal·chrome·glass·pearl), `model`, `set`, `physics`. 쓰는 법은 파일 맨 위 주석과 `films/sample-3d/`(배치·카메라), `films/sample-physics/`(물리).
 - 3D 장면을 three.js로 직접 새로 짜지 않는다. 프리셋에 없는 모양은 `THREE`의 기본 지오메트리에 `material()`을 입혀 만든다.
 - 순수 함수 규칙은 그대로다. `draw` 안에서 모든 물체의 위치·회전·스케일과 카메라를 t로부터 다시 정한다(`set`, `W.fit`). 이전 프레임 값에 더하지 않는다. 움직임은 2D와 같이 `track`·`loopTrack` 스프링.
 - `world()`·재질·기기·글자는 `Stage.film` 함수 안에서 만든다. 폰트(`await fonts3d()`)와 모델(`await model('refs/x.glb')`)만 그 밖에서 한 번 불러온다.
 - 기기 화면 속 UI는 `screen().draw((g, w, h) => ...)`에서 2D로 그린다. 2D 규칙(swapAlpha, 스프링)이 그대로 적용된다. 화면 글자는 폰이 가장 작게 보이는 프레임에서도 읽혀야 한다.
-- 포맷마다 배치 표를 따로 두고(`S.portrait`/`S.landscape`), `W.fit(S, { width, height })`로 그 영역이 화면에 다 들어오게 한다. 크롭하지 않는다.
+- 포맷마다 배치 표를 따로 두고(`S.portrait`/`S.landscape`, 물리처럼 draw 전에 필요하면 `film.portrait`/`film.landscape`), `W.fit(S, { width, height })`로 그 영역이 화면에 다 들어오게 한다. 크롭하지 않는다.
+- 물체는 이름을 붙여 넣는다: `W.add({ 폰: ph, 캡슐: cap })`. 검사 보고서와 그림에 그 이름이 나온다.
+- 바닥에 놓이는 물체에는 접지 그림자가 자동으로 붙는다(닿을수록 작고 진하게). 물체가 떠 있으면 일부러 띄운 것인지 확인한다.
 - 3D 모델은 디자이너가 준 .glb(`refs/`)만 쓴다. 인터넷에서 받지 않는다.
 - 룩: 조명 프리셋 하나, 재질은 2~3종. 블룸·글로우·렌즈 플레어 같은 후처리는 쓰지 않는다. 그림자가 화면 밖에서 잘리면 `world({ shadowArea })`를 키운다.
+
+### 물리 (무게·충돌)
+
+- 고르는 기준: 물체끼리 부딪히거나 쌓이거나 굴러가면 `physics()`(미리 굽기). 하나가 떨어지거나 미끄러지기만 하면 `M.drop`·`M.slide`·`M.arc` 곡선(2D에도 쓴다). UI 전환·카메라·기기 회전은 지금처럼 스프링.
+- 물리는 `Stage.film` 함수 안에서 `sim.bake(film.dur)`로 0초부터 끝까지 미리 계산하고, `draw` 맨 앞에서 `sim.apply(t)`로 꺼내 쓴다. 그래서 여전히 t의 순수 함수다. `await physicsReady()`는 밖에서 한 번.
+- 키프레임으로 움직이는 물체(폰 회전 등)도 `sim.kinematic(obj, t => ({ pos, rot }))`로 넣어야 다른 물체가 거기 부딪힌다. 넣지 않으면 뚫고 지나간다.
+- 착지는 비트에 맞춘다: `sim.body(obj, { pos, land: { at: film.T.hit, pos: [x, z] } })`. `at`(놓는 시각)을 빼면 "그냥 놓아서 그 비트에 닿는" 시각을 계산한다. 이게 기본이다. 억지로 위로 던지는 설정이면 보고서의 `물리 설정` 줄이 알려 준다.
+- 느낌은 `feel` 프리셋(snappy 기본 · heavy · floaty · real)으로 고르고, 중력 숫자를 직접 넣지 않는다(단위가 자동 환산된다). 세울 물체(밑이 둥근 글자 등)는 `upright: true`.
+- 놓기 전 기다리는 자리는 화면 바로 위로 잡는다. 너무 높으면 세게 떨어져 튀어 나가고, 기다리는 자리끼리 겹치면 놓는 순간 튕긴다.
+- 물리로 쌓인 장면은 처음으로 저절로 돌아가지 않는다. 루프가 필요하면 화면 밖으로 치우는 연출을 넣거나, 마지막 구간만 스프링으로 되돌린다. 아니면 루프가 아닌 필름으로 만든다.
+
+### 3D 검사 (반드시)
+
+- 3D 필름은 스틸·초안을 볼 때마다 `node tools/render.mjs films/<이름> --check3d`(포맷마다)를 돌린다. 파고듦·바닥 아래·가림·잘림을 시간 구간과 이름으로 알려 주고, `check3d/views.png`(문제 시각의 정면·옆·위)와 `check3d/motion.png`(물체별 높이·속도 그래프, 충돌 점)를 만든다. **두 그림을 직접 열어서 본다.**
+- 파고듦·바닥 아래는 0이 될 때까지 고친다. 가림·잘림은 의도한 것(앞을 스쳐 지나감, 화면 밖에서 등장)인지 판단하고, 아니면 배치를 고친다. `화면 밖` 줄은 등장 전·퇴장 후면 정상이다.
+- 무게감은 motion.png로 본다: 떨어질 때 높이 곡선이 아래로 휘며(가속) 내려가는가, 닿는 순간 속도가 꺾이는가, 튐이 점점 작아지며 멈추는가, 착지 점(주황)이 비트 선에 맞는가. 직선으로 내려가거나 바닥 위에서 서서히 멈추면 둥둥 뜬 것이다.
 
 ## 소리와 템포
 
@@ -52,9 +70,9 @@ After Effects를 쓰지 않는다. 모든 영상은 HTML 한 장에 들어 있�
 1. **브리프** (`stage=brief`): `films/<이름>/brief.md` (템플릿: `prompts/spec-template.md`). 빈칸이 있으면 디자이너에게 먼저 묻고, `waiting=answer`로 기록한 뒤 **턴을 끝낸다.**
 2. **레퍼런스가 있으면**: `films/<이름>/refs/`에서 `style_guide.md`를 먼저 쓴다(`prompts/reference.md`). 레퍼런스의 문법만 가져오고 내용·로고·캐릭터는 가져오지 않는다.
 3. **숏리스트** (`stage=shotlist`): `films/<이름>/shotlist.md`에 비트 그리드 위의 상태 목록을 마크다운 표로 적는다(비트 | 시각 | 상태 / 동작 | 커서). 다 쓰면 `waiting=approval`로 기록하고, 채팅에 표를 보여주고 승인을 부탁한 뒤 **턴을 끝낸다.** **디자이너 승인 전에는 코드를 쓰지 않는다.** 승인은 앱의 승인 버튼(`state.json`의 `approved`에 `shotlist`가 들어간다) 또는 채팅의 분명한 OK다. 수정 요청이 오면 숏리스트를 고치고 다시 `waiting=approval`.
-4. **스틸** (`stage=stills`): `node tools/render.mjs films/<이름> --stills beats`로 비트마다 1장 → `contact-beats.png`를 **직접 열어서 본다.** 그리드에서 벗어남, 답답함, 읽기 어려움을 고친다.
+4. **스틸** (`stage=stills`): `node tools/render.mjs films/<이름> --stills beats`로 비트마다 1장 → `contact-beats.png`를 **직접 열어서 본다.** 그리드에서 벗어남, 답답함, 읽기 어려움을 고친다. 3D 필름은 여기서 `--check3d`도 돌려서 파고듦·바닥 아래가 0이 되게 한다.
 5. **초안** (`stage=draft`): `--draft`로 빠르게 렌더해서 타이밍을 확인한다.
-6. **크리틱 루프** (라운드마다 `stage=critique round=<N>`): 풀 렌더 → `node tools/critique.mjs` → `prompts/critique-pass.md` 기준으로 점수를 매긴다. 라운드 수는 `films/<이름>/state.json`의 `quality`를 따른다: `fast` 1라운드 · `standard`(없을 때 기본) 3라운드 · `launch` 모든 항목이 8점 이상이 될 때까지(최소 3라운드, 6라운드를 넘기면 멈추고 `waiting=answer`로 디자이너에게 묻는다). 매 라운드 `films/<이름>/review_log.md`에 `## 라운드 N` 제목 아래 점수와 고친 점을 남긴다.
+6. **크리틱 루프** (라운드마다 `stage=critique round=<N>`): 풀 렌더 → `node tools/critique.mjs` (3D면 `--check3d`도) → `prompts/critique-pass.md` 기준으로 점수를 매긴다. 라운드 수는 `films/<이름>/state.json`의 `quality`를 따른다: `fast` 1라운드 · `standard`(없을 때 기본) 3라운드 · `launch` 모든 항목이 8점 이상이 될 때까지(최소 3라운드, 6라운드를 넘기면 멈추고 `waiting=answer`로 디자이너에게 묻는다). 매 라운드 `films/<이름>/review_log.md`에 `## 라운드 N` 제목 아래 점수와 고친 점을 남긴다.
 7. **전달** (`stage=deliver waiting=none`): `out/<이름>/<포맷>/final.mp4`, `contact-beats.png`, 포스터 프레임(`--stills <시각>` 결과를 `poster.png`로 복사)을 전달하고, 다음에 개선할 점을 한 줄 덧붙인다.
 
 수정할 때는 바뀐 구간만 `--from/--to`로 다시 렌더해서 확인한 뒤, 마지막에 전체를 렌더한다.
@@ -69,6 +87,7 @@ node tools/render.mjs films/<이름> --draft         # 빠른 초안 → draft.m
 node tools/render.mjs films/<이름>                 # 최종 (60fps, 4 서브프레임 모션블러) → final.mp4
 node tools/render.mjs films/<이름> --all-formats   # 모든 포맷
 node tools/render.mjs films/<이름> --codec prores  # 편집용 ProRes 4444 (투명 배경 유지) · --codec webm / gif
+node tools/render.mjs films/<이름> --check3d       # 3D 검사: 파고듦·바닥 아래·가림·잘림 + views.png·motion.png
 node tools/critique.mjs films/<이름> [포맷] [빠른동작시각]
 node tools/determinism.mjs films/<이름>            # 같은 프레임 두 번 → 같은 픽셀인지
 node tools/state.mjs films/<이름> stage=shotlist waiting=approval  # 진행 단계 기록 (앱의 단계 표시·승인 버튼)
