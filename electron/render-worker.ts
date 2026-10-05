@@ -350,7 +350,9 @@ async function check3d(win: BrowserWindow, film: StageFilm, outDir: string, emit
   const result = (await win.webContents.executeJavaScript(`(async () => {
     const m = await import(new URL('../../lib/stage3d-inspect.js', location.href).href);
     return await m.check(${JSON.stringify({ dur: film.dur, bpm: film.bpm, beatOffset: film.beatOffset })});
-  })()`)) as { objects: string[]; issues: CheckIssue[]; impacts: { t: number; name: string; speed: number }[]; notes: string[]; offscreen: { a: string; from: number; to: number }[]; warns: string[]; natural: number; allowed: { kind: string; a: string }[]; pass: boolean; images: Record<string, string> };
+  })()`)) as { objects: string[]; issues: CheckIssue[]; impacts: { t: number; name: string; speed: number }[]; notes: string[]; offscreen: { a: string; from: number; to: number }[]; warns: string[]; natural: number;
+    composition: { beats: { beat: number; t: number; margins?: number[]; fill3d?: number; flags: string[] }[]; fixes: { from: number; to: number; what: string; fix: string }[]; overlaps: { str: string; from: number; to: number; max: number }[] };
+    allowed: { kind: string; a: string }[]; pass: boolean; images: Record<string, string> };
   const dir = path.join(outDir, "check3d");
   fs.mkdirSync(dir, { recursive: true });
   for (const [name, url] of Object.entries(result.images)) fs.writeFileSync(path.join(dir, `${name}.png`), Buffer.from(url.split(",")[1], "base64"));
@@ -375,6 +377,15 @@ async function check3d(win: BrowserWindow, film: StageFilm, outDir: string, emit
     if (x.fix) lines.push(`    → ${x.fix}`);
   }
   for (const w of result.warns) lines.push(`비트  ${w}`);
+  // 구도: 내용(3D + 화면 글자)의 여백. 숫자로 맞추고 컨택트 시트는 마지막에 한 번
+  const cp = result.composition;
+  if (cp && cp.beats.length) {
+    const bad = cp.fixes.length + cp.overlaps.length;
+    lines.push(bad ? `구도: 손볼 곳 ${bad}개 — 숫자대로 고치고 다시 검사 (컨택트 시트는 마지막에 한 번)` : `구도: 좋음 — 비트 ${cp.beats.length}개 모두 여백 3–30% 안`);
+    lines.push(`  여백 위/아래/왼/오 %: ${cp.beats.map((b) => (b.margins ? `b${b.beat} ${b.margins.join("/")}` : `b${b.beat} 없음`)).join(" · ")}`);
+    for (const f of cp.fixes) lines.push(`  ${f.from.toFixed(2)}–${f.to.toFixed(2)}s ${f.what}\n    → ${f.fix}`);
+    for (const o of cp.overlaps) lines.push(`  글자 '${o.str.slice(0, 16)}'이(가) 3D 물체와 최대 ${Math.round(o.max * 100)}% 겹침 ${o.from.toFixed(2)}–${o.to.toFixed(2)}s → 글자 자리나 물체 배치를 옮긴다 (의도면 그대로)`);
+  }
   if (result.natural) lines.push(`그릇에 담기거나 물리로 쌓여 가려진 것 ${result.natural}건 — 정상으로 봤다`);
   if (result.allowed.length) lines.push(`의도로 표시됨(W.allow) ${result.allowed.length}건 — 실패에서 뺐다`);
   for (const note of result.notes) lines.push(`물리 설정  ${note}`);

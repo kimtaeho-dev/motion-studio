@@ -33,7 +33,7 @@ Stage.film((film) => {
   /* ── 포맷별 배치: 크롭하지 않고 다시 놓는다 ── */
   const LAYOUT = {
     // 글자가 주인공(앞), 폰은 뒤에서 진행을 보여준다. 구슬은 폰과 글자 사이에 떨어져 폰 쪽으로 굴러간다
-    square:    { phone: [-1.75, -1.2], row: [0.55, 0.7], pearl: [-0.75, 1.5], frame: { width: 4.6, height: 3.3, at: [-0.25, -0.15, 0] } },
+    square:    { phone: [-1.75, -1.2], row: [0.55, 0.7], pearl: [-0.75, 1.5], frame: { width: 4.9, height: 3.5, at: [-0.05, -0.31, 0] } },
     landscape: { phone: [-2.3, -1.0], row: [0.6, 0.7], pearl: [-1.05, 0.95], frame: { width: 6.4, height: 3.3, at: [-0.5, -0.15, 0] } },
     portrait:  { phone: [0, -1.3], row: [0, 1.1], pearl: [-1.0, 2.1], frame: { width: 3.3, height: 5.4, at: [0, 0.0, 0] } },
   };
@@ -54,6 +54,8 @@ Stage.film((film) => {
   sim.body(pearl, { pos: 'above', land: { at: T.toss, pos: L.pearl }, bounce: 0.5, squash: 0.08 });
   // 떨어지는 구슬이 S 앞을 스치는 순간은 의도한 것 — 그 구간만 검사에서 뺀다
   W.allow({ 글자1: { occluded: [T.toss - 0.15, T.toss + 0.2] } });
+  // 글자가 떨어지기 전(첫 착지 전)은 폰만 있는 빈 무대 — 의도한 여백
+  W.allow({ 구도: [0, T.first + 0.5] });
   sim.bake(DUR);
 
   function drawScreen(g, w, h, t) {
@@ -74,7 +76,7 @@ Stage.film((film) => {
       ui.draw((sg, w, h) => drawScreen(sg, w, h, t));
       sim.apply(t);
       const near = track(t, [[0, 0], [T.turn, 1]], ...CAM);
-      W.fit(S, { ...L.frame, margin: lerp(1.1, 1.03, near), dir: [lerp(0.1, -0.05, near), 0.28, 1] });
+      W.fit(S, { ...L.frame, margin: lerp(1.1, 1.08, near), dir: [lerp(0.1, -0.02, near), 0.28, 1] });
       W.render(g, S);
     },
   };
