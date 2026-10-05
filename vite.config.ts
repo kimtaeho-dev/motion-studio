@@ -11,7 +11,8 @@ import { exportPlugin } from "./server/export";
 export default defineConfig({
   plugins: [solidPlugin(), tailwindcss(), solidSvg({ defaultAsComponent: true }), filmsPlugin(), mailboxPlugin(), renderPlugin(), exportPlugin()],
   server: {
-    port: 3040,
+    // 3040 by default; PORT lets a second copy run while the installed app holds 3040.
+    port: Number(process.env.PORT) || 3040,
     // films/ and out/ are the agent's working files, served raw by filmsPlugin
     // (which runs its own watcher). Left to Vite, a rewritten film page would
     // trigger a full reload of the app itself.
