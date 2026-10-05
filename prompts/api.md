@@ -28,7 +28,17 @@ Stage.film((film) => {
 
 - `film` = `{ title, dur, bpm, beatOffset, fps, transparent, P, T, W, H, format, portrait, landscape }`
 - `S` = `{ W, H, format, unit, cx, cy, portrait, landscape, transparent, dur, bpm }` — `unit` = 짧은 변 기준 1080 → 1. 길이는 `n * S.unit`.
-- film.json: `{ title, dur, bpm, beatOffset, fps, formats: { "1x1": [1080,1080], "9x16": [1080,1920], "16x9": [1920,1080] }, transparent, params: { 키: { type: text|color|number, value, label } }, timeline: { 키: { t, label } } }`
+- film.json (앱의 속성 패널·타임라인이 이 파일만 고친다):
+```json
+{ "title": "출시 D-1", "dur": 6, "bpm": 120, "beatOffset": 0, "fps": 60,
+  "formats": { "1x1": [1080, 1080], "9x16": [1080, 1920], "16x9": [1920, 1080] },
+  "transparent": false,
+  "params": { "bg": { "type": "color", "value": "#E9E6E0", "label": "배경" },
+              "word": { "type": "text", "value": "출시", "label": "입체 글자" },
+              "count": { "type": "number", "value": 3, "label": "상자 수" } },
+  "timeline": { "open": { "t": 0.5, "label": "뚜껑 열림" }, "hit": { "t": 2, "label": "첫 글자 착지" } } }
+```
+  params의 type은 `text` · `color` · `number`. label은 디자이너가 알아볼 한국어. timeline 시각은 코드에서 `film.T.키`로만 쓴다.
 
 ## motion.js (전역 `M`)
 
