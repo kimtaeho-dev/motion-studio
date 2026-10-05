@@ -16,6 +16,7 @@ description: 코드로 모션 영상(UI 모핑 루프, 프로덕트 릴, 런칭 
 `prompts/spec-template.md`의 `<inputs>` 항목 중 빈 것을 한 번에 묻는다. 기본값을 제안하면서 묻는다
 (예: "포맷은 1x1 + 9x16, 템포는 120BPM으로 할까요?"). 물었으면 `waiting=answer`로 기록하고 턴을 끝낸다. 답을 `brief.md`에 채운다.
 실제 프로덕트 화면이 필요하면 디자이너에게 스크린샷을 달라고 한다(채팅창에 끌어다 놓으면 refs/에 저장된다). 프로덕트 UI를 상상으로 그리지 않는다.
+브리프·숏리스트 단계에서는 `lib/`·`prompts/api.md`·`prompts/3d.md`·샘플 코드를 읽지 않는다 (구현 단계에서 읽는다 — 먼저 읽으면 이후 모든 단계에서 그만큼 비용이 든다).
 
 ## 2. 레퍼런스 → style_guide.md (있을 때만)
 `prompts/reference.md` 절차. 문법만 가져오고 내용은 가져오지 않는다.
@@ -31,7 +32,8 @@ description: 코드로 모션 영상(UI 모핑 루프, 프로덕트 릴, 런칭 
 **승인(앱의 승인 버튼 또는 채팅의 분명한 OK) 전에는 코드를 쓰지 않는다.**
 
 ## 4. 구현
-`films/<이름>/film.json`(데이터)과 `films/<이름>/index.html`(코드). `films/sample-morph/`를 구조 참고로 읽는다(film.json의 params·timeline, index.html의 STATES 표, CUR 커서 키, 상태별 draw 함수).
+`films/<이름>/film.json`(데이터)과 `films/<이름>/index.html`(코드). API는 `prompts/api.md`를 본다(`lib/` 소스를 통째로 읽지 않는다).
+2D 필름은 `films/sample-morph/`를 구조 참고로 읽는다(film.json의 params·timeline, index.html의 STATES 표, CUR 커서 키, 상태별 draw 함수). 3D·물리 필름은 `prompts/3d.md`를 읽는다(뼈대 포함 — 샘플은 막힐 때만).
 - 숏리스트의 장면 시각은 `film.json` `timeline`에 이름을 붙여 옮기고, 코드에서는 `film.T.<이름>`으로만 쓴다.
 - 화면에 나오는 문구, 포인트 컬러, 배경색은 `params`로 뺀다. `label`은 디자이너가 알아볼 한국어로.
 - 컨테이너 크기/모서리/색/카메라: `loopTrack` (루프 아니면 `track`)
@@ -39,13 +41,12 @@ description: 코드로 모션 영상(UI 모핑 루프, 프로덕트 릴, 런칭 
 - 상태 안 내용: `swapAlpha` + `swapBlur`
 - 인디케이터/노브: `stretch`
 - 소리는 만들지 않는다 (CLAUDE.md, 소리와 템포)
-- 3D(기기 목업, 제품 모델, 입체 글자, 재질 도형)가 있으면 `films/sample-3d/`를 구조 참고로 읽고 `lib/stage3d.js`를 쓴다 (CLAUDE.md, 3D). 포맷별 배치 표 + `W.fit`, 화면 속 UI는 `screen().draw`에서 2D로. 물체는 이름을 붙여 `W.add({ 이름: obj })`.
-- 떨어지고 부딪히고 쌓이는 동작은 `films/sample-physics/`를 읽고 `physics()`로 (CLAUDE.md, 물리). 줄 세우기는 `row()`, 떨어뜨리기는 `pos: 'above'` + `land: { at: 비트 }`. 좌표를 손으로 계산하지 않는다.
+- 3D(기기 목업, 제품 모델, 입체 글자, 재질 도형)·물리는 `prompts/3d.md`의 규칙과 뼈대대로. 포맷별 배치 표 + `W.fit`, 화면 속 UI는 `screen().draw`에서 2D로, 물체는 이름을 붙여 `W.add({ 이름: obj })`. 줄 세우기는 `row()`, 떨어뜨리기는 `pos: 'above'` + `land: { at: 비트 }`. 좌표를 손으로 계산하지 않는다.
 
 ## 5. 스틸 → 직접 보기
 `stage=stills`. `node tools/render.mjs films/<이름> --stills beats` → `out/<이름>/<포맷>/contact-beats.png`를 Read로 열어서 본다.
 비트에 아무것도 없는 칸, 너무 작은 글자, 화면 밖으로 나간 커서, 겹침을 고친다. 깨끗해질 때까지 반복.
-3D면 주 포맷 하나로 `node tools/render.mjs films/<이름> --check3d` → 판정이 통과면 다음 단계. 실패면 `→` 제안대로 고치고 한 번 더 (2라운드까지, CLAUDE.md 3D 검사).
+3D면 주 포맷 하나로 `node tools/render.mjs films/<이름> --check3d` → 판정이 통과면 다음 단계. 실패면 `→` 제안대로 고치고 한 번 더 (2라운드까지, `prompts/3d.md`의 3D 검사).
 
 ## 6. 렌더 + 크리틱 루프
 초안은 `stage=draft`, 크리틱은 라운드마다 `stage=critique round=<N>`.
