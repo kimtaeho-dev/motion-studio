@@ -152,10 +152,21 @@ async function openFilm(pageUrl: string): Promise<{ win: BrowserWindow; film: St
   }
   const film = (await win.webContents.executeJavaScript("window.FILM")) as StageFilm;
   // Grab helpers: draw t, hand back the pixels (video) or a PNG (stills).
+  // Pixels are read from a copy: Chromium moves a canvas that is read back over
+  // and over (every frame of a video) off the GPU, and the film would then draw
+  // on the CPU again — with its dark seams — a few frames into every render.
   await win.webContents.executeJavaScript(`
     window.__canvas = document.getElementById('c');
-    window.__ctx = window.__canvas.getContext('2d');
-    window.__grab = (t) => { window.seek(t); return window.__ctx.getImageData(0, 0, window.__canvas.width, window.__canvas.height).data; };
+    window.__copy = document.createElement('canvas');
+    window.__copyCtx = window.__copy.getContext('2d', { willReadFrequently: true });
+    window.__grab = (t) => {
+      window.seek(t);
+      const c = window.__canvas, w = c.width, h = c.height;
+      if (window.__copy.width !== w || window.__copy.height !== h) { window.__copy.width = w; window.__copy.height = h; }
+      window.__copyCtx.globalCompositeOperation = 'copy';
+      window.__copyCtx.drawImage(c, 0, 0);
+      return window.__copyCtx.getImageData(0, 0, w, h).data;
+    };
     window.__png = (t) => { window.seek(t); return window.__canvas.toDataURL('image/png'); };
     true;
   `);
