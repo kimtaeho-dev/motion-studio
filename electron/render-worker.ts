@@ -11,8 +11,8 @@ import { inside, sendFile } from "../server/http";
  * A film is a page whose `window.seek(t)` draws frame t into a canvas
  * (lib/stage.js). This opens that page in a hidden window, seeks, reads the
  * canvas pixels back and streams them to ffmpeg — no screenshots, no browser
- * download. Hardware acceleration is off so the canvas is rasterised in
- * software: the same t gives the same pixels on every run and every Mac.
+ * download. Canvases draw on the GPU, as in the app's player: the same t
+ * gives the same pixels on every run on one Mac.
  *
  * Started by tools/render.mjs (directly, or through the studio server's
  * render queue) with render.mjs's own arguments, from the workspace root.
@@ -451,11 +451,14 @@ function cleanup(): void {
 /** Entry point for a worker process. Must run before `app` is ready. */
 export function runRenderWorker(argv: string[]): void {
   const emit = (e: WorkerEvent) => process.stdout.write(JSON.stringify(e) + "\n");
-  // 2D canvases stay on the CPU rasteriser, so the same t gives the same pixels
-  // on every Mac. WebGL (3D films) needs the GPU: macOS Chromium has no CPU
-  // fallback for it. GPU output is the same run to run on one Mac, but can
-  // differ slightly between GPU models.
-  app.commandLine.appendSwitch("disable-accelerated-2d-canvas");
+  // 2D draws on the GPU like the app's player, so a render matches what the
+  // designer saw: the CPU rasteriser leaves a dark seam where two shapes share
+  // an anti-aliased edge (a shadow shape under a card), the GPU does not. GPU
+  // output is the same run to run on one Mac (measured: stills and whole
+  // videos byte-identical), but can differ slightly between GPU models — as
+  // WebGL already did. 3D films render about twice as fast: the 3D layer is
+  // composited without leaving the GPU. MOTION_CPU2D=1 goes back to the CPU.
+  if (process.env.MOTION_CPU2D === "1") app.commandLine.appendSwitch("disable-accelerated-2d-canvas");
   app.commandLine.appendSwitch("disable-gpu-shader-disk-cache");
   app.dock?.hide();
   // Hidden windows open and close per format; that must not end the process.
