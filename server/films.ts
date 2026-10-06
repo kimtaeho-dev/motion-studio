@@ -8,7 +8,7 @@ import { readState, writeState } from "./state";
 import { resolveWorkspace, type Workspace } from "./workspace";
 
 /** Workspace folders the film pages and the app read directly, served as-is. */
-const STATIC_PREFIXES = ["films", "lib", "assets", "out"] as const;
+const STATIC_PREFIXES = ["films", "lib", "lib-versions", "assets", "out"] as const;
 
 /** Reference videos can be large; anything past this is almost certainly the wrong file. */
 const MAX_UPLOAD_BYTES = 500 * 1024 * 1024;
