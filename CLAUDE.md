@@ -8,7 +8,7 @@ After Effects를 쓰지 않는다. 모든 영상은 HTML 한 장에 들어 있�
 - 작업 대상 필름 폴더(`films/<이름>/`, `out/<이름>/`)만 고친다. 다른 필름(`films/sample-morph`, `films/sample-3d`, `films/sample-physics` 같은 참고용 포함)은 읽기만 한다.
 - 필름 한 편 = `films/<이름>/index.html`(코드) + `films/<이름>/film.json`(데이터). `lib/motion.js`, `lib/stage.js`만 불러온다. 3D가 필요하면 `lib/stage3d.js`(안에 three.js가 들어 있다)를 더한다. 그 밖의 라이브러리는 사람이 명시적으로 요청한 경우만. 쓰는 법은 `prompts/api.md`(2D)·`prompts/3d.md`(3D)를 본다. `lib/*.js` 소스는 통째로 읽지 않는다(문서에 없는 걸 찾을 때만 `grep`).
 - `film.json`에 길이·BPM·포맷·`transparent`·`params`(디자이너가 바꿀 문구·색·숫자)·`timeline`(이름 붙은 장면 시각)을 둔다. 형식은 `lib/stage.js` 맨 위 주석. 앱의 속성 패널과 타임라인이 이 파일을 고치므로, 디자이너가 바꿀 만한 값은 코드에 박지 말고 여기로 뺀다.
-- 디자이너는 앱에서 `params` 값과 `timeline` 시각을 직접 바꾼다. 작업을 시작할 때마다 `film.json`을 새로 읽고, 디자이너가 바꾼 값을 말없이 되돌리지 않는다. 꼭 바꿔야 하면 왜 바꾸는지 먼저 말한다.
+- 디자이너는 앱에서 `params` 값과 `timeline` 시각, 전체 길이(`dur`, 장면 시각이 같은 비율로 따라온다)를 직접 바꾼다. 그래서 장면 시각을 코드에 초로 박지 말고 `film.T`와 `DUR`에서 계산한다. 작업을 시작할 때마다 `film.json`을 새로 읽고, 디자이너가 바꾼 값을 말없이 되돌리지 않는다. 꼭 바꿔야 하면 왜 바꾸는지 먼저 말한다.
 - 코드는 `Stage.film((film) => { ...; return { draw(g, t, S) {} }; })`. `film.P`(params 값), `film.T`(timeline 시각)로 상수와 표를 만들고, 장면 시각은 반드시 `film.T`에서 읽는다(타임라인에서 끌어 옮기면 따라오도록).
 - 모든 프레임은 **시간의 순수 함수**다. `draw(g, t, S)` 안에서 t로부터 모든 값을 계산한다.
 - `transparent: true`면 `S.transparent`일 때 배경을 칠하지 않는다.

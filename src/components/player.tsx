@@ -9,6 +9,7 @@ import { useRender } from "@/context/render";
 import { openMedia } from "@/components/media-viewer";
 import { ExportButton } from "@/components/export-dialog";
 import type { FilmFile, FilmJson, RenderJob } from "@/types";
+import { MAX_DUR, MIN_DUR, retime } from "@/lib/retime";
 import { useParams } from "@solidjs/router";
 
 const pct = (t: number, dur: number) => `${(t / dur) * 100}%`;
@@ -292,13 +293,68 @@ function Readout() {
     <div class="flex w-40 shrink-0 flex-col gap-0.5 text-right">
       <span class="font-mono text-xxs tabular-nums text-foreground">
         {time().toFixed(2)}s
-        <span class="text-muted-foreground"> / {film()?.dur.toFixed(1) ?? "–"}s</span>
+        <span class="text-muted-foreground"> / </span>
+        <DurationField />
       </span>
       <span class="truncate text-[10px] text-muted-foreground">
         <Show when={beat()}>{(b) => <>{b().bar}마디 {b().beat}박</>}</Show>
         <Show when={scene()}>{(s) => <> · {s()}</>}</Show>
       </span>
     </div>
+  );
+}
+
+/**
+ * The film's length, in the readout. A click turns it into a field; Enter (or
+ * leaving it) stretches every scene time with it, as one undo step.
+ */
+function DurationField() {
+  const { film } = usePlayer();
+  const { locked, edit } = useEditor();
+  const [editing, setEditing] = createSignal(false);
+  let cancelled = false;
+  const apply = (input: HTMLInputElement) => {
+    setEditing(false);
+    const n = Number(input.value);
+    if (cancelled || input.value.trim() === "" || !Number.isFinite(n)) return;
+    edit((d) => retime(d, n));
+  };
+  return (
+    <Show
+      when={editing()}
+      fallback={
+        <button
+          type="button"
+          disabled={locked() || !film()}
+          onClick={() => {
+            cancelled = false;
+            setEditing(true);
+          }}
+          title={locked() ? "에이전트가 고치는 중이라 잠시 바꿀 수 없어요" : "전체 길이 바꾸기 — 장면 시각도 같은 비율로 늘거나 줄어요"}
+          class="rounded-sm text-muted-foreground underline decoration-dotted underline-offset-2 hover:text-foreground disabled:no-underline focus-ring"
+        >
+          {film()?.dur.toFixed(1) ?? "–"}s
+        </button>
+      }
+    >
+      <input
+        ref={(el) => queueMicrotask(() => (el.focus(), el.select()))}
+        type="number"
+        step="0.5"
+        min={MIN_DUR}
+        max={MAX_DUR}
+        value={film()?.dur}
+        aria-label="전체 길이(초)"
+        onKeyDown={(e) => {
+          e.stopPropagation();
+          if (e.key === "Escape") cancelled = true;
+          if (e.key === "Enter" || e.key === "Escape") e.currentTarget.blur();
+        }}
+        onBlur={(e) => apply(e.currentTarget)}
+        class="h-5 w-14 rounded-sm bg-input px-1 text-right font-mono text-xxs text-foreground outline-none focus-ring"
+      />
+      <span class="text-muted-foreground">s</span>
+    </Show>
   );
 }
 

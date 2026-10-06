@@ -2,6 +2,7 @@ import { createEffect, createResource, createSignal, For, Match, on, Show, Switc
 import { useParams } from "@solidjs/router";
 import { ChevronRight } from "lucide-solid";
 import { Markdown } from "@/lib/markdown";
+import { MAX_DUR, MIN_DUR, retime } from "@/lib/retime";
 import { useFiles } from "@/context/files";
 import { usePlayer, type Marker } from "@/context/player";
 import { cloneFilm, useEditor } from "@/context/editor";
@@ -239,6 +240,40 @@ function SceneRow(props: { marker: Marker; current: boolean }) {
   );
 }
 
+/** The whole film's length: applied on Enter or leaving the field, scene times stretch with it. */
+function DurationRow() {
+  const { json } = usePlayer();
+  const { locked, edit } = useEditor();
+  const apply = (input: HTMLInputElement) => {
+    const n = Number(input.value);
+    if (input.value.trim() !== "" && Number.isFinite(n)) edit((d) => retime(d, n));
+    input.value = String(json()?.dur ?? "");   // shows the clamped value, or puts back a rejected one
+  };
+  return (
+    <div class="flex flex-col gap-1">
+      <div class="flex items-center gap-2 px-1 text-xxs">
+        <span class="min-w-0 flex-1 text-foreground">전체 길이</span>
+        <input
+          type="number"
+          step="0.5"
+          min={MIN_DUR}
+          max={MAX_DUR}
+          value={json()?.dur}
+          disabled={locked()}
+          onBlur={(e) => apply(e.currentTarget)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") e.currentTarget.value = String(json()?.dur ?? "");
+            if (e.key === "Enter" || e.key === "Escape") e.currentTarget.blur();
+          }}
+          class={`${field} w-20 shrink-0 text-right font-mono`}
+        />
+        <span class="text-[10px] text-muted-foreground">초</span>
+      </div>
+      <span class="px-1 text-[10px] text-muted-foreground">장면 시각도 같은 비율로 늘거나 줄고, 비트에 있던 장면은 비트에 붙어요. 동작 하나하나의 속도는 그대로예요.</span>
+    </div>
+  );
+}
+
 /** Values the agent opened up in film.json, and the named scene times — both editable. */
 function PropsTab() {
   const { json, markers, time } = usePlayer();
@@ -265,6 +300,10 @@ function PropsTab() {
         <div class="flex flex-col">
           <For each={names()}>{(name) => <Show when={json()?.params?.[name]}>{(param) => <ParamField name={name} param={param()} />}</Show>}</For>
         </div>
+      </Section>
+
+      <Section title="길이" when={json()}>
+        <DurationRow />
       </Section>
 
       <Section title="장면" when={markers().length > 0} empty="장면 이름은 숏리스트가 확정되면 생겨요.">
