@@ -112,7 +112,7 @@
 }
 
 .z-badge-variant-link {
-  @apply text-primary underline-offset-4 hover:underline;
+  @apply text-foreground underline underline-offset-4;
 }
 
 /* MARK: Breadcrumb */
@@ -146,7 +146,7 @@
 }
 
 .z-button-variant-default {
-  @apply bg-primary dark:text-foreground text-background hover:bg-primary/80;
+  @apply bg-primary text-primary-foreground hover:bg-primary/80;
 }
 
 .z-button-variant-outline {
@@ -166,7 +166,7 @@
 }
 
 .z-button-variant-link {
-  @apply text-primary underline-offset-4 hover:underline;
+  @apply text-foreground underline underline-offset-4;
 }
 
 .z-button-size-xs {
@@ -391,15 +391,15 @@
 }
 
 .z-context-menu-item {
-  @apply focus:bg-primary focus:text-foreground data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:bg-destructive/10 dark:data-[variant=destructive]:focus:bg-destructive/20 data-[variant=destructive]:focus:text-destructive data-[variant=destructive]:*:[svg]:text-destructive not-data-[variant=destructive]:focus:**:text-foreground gap-2 rounded-md px-2 py-1.5 text-xxs [&_svg:not([class*='size-'])]:size-4;
+  @apply focus:bg-accent focus:text-foreground data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:bg-destructive/10 dark:data-[variant=destructive]:focus:bg-destructive/20 data-[variant=destructive]:focus:text-destructive data-[variant=destructive]:*:[svg]:text-destructive not-data-[variant=destructive]:focus:**:text-foreground gap-2 rounded-md px-2 py-1.5 text-xxs [&_svg:not([class*='size-'])]:size-4;
 }
 
 .z-context-menu-checkbox-item {
-  @apply focus:bg-primary focus:text-foreground focus:**:text-accent-foreground gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm [&_svg:not([class*='size-'])]:size-4;
+  @apply focus:bg-accent focus:text-foreground focus:**:text-accent-foreground gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm [&_svg:not([class*='size-'])]:size-4;
 }
 
 .z-context-menu-radio-item {
-  @apply focus:bg-primary focus:text-foreground focus:**:text-accent-foreground gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm [&_svg:not([class*='size-'])]:size-4;
+  @apply focus:bg-accent focus:text-foreground focus:**:text-accent-foreground gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm [&_svg:not([class*='size-'])]:size-4;
 }
 
 .z-context-menu-item-indicator {
@@ -494,15 +494,15 @@
 }
 
 .z-dropdown-menu-item {
-  @apply focus:bg-primary focus:text-foreground data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:bg-destructive/10 dark:data-[variant=destructive]:focus:bg-destructive/20 data-[variant=destructive]:focus:text-destructive data-[variant=destructive]:*:[svg]:text-destructive not-data-[variant=destructive]:focus:**:text-accent-foreground gap-2 rounded-md px-2 py-1.5 text-xxs [&_svg:not([class*='size-'])]:size-4;
+  @apply focus:bg-accent focus:text-foreground data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:bg-destructive/10 dark:data-[variant=destructive]:focus:bg-destructive/20 data-[variant=destructive]:focus:text-destructive data-[variant=destructive]:*:[svg]:text-destructive not-data-[variant=destructive]:focus:**:text-accent-foreground gap-2 rounded-md px-2 py-1.5 text-xxs [&_svg:not([class*='size-'])]:size-4;
 }
 
 .z-dropdown-menu-checkbox-item {
-  @apply focus:bg-primary focus:text-foreground focus:**:text-accent-foreground gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm [&_svg:not([class*='size-'])]:size-4;
+  @apply focus:bg-accent focus:text-foreground focus:**:text-accent-foreground gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm [&_svg:not([class*='size-'])]:size-4;
 }
 
 .z-dropdown-menu-radio-item {
-  @apply focus:bg-primary focus:text-foreground focus:**:text-accent-foreground gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm [&_svg:not([class*='size-'])]:size-4;
+  @apply focus:bg-accent focus:text-foreground focus:**:text-accent-foreground gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm [&_svg:not([class*='size-'])]:size-4;
 }
 
 .z-dropdown-menu-item-indicator {
@@ -833,7 +833,7 @@
 
 /* MARK: Native Select */
 .z-native-select {
-  @apply border-input placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 dark:hover:bg-input/50 focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:aria-invalid:border-destructive/50 h-9 w-full min-w-0 appearance-none rounded-md border bg-transparent py-1 pr-8 pl-2.5 text-sm shadow-xs transition-[color,box-shadow] select-none focus-visible:ring-[3px] aria-invalid:ring-[3px] data-[size=sm]:h-8;
+  @apply border-input placeholder:text-muted-foreground selection:bg-selection selection:text-selection-foreground dark:bg-input/30 dark:hover:bg-input/50 focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:aria-invalid:border-destructive/50 h-9 w-full min-w-0 appearance-none rounded-md border bg-transparent py-1 pr-8 pl-2.5 text-sm shadow-xs transition-[color,box-shadow] select-none focus-visible:ring-[3px] aria-invalid:ring-[3px] data-[size=sm]:h-8;
 }
 
 .z-native-select-icon {
