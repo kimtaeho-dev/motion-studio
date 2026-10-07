@@ -1,0 +1,156 @@
+/*
+ * Motion Studio design tokens (2026-10 rebrand)
+ *
+ * How to apply: replace the values of the variables with the same names in the
+ * `:root` and `.dark` blocks of src/index.css with the ones below. Keep the
+ * variable names. Add the new brand variables (--brand*) as they are.
+ * Leave any variables not listed here (--sidebar-*, --chart-*, etc.) untouched.
+ *
+ * Principles (see docs/DESIGN_SYSTEM.md for detail)
+ *  - The UI is a stage for the film: chrome is warm achromatic (stone).
+ *  - Red means only "now": the playhead and rendering in progress.
+ *  - The film stage (--stage) stays pure gray so it does not tint the film's colors.
+ */
+
+/* ---- 1. Add to the @theme inline block ---------------------------------- */
+@theme inline {
+  --color-brand: var(--brand);
+  --color-brand-strong: var(--brand-strong);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-foreground: var(--brand-foreground);
+}
+
+/* ---- 2. :root (light) --------------------------------------------------- */
+:root {
+  color-scheme: light;
+  --scrollbar: rgba(28, 25, 23, 0.18);
+
+  /* Surfaces */
+  --canvas: #e7e5e4;            /* app background behind the panels */
+  --background: #ffffff;
+  --foreground: #1c1917;
+  --card: #ffffff;
+  --card-foreground: #1c1917;
+  --popover: #f5f5f4;
+  --popover-foreground: #1c1917;
+
+  /* Primary action: achromatic. Not blue, not red. */
+  --primary: #1c1917;
+  --primary-foreground: #fafaf9;
+  --primary-hover: #44403c;
+  --primary-pressing: #57534e;
+
+  --secondary: #f5f5f4;
+  --secondary-foreground: #1c1917;
+  --secondary-hover: #e7e5e4;
+  --secondary-pressing: #d6d3d1;
+
+  /* tertiary: no usages in the code. Aliased to secondary instead of being deleted. */
+  --tertiary: #f5f5f4;
+  --tertiary-foreground: #1c1917;
+  --tertiary-hover: #e7e5e4;
+  --tertiary-pressing: #d6d3d1;
+
+  --muted: #e7e5e4;
+  --muted-foreground: #6f6863;  /* 5.0:1 on #f5f5f4, 5.5:1 on white */
+  --disabled-foreground: #a8a29e;
+  --accent: #f5f5f4;            /* hover and focus background for list and menu items */
+  --accent-foreground: #57534e;
+
+  /* Destructive: a different job from the brand red. Always paired with text or an icon. */
+  --destructive: #c81e1e;       /* 5.7:1 on white */
+  --destructive-foreground: #ffffff;
+  --destructive-hover: #a51818;
+  --destructive-pressing: #7f1414;
+  --destructive-accent: rgba(200, 30, 30, 0.12);
+  --destructive-accent-foreground: #7f1414;
+  --success-accent: rgba(16, 122, 87, 0.14);
+  --success-accent-foreground: #0b5e43;
+
+  --border: #e7e5e4;
+  --border-input: #d6d3d1;
+  --border-darker: #f5f5f4;
+  --input: #f5f5f4;
+  --ring: #1c1917;
+
+  --overlay: rgba(12, 10, 9, 0.7);
+  --overlay-soft: rgba(12, 10, 9, 0.4);
+  --selection: #d6d3d1;
+  --selection-foreground: #1c1917;
+  --selection-muted-foreground: #6f6863;
+
+  /* Timeline: scene markers are neutral (the logo's ticks), the playhead is brand */
+  --marker: #57534e;
+  --stage: hsla(0, 0%, 86%, 1); /* pure gray: do not warm it */
+
+  /* Brand: the playhead red */
+  --brand: #e5383b;             /* graphics only: playhead, progress bar, icon. Not for text */
+  --brand-strong: #d02b2f;      /* fills that carry white text (5.2:1) */
+  --brand-soft: rgba(229, 56, 59, 0.14);
+  --brand-foreground: #ffffff;
+}
+
+/* ---- 3. .dark ----------------------------------------------------------- */
+.dark {
+  color-scheme: dark;
+  --scrollbar: rgba(245, 245, 244, 0.16);
+
+  --canvas: #151311;
+  --background: #1c1917;
+  --foreground: #f5f5f4;
+  --card: #1c1917;
+  --card-foreground: #f5f5f4;
+  --popover: #151311;
+  --popover-foreground: #f5f5f4;
+
+  --primary: #f5f5f4;
+  --primary-foreground: #1c1917;
+  --primary-hover: #d6d3d1;
+  --primary-pressing: #a8a29e;
+
+  --secondary: #292524;
+  --secondary-foreground: #f5f5f4;
+  --secondary-hover: #44403c;
+  --secondary-pressing: #57534e;
+
+  --tertiary: #292524;
+  --tertiary-foreground: #f5f5f4;
+  --tertiary-hover: #44403c;
+  --tertiary-pressing: #57534e;
+
+  --muted: #44403c;
+  --muted-foreground: #a8a29e;  /* 6.9:1 on #1c1917 */
+  --disabled-foreground: #57534e;
+  --accent: #292524;
+  --accent-foreground: #b5afaa;
+
+  --destructive: #f87171;       /* 6.3:1 on #1c1917 */
+  --destructive-foreground: #1c1917;
+  --destructive-hover: #ef4444;
+  --destructive-pressing: #dc2626;
+  --destructive-accent: rgba(248, 113, 113, 0.16);
+  --destructive-accent-foreground: #fecaca;
+  --success-accent: rgba(52, 211, 153, 0.14);
+  --success-accent-foreground: #a7f3d0;
+
+  --border: #292524;
+  --border-input: #44403c;
+  --border-darker: #1c1917;
+  --input: #292524;
+  --ring: #f5f5f4;
+
+  --overlay: rgba(12, 10, 9, 0.7);
+  --overlay-soft: rgba(12, 10, 9, 0.4);
+  --selection: #57534e;
+  --selection-foreground: #f5f5f4;
+  --selection-muted-foreground: #292524;
+  --inset: #44403c;
+
+  --marker: #a8a29e;
+  --stage: hsla(0, 0%, 6%, 1);
+
+  --brand: #e5383b;             /* graphics on #1c1917: 4.1:1 (meets the 3:1 graphics bar) */
+  --brand-strong: #d02b2f;
+  --brand-soft: rgba(229, 56, 59, 0.18);
+  --brand-foreground: #ffffff;
+}
