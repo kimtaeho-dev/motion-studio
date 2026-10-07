@@ -19,6 +19,10 @@
   --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
   --font-weight-strong: 600;
   --color-marker: var(--marker);
+  --color-brand: var(--brand);
+  --color-brand-strong: var(--brand-strong);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-foreground: var(--brand-foreground);
   --color-stage: var(--stage);
   --color-overlay: var(--overlay);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -66,103 +70,135 @@
 
 :root {
   color-scheme: light;
-  --scrollbar: hsla(0, 0%, 0%, 0.18);
-  --canvas: hsla(0, 0%, 91%, 1);
-  --background: hsla(0, 0%, 100%, 1);
-  --foreground: hsla(240, 5%, 9%, 1);
-  --card: hsla(0, 0%, 100%, 1);
-  --card-foreground: hsla(240, 5%, 9%, 1);
-  --popover: hsla(0, 0%, 95%, 1);
-  --popover-foreground: hsla(240, 5%, 9%, 1);
-  --primary: hsla(207, 100%, 50%, 1);
-  --primary-foreground: hsla(0, 0%, 95%, 1);
-  --primary-hover: hsla(207, 98%, 40%, 1);
-  --primary-pressing: hsla(207, 99%, 35%, 1);
-  --secondary: hsla(0, 0%, 95%, 1);
-  --secondary-foreground: hsla(207, 100%, 90%, 1);
-  --secondary-hover: hsla(0, 0%, 88%, 1);
-  --secondary-pressing: hsla(0, 0%, 40%, 1);
-  --tertiary: hsla(207, 100%, 50%, 1);
-  --tertiary-foreground: hsla(207, 100%, 90%, 1);
-  --tertiary-hover: hsla(207, 80%, 40%, 1);
-  --tertiary-pressing: hsla(207, 80%, 35%, 1);
-  --muted: hsla(0, 0%, 91%, 1);
-  --muted-foreground: hsla(0, 0%, 45%, 1);
-  --disabled-foreground: hsla(0, 0%, 40%, 1);
-  --accent: hsla(0, 0%, 95%, 1);
-  --accent-foreground: hsla(0, 0%, 45%, 1);
-  --destructive: hsla(0, 79%, 54%, 1);
-  --destructive-foreground: hsla(0, 0%, 100%, 1);
-  --destructive-hover: hsla(0, 60%, 40%, 1);
-  --destructive-pressing: hsla(0, 53%, 27%, 1);
-  --destructive-accent: hsla(0, 79%, 54%, 0.24);
-  --destructive-accent-foreground: hsla(0, 78%, 95%, 1);
-  --success-accent: hsla(162, 66%, 29%, 0.24);
-  --success-accent-foreground: hsla(162, 84%, 89%, 1);
-  --border: hsla(0, 0%, 91%, 1);
-  --border-input: hsla(0, 0%, 88%, 1);
-  --border-darker: hsla(0, 0%, 95%, 1);
-  --input: hsla(0, 0%, 95%, 1);
-  --ring: hsla(207, 100%, 50%, 1);
-  --canvas: hsla(0, 0%, 91%, 1);
-  --overlay: hsla(0, 0%, 9%, 0.7);
-  --overlay-soft: hsla(0, 0%, 9%, 0.4);
-  --selection: hsla(207, 100%, 50%, 1);
-  --selection-foreground: hsla(207, 100%, 90%, 1);
-  --selection-muted-foreground: hsla(0, 0%, 45%, 1);
-  --marker: hsla(207, 100%, 50%, 1);
-  --stage: hsla(0, 0%, 86%, 1);
+  --scrollbar: rgba(28, 25, 23, 0.18);
+
+  /* Surfaces */
+  --canvas: #e7e5e4;            /* app background behind the panels */
+  --background: #ffffff;
+  --foreground: #1c1917;
+  --card: #ffffff;
+  --card-foreground: #1c1917;
+  --popover: #ffffff;            /* differs from docs: #f5f5f4 equals --accent, so menu hover vanished */
+  --popover-foreground: #1c1917;
+
+  /* Primary action: achromatic. Not blue, not red. */
+  --primary: #1c1917;
+  --primary-foreground: #fafaf9;
+  --primary-hover: #44403c;
+  --primary-pressing: #57534e;
+
+  --secondary: #f5f5f4;
+  --secondary-foreground: #1c1917;
+  --secondary-hover: #e7e5e4;
+  --secondary-pressing: #d6d3d1;
+
+  /* tertiary: no usages in the code. Aliased to secondary instead of being deleted. */
+  --tertiary: #f5f5f4;
+  --tertiary-foreground: #1c1917;
+  --tertiary-hover: #e7e5e4;
+  --tertiary-pressing: #d6d3d1;
+
+  --muted: #e7e5e4;
+  --muted-foreground: #6f6863;  /* 5.0:1 on #f5f5f4, 5.5:1 on white */
+  --disabled-foreground: #a8a29e;
+  --accent: #f5f5f4;            /* hover and focus background for list and menu items */
+  --accent-foreground: #57534e;
+
+  /* Destructive: a different job from the brand red. Always paired with text or an icon. */
+  --destructive: #c81e1e;       /* 5.7:1 on white */
+  --destructive-foreground: #ffffff;
+  --destructive-hover: #a51818;
+  --destructive-pressing: #7f1414;
+  --destructive-accent: rgba(200, 30, 30, 0.12);
+  --destructive-accent-foreground: #7f1414;
+  --success-accent: rgba(16, 122, 87, 0.14);
+  --success-accent-foreground: #0b5e43;
+
+  --border: #e7e5e4;
+  --border-input: #d6d3d1;
+  --border-darker: #f5f5f4;
+  --input: #f5f5f4;
+  --ring: #1c1917;
+
+  --overlay: rgba(12, 10, 9, 0.7);
+  --overlay-soft: rgba(12, 10, 9, 0.4);
+  --selection: #d6d3d1;
+  --selection-foreground: #1c1917;
+  --selection-muted-foreground: #6f6863;
+
+  /* Timeline: scene markers are neutral (the logo's ticks), the playhead is brand */
+  --marker: #57534e;
+  --stage: hsla(0, 0%, 86%, 1); /* pure gray: do not warm it */
+
+  /* Brand: the playhead red */
+  --brand: #e5383b;             /* graphics only: playhead, progress bar, icon. Not for text */
+  --brand-strong: #d02b2f;      /* fills that carry white text (5.2:1) */
+  --brand-soft: rgba(229, 56, 59, 0.14);
+  --brand-foreground: #ffffff;
 }
 
 .dark {
   color-scheme: dark;
-  --scrollbar: hsla(0, 0%, 100%, 0.16);
-  --canvas: hsla(0, 0%, 9%, 1);
-  --background: hsla(0, 0%, 11%, 1);
-  --foreground: hsla(0, 0%, 95%, 1);
-  --card: hsla(0, 0%, 11%, 1);
-  --card-foreground: hsla(0, 0%, 95%, 1);
-  --popover: hsla(0, 0%, 9%, 1);
-  --popover-foreground: hsla(0, 0%, 95%, 1);
-  --primary: hsla(207, 100%, 50%, 1);
-  --primary-foreground: hsla(0, 0%, 95%, 1);
-  --primary-hover: hsla(207, 98%, 29%, 1);
-  --primary-pressing: hsla(207, 99%, 22%, 1);
-  --secondary: hsla(0, 0%, 16%, 1);
-  --secondary-foreground: hsla(0, 0%, 95%, 1);
-  --secondary-hover: hsla(0, 0%, 25%, 1);
-  --secondary-pressing: hsla(0, 0%, 40%, 1);
-  --tertiary: hsla(207, 99%, 22%, 1);
-  --tertiary-foreground: hsla(207, 100%, 90%, 1);
-  --tertiary-hover: hsla(207, 80%, 17%, 1);
-  --tertiary-pressing: hsla(207, 80%, 14%, 1);
-  --muted: hsla(0, 0%, 25%, 1);
-  --muted-foreground: hsla(0, 0%, 62%, 1);
-  --disabled-foreground: hsla(0, 0%, 40%, 1);
-  --accent: hsla(0, 0%, 16%, 1);
-  --accent-foreground: hsla(0, 0%, 62%, 1);
-  --destructive: hsla(0, 79%, 54%, 1);
-  --destructive-foreground: hsla(0, 0%, 100%, 1);
-  --destructive-hover: hsla(0, 60%, 40%, 1);
-  --destructive-pressing: hsla(0, 53%, 27%, 1);
-  --destructive-accent: hsla(0, 79%, 54%, 0.24);
-  --destructive-accent-foreground: hsla(0, 78%, 95%, 1);
-  --success-accent: hsla(162, 66%, 29%, 0.24);
-  --success-accent-foreground: hsla(162, 84%, 89%, 1);
-  --border: hsla(0, 0%, 15%, 1);
-  --border-input: hsla(0, 0%, 25%, 1);
-  --border-darker: hsla(0, 0%, 11%, 1);
-  --input: hsla(0, 0%, 16%, 1);
-  --ring: hsla(207, 100%, 50%, 1);
-  --canvas: hsla(0, 0%, 9%, 1);
-  --overlay: hsla(0, 0%, 9%, 0.7);
-  --overlay-soft: hsla(0, 0%, 9%, 0.4);
-  --selection: hsla(207, 99%, 22%, 1);
-  --selection-foreground: hsla(207, 100%, 90%, 1);
-  --selection-muted-foreground: hsla(0, 0%, 16%, 1);
-  --inset: hsla(0, 0%, 25%, 1);
-  --marker: hsla(207, 100%, 62%, 1);
+  --scrollbar: rgba(245, 245, 244, 0.16);
+
+  --canvas: #151311;
+  --background: #1c1917;
+  --foreground: #f5f5f4;
+  --card: #1c1917;
+  --card-foreground: #f5f5f4;
+  --popover: #151311;
+  --popover-foreground: #f5f5f4;
+
+  --primary: #f5f5f4;
+  --primary-foreground: #1c1917;
+  --primary-hover: #d6d3d1;
+  --primary-pressing: #a8a29e;
+
+  --secondary: #292524;
+  --secondary-foreground: #f5f5f4;
+  --secondary-hover: #44403c;
+  --secondary-pressing: #57534e;
+
+  --tertiary: #292524;
+  --tertiary-foreground: #f5f5f4;
+  --tertiary-hover: #44403c;
+  --tertiary-pressing: #57534e;
+
+  --muted: #44403c;
+  --muted-foreground: #a8a29e;  /* 6.9:1 on #1c1917 */
+  --disabled-foreground: #57534e;
+  --accent: #292524;
+  --accent-foreground: #b5afaa;
+
+  --destructive: #f87171;       /* 6.3:1 on #1c1917 */
+  --destructive-foreground: #1c1917;
+  --destructive-hover: #ef4444;
+  --destructive-pressing: #dc2626;
+  --destructive-accent: rgba(248, 113, 113, 0.16);
+  --destructive-accent-foreground: #fecaca;
+  --success-accent: rgba(52, 211, 153, 0.14);
+  --success-accent-foreground: #a7f3d0;
+
+  --border: #292524;
+  --border-input: #44403c;
+  --border-darker: #1c1917;
+  --input: #292524;
+  --ring: #f5f5f4;
+
+  --overlay: rgba(12, 10, 9, 0.7);
+  --overlay-soft: rgba(12, 10, 9, 0.4);
+  --selection: #57534e;
+  --selection-foreground: #f5f5f4;
+  --selection-muted-foreground: #292524;
+  --inset: #44403c;
+
+  --marker: #a8a29e;
   --stage: hsla(0, 0%, 6%, 1);
+
+  --brand: #e5383b;             /* graphics on #1c1917: 4.1:1 (meets the 3:1 graphics bar) */
+  --brand-strong: #d02b2f;
+  --brand-soft: rgba(229, 56, 59, 0.18);
+  --brand-foreground: #ffffff;
 }
 
 @layer base {
