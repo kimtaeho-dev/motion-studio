@@ -91,7 +91,7 @@ export function ExportButton() {
     <>
       <Button size="sm" variant={running() && mine() ? "secondary" : "default"} onClick={() => setOpen(true)} disabled={!film()}>
         <Show when={running() && mine()} fallback={<Download />}>
-          <Loader class="animate-spin" />
+          <Loader class="animate-spin text-brand" />
         </Show>
         내보내기
       </Button>
@@ -126,7 +126,7 @@ export function ExportButton() {
                   </div>
                 </div>
                 <label class="flex items-center gap-2 text-xxs text-foreground">
-                  <input type="checkbox" checked={zip()} onChange={(e) => setZip(e.currentTarget.checked)} class="accent-marker" />
+                  <input type="checkbox" checked={zip()} onChange={(e) => setZip(e.currentTarget.checked)} class="accent-primary" />
                   zip 파일로도 묶기
                 </label>
                 <Show when={error()}>
@@ -143,7 +143,7 @@ export function ExportButton() {
                       <li class="flex items-center gap-2 text-xxs">
                         <Switch fallback={<span class="size-3.5 rounded-full border border-border" />}>
                           <Match when={step.status === "running"}>
-                            <Loader class="size-3.5 animate-spin text-marker" />
+                            <Loader class="size-3.5 animate-spin text-brand" />
                           </Match>
                           <Match when={step.status === "done"}>
                             <Check class="size-3.5 text-foreground" />

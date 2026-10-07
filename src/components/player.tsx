@@ -263,12 +263,12 @@ function Timeline() {
       </For>
 
       {/* Playhead */}
-      <div class="pointer-events-none absolute top-0 bottom-0 w-0.5 -translate-x-1/2 bg-foreground" style={{ left: pct(time(), dur()) }} />
+      <div class="pointer-events-none absolute top-0 bottom-0 w-0.5 -translate-x-1/2 bg-brand" style={{ left: pct(time(), dur()) }} />
 
       <Show when={drag()}>
         {(d) => (
           <div
-            class="pointer-events-none absolute -top-6 -translate-x-1/2 rounded-md bg-foreground px-1.5 py-0.5 font-mono text-[10px] whitespace-nowrap text-background"
+            class="pointer-events-none absolute -top-6 -translate-x-1/2 rounded-md bg-brand-strong px-1.5 py-0.5 font-mono text-[10px] tabular-nums whitespace-nowrap text-brand-foreground"
             style={{ left: pct(d().t, dur()) }}
           >
             {d().label} · {d().t.toFixed(2)}s
@@ -391,7 +391,7 @@ function JobChip(props: { job: RenderJob }) {
       <span classList={{ "text-muted-foreground": props.job.status === "done" || props.job.status === "cancelled" }}>{title()}</span>
       <Show when={props.job.status === "running"}>
         <div class="h-1 w-24 overflow-hidden rounded-full bg-background">
-          <div class="h-full rounded-full bg-marker" style={{ width: `${pct() * 100}%` }} />
+          <div class="h-full rounded-full bg-brand" style={{ width: `${pct() * 100}%` }} />
         </div>
         <span class="font-mono tabular-nums text-muted-foreground">{Math.floor(pct() * 100)}%</span>
         <Show when={remaining()}>{(ms) => <span class="text-muted-foreground">남은 ~{eta(ms())}</span>}</Show>

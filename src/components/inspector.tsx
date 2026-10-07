@@ -169,7 +169,7 @@ function ParamField(props: { name: string; param: FilmParam }) {
                 disabled={locked()}
                 onInput={(e) => set(Number(e.currentTarget.value))}
                 onChange={() => gesture.end()}
-                class="min-w-0 flex-1 accent-marker"
+                class="min-w-0 flex-1 accent-primary"
               />
             </Show>
             <input
