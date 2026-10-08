@@ -17,6 +17,16 @@ import { useFilms } from "@/context/films";
 import { NewFilmDialog } from "@/components/new-film-dialog";
 import type { FilmSummary } from "@/types";
 
+/** The brand mark (assets/brand/mark.svg): a timeline playhead, in the brand red. */
+function Mark() {
+  return (
+    <svg viewBox="400 288 224 492" class="h-[13px] w-auto shrink-0 text-brand" aria-hidden="true">
+      <path d="M512 500 V740" fill="none" stroke="currentColor" stroke-width="56" stroke-linecap="round" />
+      <path d="M412 300 H612 V440 L512 520 L412 440 Z" fill="currentColor" stroke="currentColor" stroke-width="24" stroke-linejoin="round" />
+    </svg>
+  );
+}
+
 /** "12초 · 1x1 9x16" — what a designer needs to tell films apart at a glance. */
 function subtitle(film: FilmSummary): string {
   if (film.error) return film.error;
@@ -75,7 +85,10 @@ export function Sidebar() {
   return (
     <aside class="flex w-[232px] shrink-0 flex-col rounded-2xl border border-border bg-background text-muted-foreground">
       <div class="flex h-12 items-center justify-between px-4">
-        <span class="text-xxs font-strong text-foreground">Motion Studio</span>
+        <span class="flex items-center gap-1.5 text-xxs font-strong text-foreground">
+          <Mark />
+          Motion Studio
+        </span>
         <Button size="icon" variant="ghost" onClick={() => setCreating(true)} aria-label="새 필름">
           <Plus />
         </Button>
