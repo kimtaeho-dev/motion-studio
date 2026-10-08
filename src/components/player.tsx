@@ -506,13 +506,14 @@ export function Player() {
   usePlayerKeys();
 
   return (
-    <main class="flex min-w-0 flex-1 flex-col gap-3 rounded-2xl border border-border bg-background p-3">
+    <main class="@container flex min-w-0 flex-1 flex-col gap-3 rounded-2xl border border-border bg-background p-3">
+      {/* A narrow player gives way from the least needed: the size readout first, then the export label. */}
       <div class="flex h-8 items-center justify-between gap-3 px-1">
-        <span class="truncate text-xxs font-strong text-foreground">{findFilm(params.film ?? "")?.title ?? params.film}</span>
-        <div class="flex items-center gap-3">
+        <span class="min-w-0 truncate text-xxs font-strong text-foreground">{findFilm(params.film ?? "")?.title ?? params.film}</span>
+        <div class="flex shrink-0 items-center gap-3">
           <Show when={film()}>
             {(f) => (
-              <span class="font-mono text-[10px] text-muted-foreground">
+              <span class="hidden whitespace-nowrap font-mono text-[10px] text-muted-foreground @min-[600px]:inline">
                 {f().W}×{f().H} · {f().bpm}BPM
               </span>
             )}

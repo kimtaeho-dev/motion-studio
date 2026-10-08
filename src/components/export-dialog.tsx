@@ -107,11 +107,12 @@ export function ExportButton() {
 
   return (
     <>
-      <Button size="sm" variant={running() && mine() ? "secondary" : "default"} onClick={() => setOpen(true)} disabled={!film()}>
+      <Button size="sm" variant={running() && mine() ? "secondary" : "default"} onClick={() => setOpen(true)} disabled={!film()} aria-label="내보내기" title="내보내기">
         <Show when={running() && mine()} fallback={<Download />}>
           <Loader class="animate-spin text-brand" />
         </Show>
-        내보내기
+        {/* The label goes first when the player is narrow (its <main> is the @container). */}
+        <span class="hidden @min-[440px]:inline">내보내기</span>
       </Button>
 
       <AlertDialog open={open()} onOpenChange={setOpen}>
