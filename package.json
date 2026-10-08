@@ -106,6 +106,14 @@
         "to": "seed/films/sample-physics"
       },
       {
+        "from": "films/_template-lottie",
+        "to": "seed/films/_template-lottie"
+      },
+      {
+        "from": "films/sample-lottie",
+        "to": "seed/films/sample-lottie"
+      },
+      {
         "from": "vendor/ffmpeg/${arch}/ffmpeg",
         "to": "bin/ffmpeg"
       },

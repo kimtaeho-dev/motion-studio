@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import chokidar, { type FSWatcher } from "chokidar";
 import type { Plugin, ViteDevServer } from "vite";
-import { FILM_STAGES, type ChatAttachment, type FilmChange, type FilmFile, type FilmFiles, type FilmOutput, type FilmQuality, type FilmStage, type FilmSummary } from "../src/types/common";
+import { FILM_STAGES, LOTTIE_DUR, LOTTIE_SIZES, defaultRole, type ChatAttachment, type FilmChange, type FilmFile, type FilmFiles, type FilmOutput, type FilmQuality, type FilmStage, type FilmSummary } from "../src/types/common";
 import { inside, json, readJsonBody, saveBody, sendFile } from "./http";
 import { readState, writeState } from "./state";
 import { resolveWorkspace, type Workspace } from "./workspace";
@@ -37,14 +37,29 @@ const DOCS = { brief: "brief.md", shotlist: "shotlist.md", review: "review_log.m
 
 export interface NewFilm {
   name: string;
+  /** Video films: format keys of FORMAT_SIZES. Lottie films: one LOTTIE_SIZES value. */
   formats: string[];
   dur: number;
   quality: FilmQuality;
+  lottie?: boolean;
 }
 
-/** "새 런칭 영상 2" → "2", "Launch Reel!" → "launch-reel"; empty when nothing ASCII survives. */
+// Revised Romanization, letter by letter (no sound-change rules): readable, and stable for the same name.
+const INITIALS = ["g", "kk", "n", "d", "tt", "r", "m", "b", "pp", "s", "ss", "", "j", "jj", "ch", "k", "t", "p", "h"];
+const MEDIALS = ["a", "ae", "ya", "yae", "eo", "e", "yeo", "ye", "o", "wa", "wae", "oe", "yo", "u", "wo", "we", "wi", "yu", "eu", "ui", "i"];
+const FINALS = ["", "k", "k", "k", "n", "n", "n", "t", "l", "k", "m", "l", "l", "l", "p", "l", "m", "p", "p", "t", "t", "ng", "t", "t", "k", "t", "p", "t"];
+
+/** "결제 완료 체크" → "gyeolje wanryo chekeu" — so a Korean film name still gives a readable folder name. */
+function romanize(text: string): string {
+  return text.replace(/[\uAC00-\uD7A3]/g, (ch) => {
+    const n = ch.charCodeAt(0) - 0xac00;
+    return INITIALS[Math.floor(n / 588)] + MEDIALS[Math.floor((n % 588) / 28)] + FINALS[n % 28];
+  });
+}
+
+/** "결제 완료 체크" → "gyeolje-wanryo-chekeu", "Launch Reel!" → "launch-reel"; empty when nothing usable survives. */
 function slugify(name: string): string {
-  return name
+  return romanize(name)
     .toLowerCase()
     .normalize("NFKD")
     .replace(/[^a-z0-9]+/g, "-")
@@ -98,6 +113,7 @@ function readFilm(ws: Workspace, slug: string): FilmSummary {
     if (typeof data.title === "string" && data.title.trim()) summary.title = data.title.trim();
     if (typeof data.dur === "number") summary.dur = data.dur;
     if (typeof data.bpm === "number") summary.bpm = data.bpm;
+    if (data.kind === "lottie") summary.kind = "lottie";
     if (data.formats && typeof data.formats === "object") summary.formats = Object.keys(data.formats);
   } catch (err) {
     summary.error = fs.existsSync(path.join(dir, "film.json")) ? "film.json을 읽을 수 없어요" : "film.json이 없어요";
@@ -116,7 +132,8 @@ export function listFilms(ws: Workspace): FilmSummary[] {
     .sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
-function createFilm(ws: Workspace, { name, formats, dur, quality }: NewFilm): string {
+function createFilm(ws: Workspace, { name, formats, dur, quality, lottie }: NewFilm): string {
+  if (lottie) return createLottieFilm(ws, { name, formats, dur, quality });
   const template = path.join(ws.filmsDir, "_template");
   if (!fs.existsSync(template)) throw new Error("films/_template이 없습니다");
   const base = slugify(name) || "film";
@@ -148,6 +165,41 @@ function createFilm(ws: Workspace, { name, formats, dur, quality }: NewFilm): st
     entry.t = Math.round(entry.t * scale * 1000) / 1000;
   }
   fs.writeFileSync(jsonFile, JSON.stringify(film, null, 2) + "\n");
+  writeState(dir, { stage: "brief", quality });
+  return slug;
+}
+
+/** films/_template-lottie: an empty lottie.json of the chosen size and length, and the film.json `tools/lottie.mjs sync` would write for it. */
+function createLottieFilm(ws: Workspace, { name, formats, dur, quality }: NewFilm): string {
+  const template = path.join(ws.filmsDir, "_template-lottie");
+  if (!fs.existsSync(template)) throw new Error("films/_template-lottie이 없습니다");
+  const size = LOTTIE_SIZES.find((s) => s.value === formats[0]) ?? LOTTIE_SIZES[0];
+  const [w, h] = size.size;
+  const fps = 60;
+  const frames = Math.max(1, Math.round(dur * fps));
+  const base = slugify(name) || "lottie";
+  let slug = base;
+  for (let i = 2; fs.existsSync(path.join(ws.filmsDir, slug)); i++) slug = `${base}-${i}`;
+
+  const dir = path.join(ws.filmsDir, slug);
+  fs.cpSync(template, dir, { recursive: true });
+  const escaped: Record<string, string> = {
+    "lottie.json": JSON.stringify(name).slice(1, -1),
+    "index.html": name.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]!),
+    "brief.md": name,
+  };
+  for (const [file, value] of Object.entries(escaped)) {
+    const full = path.join(dir, file);
+    if (!fs.existsSync(full)) continue;
+    const text = fs.readFileSync(full, "utf8").replaceAll("__NAME__", value).replaceAll("__W__", String(w)).replaceAll("__H__", String(h)).replaceAll("__OP__", String(frames));
+    fs.writeFileSync(full, text);
+  }
+  fs.mkdirSync(path.join(dir, "refs"), { recursive: true });
+  const film = {
+    title: name, kind: "lottie", dur: Math.round((frames / fps) * 1000) / 1000, bpm: 120, beatOffset: 0, fps,
+    formats: { [size.value]: [w, h] }, transparent: true, params: {}, timeline: {},
+  };
+  fs.writeFileSync(path.join(dir, "film.json"), JSON.stringify(film, null, 2) + "\n");
   writeState(dir, { stage: "brief", quality });
   return slug;
 }
@@ -357,7 +409,7 @@ export function filmsPlugin(): Plugin {
         if (path.extname(file).toLowerCase() === ".svg") fs.writeFileSync(file, sanitizeSvg(fs.readFileSync(file, "utf8")));
 
         const rel = path.relative(ws.root, file).split(path.sep).join("/");
-        const attachment: ChatAttachment = { name, path: rel, url: "/" + rel.split("/").map(encodeURIComponent).join("/"), kind };
+        const attachment: ChatAttachment = { name, path: rel, url: "/" + rel.split("/").map(encodeURIComponent).join("/"), kind, role: defaultRole({ kind, name }) };
         json(res, 201, attachment);
       });
 
@@ -392,6 +444,12 @@ export function filmsPlugin(): Plugin {
         try {
           if (req.method === "POST") {
             if (!name) return json(res, 400, { error: "missing name" });
+            if (body.kind === "lottie") {
+              const size = typeof body.size === "string" && LOTTIE_SIZES.some((s) => s.value === body.size) ? body.size : LOTTIE_SIZES[0].value;
+              const dur = typeof body.dur === "number" && Number.isFinite(body.dur) ? Math.min(LOTTIE_DUR.max, Math.max(LOTTIE_DUR.min, body.dur)) : 2;
+              const quality = QUALITIES.find((q) => q === body.quality) ?? "standard";
+              return json(res, 201, { film: createFilm(ws, { name, formats: [size], dur, quality, lottie: true }) });
+            }
             const formats = Array.isArray(body.formats) ? body.formats.filter((f): f is string => typeof f === "string" && f in FORMAT_SIZES) : [];
             const dur = typeof body.dur === "number" && Number.isFinite(body.dur) ? Math.min(180, Math.max(2, body.dur)) : 12;
             const quality = QUALITIES.find((q) => q === body.quality) ?? "standard";

@@ -34,6 +34,19 @@ FFmpeg는 Motion Studio와 별개의 프로그램이며, Motion Studio는 FFmpeg
 `lib/three/addons/libs/`의 opentype.js(MIT, `LICENSE-opentype`), meshoptimizer 디코더(MIT),
 Draco 디코더(Apache 2.0)도 three.js 배포본에 들어 있는 그대로 함께 들어간다.
 
+## CanvasKit 0.41.1 (Skia, Skottie) — BSD 3-Clause
+
+Lottie 필름의 미리보기·렌더 엔진(`lib/lottie/canvaskit.js`, `canvaskit.wasm`, npm `canvaskit-wasm@0.41.1` full 빌드). 라이선스: `lib/lottie/LICENSE-canvaskit`.
+
+## lottie-web 5.13.0 — MIT
+
+Lottie 필름을 웹 플레이어로도 그려 비교하는 검사(`lib/lottie/lottie_svg.min.js`). 라이선스: `lib/lottie/LICENSE-lottie-web`.
+
+## diffusionstudio/lottie — MIT
+
+Lottie 호환·움직임 검사(`tools/lottie/check-compat.mjs`, `check-motion.mjs`)와 Lottie 작성 규칙(`prompts/lottie.md`, `prompts/lottie-recipes/`)은
+diffusionstudio/lottie의 text-to-lottie 스킬을 고쳐 쓴 것이다. 라이선스: `tools/lottie/LICENSE-diffusionstudio-lottie`.
+
 ## Rapier 0.21 (결정적 빌드) — Apache 2.0
 
 3D 필름의 물리(`lib/rapier/`, `@dimforge/rapier3d-deterministic-compat`). 라이선스: `lib/rapier/LICENSE`.

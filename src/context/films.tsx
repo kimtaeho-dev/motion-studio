@@ -1,5 +1,5 @@
 import { createContext, createResource, useContext, type JSX } from "solid-js";
-import type { FilmQuality, FilmSummary, FilmsTree } from "@/types";
+import type { FilmKind, FilmQuality, FilmSummary, FilmsTree } from "@/types";
 import { onServerEvent } from "@/lib/live";
 
 const FilmsContext = createContext<{
@@ -20,6 +20,9 @@ export interface NewFilmOptions {
   /** Seconds. */
   dur: number;
   quality: FilmQuality;
+  /** "lottie": an animation for an app or site (lottie.json), sized by `size` (a LOTTIE_SIZES value). */
+  kind?: FilmKind;
+  size?: string;
 }
 
 async function loadFilms(): Promise<FilmSummary[]> {

@@ -18,7 +18,7 @@ const ChatContext = createContext<{
   typicalDurationMs: () => number | undefined;
   settings: () => ChatSettings;
   setSettings: (next: ChatSettings) => void;
-  /** Saves a file into the current film's refs/ folder (references and .glb models), ready to attach. */
+  /** Saves a file into the current film's refs/ folder (references and the designer's own assets), ready to attach. */
   upload: (file: File) => Promise<ChatAttachment>;
   send: (text: string, attachments?: ChatAttachment[]) => Promise<void>;
   /** The app's approve button for a pipeline gate (server/mailbox.ts records it in state.json). */
@@ -91,7 +91,7 @@ export function ChatProvider(props: { children: JSX.Element }) {
     const query = new URLSearchParams({ film, name: file.name });
     const res = await fetch(`/__films/upload?${query}`, { method: "POST", body: file });
     if (res.status === 413) throw new Error("파일이 너무 커요. 500MB 이하만 첨부할 수 있어요.");
-    if (res.status === 400) throw new Error("이미지·영상·음악 파일만 첨부할 수 있어요.");
+    if (res.status === 400) throw new Error("이미지·영상·SVG·3D 모델(.glb) 파일만 첨부할 수 있어요.");
     if (!res.ok) throw new Error("파일을 저장하지 못했어요.");
     return (await res.json()) as ChatAttachment;
   };

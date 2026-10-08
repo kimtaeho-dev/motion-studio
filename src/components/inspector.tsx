@@ -249,6 +249,19 @@ function DurationRow() {
     if (input.value.trim() !== "" && Number.isFinite(n)) edit((d) => retime(d, n));
     input.value = String(json()?.dur ?? "");   // shows the clamped value, or puts back a rejected one
   };
+  // A Lottie film's length lives in its keyframes (lottie.json): retiming them is the agent's job.
+  if (json()?.kind === "lottie") {
+    return (
+      <div class="flex flex-col gap-1">
+        <div class="flex items-center gap-2 px-1 text-xxs">
+          <span class="min-w-0 flex-1 text-foreground">전체 길이</span>
+          <span class="font-mono text-foreground">{json()?.dur}</span>
+          <span class="text-[10px] text-muted-foreground">초</span>
+        </div>
+        <span class="px-1 text-[10px] text-muted-foreground">Lottie는 움직임이 파일 안의 키프레임에 들어 있어서, 길이는 에이전트에게 말로 바꿔 달라고 해 주세요.</span>
+      </div>
+    );
+  }
   return (
     <div class="flex flex-col gap-1">
       <div class="flex items-center gap-2 px-1 text-xxs">
@@ -306,12 +319,15 @@ function PropsTab() {
         <DurationRow />
       </Section>
 
-      <Section title="장면" when={markers().length > 0} empty="장면 이름은 숏리스트가 확정되면 생겨요.">
-        <div class="flex flex-col">
-          <For each={keys()}>{(key) => <Show when={marker(key)}>{(m) => <SceneRow marker={m()} current={current() === key} />}</Show>}</For>
-        </div>
-        <span class="text-[10px] text-muted-foreground">타임라인의 장면 표시를 끌어서 옮길 수도 있어요. 비트에 맞춰 붙고, Alt를 누르면 프레임 단위로 움직여요.</span>
-      </Section>
+      {/* A Lottie film's scene times live in its keyframes, not in film.json. */}
+      <Show when={json()?.kind !== "lottie"}>
+        <Section title="장면" when={markers().length > 0} empty="장면 이름은 숏리스트가 확정되면 생겨요.">
+          <div class="flex flex-col">
+            <For each={keys()}>{(key) => <Show when={marker(key)}>{(m) => <SceneRow marker={m()} current={current() === key} />}</Show>}</For>
+          </div>
+          <span class="text-[10px] text-muted-foreground">타임라인의 장면 표시를 끌어서 옮길 수도 있어요. 비트에 맞춰 붙고, Alt를 누르면 프레임 단위로 움직여요.</span>
+        </Section>
+      </Show>
     </div>
   );
 }

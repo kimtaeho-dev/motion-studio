@@ -8,6 +8,7 @@ import type { ExportJob, ExportKind, ExportStep } from "../src/types/common";
 import { json, readJsonBody } from "./http";
 import { cancelRenderJob, enqueueRender } from "./render";
 import { resolveWorkspace, type Workspace } from "./workspace";
+import { packageLottie } from "../tools/lottie/package.mjs";
 
 /**
  * "내보내기": collect a film's deliverables into one folder under ~/Downloads.
@@ -23,10 +24,10 @@ export interface ExportOptions {
   reveal?: (dir: string) => void;
 }
 
-const KINDS: ExportKind[] = ["mp4", "gif", "prores", "webm", "png"];
+const KINDS: ExportKind[] = ["lottie", "mp4", "gif", "prores", "webm", "png"];
 
 /** Where each kind lives in out/<film>/<format>/, and what it is called in the export. */
-const OUTPUT: Record<Exclude<ExportKind, "png">, { file: string; ext: string; codec: string | null; label: string }> = {
+const OUTPUT: Record<Exclude<ExportKind, "png" | "lottie">, { file: string; ext: string; codec: string | null; label: string }> = {
   mp4: { file: "final.mp4", ext: "mp4", codec: null, label: "MP4" },
   gif: { file: "preview.gif", ext: "gif", codec: "gif", label: "GIF" },
   prores: { file: "master.mov", ext: "mov", codec: "prores", label: "ProRes 4444" },
@@ -110,6 +111,21 @@ export function exportPlugin(options: ExportOptions = {}): Plugin {
       fs.copyFileSync(from, path.join(dest, name));
     };
 
+    // Lottie films: the animation file itself, with the property panel's values baked into its slots.
+    if (kinds.includes("lottie")) {
+      plan.push({
+        label: "Lottie · .json · .lottie",
+        status: "pending",
+        run: async () => {
+          const pkg = packageLottie(path.join(ws.filmsDir, slug));
+          fs.mkdirSync(dest, { recursive: true });
+          fs.writeFileSync(path.join(dest, `${safeName(meta.title)}.json`), pkg.json);
+          fs.writeFileSync(path.join(dest, `${safeName(meta.title)}.lottie`), pkg.dotLottie);
+          return null;
+        },
+      });
+    }
+
     for (const format of formats) {
       const outDir = path.join(ws.outDir, slug, format);
       const size = meta.formats[format];
@@ -122,6 +138,7 @@ export function exportPlugin(options: ExportOptions = {}): Plugin {
       const base = `${safeName(meta.title)}-${format}`;
 
       for (const kind of kinds) {
+        if (kind === "lottie") continue;
         if (kind === "png") {
           plan.push({
             label: `포스터·컨택트 시트 · ${format}`,

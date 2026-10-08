@@ -61,14 +61,14 @@ export function resolveWorkspace(repoRoot: string): Workspace {
  * tools. These are the app's, not the designer's: edits made to them inside
  * the workspace do not survive an update.
  */
-const AGENT_ASSETS = ["CLAUDE.md", ".claude/skills", "prompts", "lib", "tools", "assets", "films/_template"] as const;
+const AGENT_ASSETS = ["CLAUDE.md", ".claude/skills", "prompts", "lib", "tools", "assets", "films/_template", "films/_template-lottie"] as const;
 
 /**
  * Working films to look at and to learn from. Each is copied once — on the
  * first launch that ships it — and is the designer's from then on: deleting
  * one does not bring it back. `.seeded-films` remembers what was copied.
  */
-const SAMPLE_FILMS = ["sample-morph", "sample-3d", "sample-physics"] as const;
+const SAMPLE_FILMS = ["sample-morph", "sample-3d", "sample-physics", "sample-lottie"] as const;
 
 /** Minimal package.json so the `npm run …` names in CLAUDE.md mean the same thing in the workspace. */
 function workspaceManifest(): string {

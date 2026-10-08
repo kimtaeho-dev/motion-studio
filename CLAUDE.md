@@ -6,9 +6,9 @@ After Effects를 쓰지 않는다. 모든 영상은 HTML 한 장에 들어 있�
 ## 렌더 계약 (절대 규칙)
 
 - 작업 대상 필름 폴더(`films/<이름>/`, `out/<이름>/`)만 고친다. 다른 필름(`films/sample-morph`, `films/sample-3d`, `films/sample-physics` 같은 참고용 포함)은 읽기만 한다.
-- 필름 한 편 = `films/<이름>/index.html`(코드) + `films/<이름>/film.json`(데이터). `lib/motion.js`, `lib/stage.js`만 불러온다. 3D가 필요하면 `lib/stage3d.js`(안에 three.js가 들어 있다)를 더한다. 그 밖의 라이브러리는 사람이 명시적으로 요청한 경우만. 쓰는 법은 `prompts/api.md`(2D)·`prompts/3d.md`(3D)를 본다. `lib/*.js` 소스는 통째로 읽지 않는다(문서에 없는 걸 찾을 때만 `grep`).
+- 필름 한 편 = `films/<이름>/index.html`(코드) + `films/<이름>/film.json`(데이터). `lib/motion.js`, `lib/stage.js`만 불러온다. 3D가 필요하면 `lib/stage3d.js`(안에 three.js가 들어 있다)를 더한다. Lottie 필름은 `lib/stage-lottie.js`(아래 Lottie). 그 밖의 라이브러리는 사람이 명시적으로 요청한 경우만. 쓰는 법은 `prompts/api.md`(2D)·`prompts/3d.md`(3D)를 본다. `lib/*.js` 소스는 통째로 읽지 않는다(문서에 없는 걸 찾을 때만 `grep`).
 - `film.json`에 길이·BPM·포맷·`transparent`·`params`(디자이너가 바꿀 문구·색·숫자)·`timeline`(이름 붙은 장면 시각)을 둔다. 형식은 `lib/stage.js` 맨 위 주석. 앱의 속성 패널과 타임라인이 이 파일을 고치므로, 디자이너가 바꿀 만한 값은 코드에 박지 말고 여기로 뺀다.
-- 디자이너는 앱에서 `params` 값과 `timeline` 시각, 전체 길이(`dur`, 장면 시각이 같은 비율로 따라온다)를 직접 바꾼다. 그래서 장면 시각을 코드에 초로 박지 말고 `film.T`와 `DUR`에서 계산한다. 작업을 시작할 때마다 `film.json`을 새로 읽고, 디자이너가 바꾼 값을 말없이 되돌리지 않는다. 꼭 바꿔야 하면 왜 바꾸는지 먼저 말한다.
+- 디자이너는 앱에서 `params` 값과 `timeline` 시각, 전체 길이(`dur`, 장면 시각이 같은 비율로 따라온다)를 직접 바꾼다. 그래서 장면 시각을 코드에 초로 박지 말고 `film.T`와 `DUR`에서 계산한다. 작업을 시작할 때마다 `film.json`을 새로 읽고, 디자이너가 바꾼 값을 말없이 되돌리지 않는다. 꼭 바꿔야 하면 왜 바꾸는지 먼저 말한다. 새 필름 창에서 고른 포맷·크기·길이도 디자이너가 정한 값이다. 다른 값이 낫다고 보면 기본값으로 바꿔 두지 말고 브리프 질문에 넣는다("2초로 만드셨는데 성공 표시는 1초 안팎을 권해요. 바꿀까요?"). 디자이너가 알아서 하라고 했을 때만 정하고, 정한 값을 알린다.
 - 코드는 `Stage.film((film) => { ...; return { draw(g, t, S) {} }; })`. `film.P`(params 값), `film.T`(timeline 시각)로 상수와 표를 만들고, 장면 시각은 반드시 `film.T`에서 읽는다(타임라인에서 끌어 옮기면 따라오도록).
 - 모든 프레임은 **시간의 순수 함수**다. `draw(g, t, S)` 안에서 t로부터 모든 값을 계산한다.
 - `transparent: true`면 `S.transparent`일 때 배경을 칠하지 않는다.
@@ -16,6 +16,9 @@ After Effects를 쓰지 않는다. 모든 영상은 HTML 한 장에 들어 있�
 - 움직임은 `M.spring` / `M.track` / `M.loopTrack` / `M.stretch`로 만든다. 고정 곡선 이징은 선 그리기 진행도처럼 스프링이 어색한 곳에만 쓴다.
 - 목표가 여러 번 바뀌는 값은 반드시 `track()`(루프면 `loopTrack()`)을 쓴다. 스프링을 새로 시작하지 않고 더한다.
 - 폰트는 `assets/fonts`의 Pretendard / Geist / Geist Mono만 쓴다. 시스템 폰트에 의존하지 않는다.
+- **에셋과 레퍼런스를 구분한다.** 디자이너가 첨부할 때 고른다(앱의 첨부 칩: 참고용 / 그대로 쓰기). SVG·.glb는 기본이 그대로 쓰기, 이미지·영상은 기본이 참고용이다.
+  - 레퍼런스: 아래 작업 순서 2번처럼 문법만 가져온다.
+  - 내 에셋(디자이너 소유의 로고·아이콘·서비스 스크린샷·모델): 다시 그리거나 비슷하게 흉내 내지 않고 **파일 그대로** 쓴다. SVG는 `Stage.svg`(`prompts/api.md`의 SVG 에셋), 이미지는 `Image`를 `Stage.film` 밖에서 미리 불러 `drawImage`, .glb는 `model()`. 받은 에셋은 `brief.md`의 `<inputs>`에 "에셋" 목록으로 적어 다음 턴에도 구분이 남게 한다. 에셋의 색을 바꿔야 하면 `recolor`로 `params`에 연결한다.
 - 레이아웃은 1080 기준 단위(`S.unit`)로 짠다. 포맷(1x1, 9x16, 16x9)이 바뀌어도 크롭하지 말고 다시 배치한다.
 
 ## 룩
@@ -33,6 +36,14 @@ After Effects를 쓰지 않는다. 모든 영상은 HTML 한 장에 들어 있�
 - 3D·물리 필름은 **구현에 들어갈 때** `prompts/3d.md`(규칙·API·뼈대·3D 검사)를 읽고 그대로 따른다. 브리프·숏리스트 단계에서는 읽지 않는다.
 - 숏리스트에 알아 둘 것: 물리 착지는 비트에 맞출 수 있다. 물리로 쌓인 장면은 처음 상태로 저절로 돌아가지 않아 루프가 어렵다. 3D 모델은 디자이너가 준 .glb만 쓴다.
 
+## Lottie (앱·웹에 넣을 애니메이션)
+
+- `film.json`의 `kind`가 `"lottie"`인 필름은 결과물이 `films/<이름>/lottie.json`이다. 개발자가 앱·웹에 넣는 파일이라 영상 필름과 규칙이 다르다. **작업 전에 `prompts/lottie.md`를 읽고 그 작업 순서·검사를 따른다.** 브리프 단계에서도 읽는다(무엇을 물을지가 다르다).
+- `index.html`은 고정 셸(`Stage.lottieFilm()`)이라 고치지 않는다. `lottie.json`을 고칠 때마다 `node tools/lottie.mjs sync films/<이름>`으로 `film.json`을 맞춘다.
+- 디자이너가 바꿀 값은 Lottie 슬롯으로 열고, `film.json`의 `params` 키 = 슬롯 id다. 디자이너가 바꾼 값은 말없이 되돌리지 않는다(위 규칙 그대로).
+- 아이콘·로더·상태 피드백처럼 **단일 애셋은 숏리스트 승인 없이** 바로 만든다. 장면이 여러 개면 영상 필름처럼 숏리스트를 승인받는다. Lottie에는 초안(`draft`) 단계가 없다.
+- 전달 조건: `node tools/lottie.mjs check` BLOCK 0, `node tools/render.mjs films/<이름> --parity` 통과(미리보기 렌더러와 웹 플레이어가 같게 그린다), `node tools/lottie.mjs export`.
+
 ## 소리와 템포
 
 - 영상에는 소리를 넣지 않는다. 음악·효과음은 편집 단계에서 얹는다. 오디오를 합성하거나 믹스하지 않는다.
@@ -41,10 +52,12 @@ After Effects를 쓰지 않는다. 모든 영상은 HTML 한 장에 들어 있�
 
 ## 작업 순서 (게이트를 건너뛰지 않는다)
 
+Lottie 필름은 `prompts/lottie.md`의 작업 순서를 따른다(단일 애셋은 숏리스트 생략, 초안 없음). 아래는 영상 필름의 순서다.
+
 단계가 바뀔 때마다 `node tools/state.mjs films/<이름> stage=<단계>`로 기록한다. Motion Studio 앱이 이걸 보고 디자이너에게 진행 단계와 승인 버튼을 보여준다. `state.json`을 손으로 고치지 않는다. `quality`와 `approved`는 앱이 쓴다.
 
 1. **브리프** (`stage=brief`): `films/<이름>/brief.md` (템플릿: `prompts/spec-template.md`). 빈칸이 있으면 디자이너에게 먼저 묻고, `waiting=answer`로 기록한 뒤 **턴을 끝낸다.**
-2. **레퍼런스가 있으면**: `films/<이름>/refs/`에서 `style_guide.md`를 먼저 쓴다(`prompts/reference.md`). 레퍼런스의 문법만 가져오고 내용·로고·캐릭터는 가져오지 않는다.
+2. **레퍼런스가 있으면**: `films/<이름>/refs/`에서 `style_guide.md`를 먼저 쓴다(`prompts/reference.md`). 레퍼런스의 문법만 가져오고 내용·로고·캐릭터는 가져오지 않는다. 디자이너가 그대로 쓰기로 준 에셋은 이 규칙의 대상이 아니다.
 3. **숏리스트** (`stage=shotlist`): `films/<이름>/shotlist.md`에 비트 그리드 위의 상태 목록을 마크다운 표로 적는다(비트 | 시각 | 상태 / 동작 | 커서). 다 쓰면 `waiting=approval`로 기록하고, 채팅에 표를 보여주고 승인을 부탁한 뒤 **턴을 끝낸다.** **디자이너 승인 전에는 코드를 쓰지 않는다.** 승인은 앱의 승인 버튼(`state.json`의 `approved`에 `shotlist`가 들어간다) 또는 채팅의 분명한 OK다. 수정 요청이 오면 숏리스트를 고치고 다시 `waiting=approval`.
 4. **스틸** (`stage=stills`): `node tools/render.mjs films/<이름> --stills beats`로 비트마다 1장 → `contact-beats.png`를 **직접 열어서 본다.** 그리드에서 벗어남, 답답함, 읽기 어려움을 고친다. 고칠 점은 한 번에 모아서 고치고, 확인은 바뀐 비트만 `--stills 2.5,3` 처럼 몇 장으로 본다(컨택트 시트 전체를 고칠 때마다 다시 열지 않는다 — 이미지 한 장 한 장이 이후 모든 단계의 비용이 된다). 3D 필름은 주 포맷 하나로 `--check3d`도 돌린다(판정이 통과면 끝, `prompts/3d.md`의 3D 검사).
 5. **초안** (`stage=draft`): `--draft`로 빠르게 렌더해서 타이밍을 확인한다.
@@ -68,6 +81,12 @@ node tools/critique.mjs films/<이름> [포맷] [빠른동작시각]
 node tools/determinism.mjs films/<이름>            # 같은 프레임 두 번 → 같은 픽셀인지
 node tools/state.mjs films/<이름> stage=shotlist waiting=approval  # 진행 단계 기록 (앱의 단계 표시·승인 버튼)
 node tools/engine.mjs films/<이름>                 # 엔진 고정 상태 (deliver면 고정, 앞 단계로 가면 풀림)
+node tools/new.mjs <이름> --lottie --size 512x512 --dur 2  # Lottie 필름 (앱에서는 새 필름 창의 "앱·웹에 넣을 것")
+node tools/lottie.mjs sync films/<이름>            # Lottie: lottie.json → film.json
+node tools/lottie.mjs check films/<이름>           # Lottie: 웹 플레이어 호환·움직임·슬롯 검사
+node tools/render.mjs films/<이름> --parity        # Lottie: 미리보기(Skottie)와 웹 플레이어(lottie-web)를 그려 비교
+node tools/lottie.mjs export films/<이름>          # Lottie: 슬롯 값을 구워 .json · .lottie
+node tools/lottie.mjs text "문구" --font Pretendard-Bold --size 72  # 글자 → 아웃라인 셰이프 레이어
 ```
 
 ## effort

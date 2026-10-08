@@ -1,8 +1,10 @@
 import { createSignal, For, Match, Show, Switch } from "solid-js";
+import { useParams } from "@solidjs/router";
 import { Button } from "@/components/ui/button";
 import { showInspectorTab } from "@/components/inspector";
 import { useChat } from "@/context/chat";
 import { useFiles } from "@/context/files";
+import { useFilms } from "@/context/films";
 import { FILM_STAGES, type FilmQuality, type FilmStage } from "@/types";
 
 const STAGE_LABEL: Record<FilmStage, string> = {
@@ -24,6 +26,14 @@ const STAGE_HINT: Record<FilmStage, string> = {
   deliver: "완성됐어요. 플레이어 아래 결과물에서 영상을 볼 수 있어요.",
 };
 
+/** Lottie films skip the video draft; their checks and deliverable differ (prompts/lottie.md). */
+const LOTTIE_HINT: Partial<Record<FilmStage, string>> = {
+  shotlist: "장면이 여러 개라 장면 목록을 쓰고 있어요. 다 쓰면 승인을 부탁드릴게요.",
+  stills: "프레임을 뽑아 보면서 구성과 움직임을 다듬는 중이에요.",
+  critique: "웹·앱 플레이어에서도 똑같이 나오는지 검사하고 점수를 매겨 고치는 중이에요.",
+  deliver: "완성됐어요. 내보내기에서 Lottie 파일(.json · .lottie)을 받을 수 있어요.",
+};
+
 export const QUALITY_LABEL: Record<FilmQuality, { label: string; hint: string; rounds: number | null }> = {
   fast: { label: "빠르게", hint: "검수 1라운드", rounds: 1 },
   standard: { label: "기본", hint: "검수 3라운드", rounds: 3 },
@@ -33,12 +43,17 @@ export const QUALITY_LABEL: Record<FilmQuality, { label: string; hint: string; r
 /** Where the open film is in the pipeline (CLAUDE.md, 작업 순서), and what it needs from the designer. */
 export function StagePanel() {
   const { files } = useFiles();
+  const params = useParams();
+  const { films } = useFilms();
+  const lottie = () => films().find((f) => f.slug === params.film)?.kind === "lottie";
+  const stages = () => FILM_STAGES.filter((s) => !(lottie() && s === "draft"));
+  const hint = (stage: FilmStage) => (lottie() && LOTTIE_HINT[stage]) || STAGE_HINT[stage];
   const { approve, compose, messages, progress } = useChat();
   const [approving, setApproving] = createSignal(false);
 
   const index = () => {
     const stage = files()?.stage;
-    return stage ? FILM_STAGES.indexOf(stage) : -1;
+    return stage ? stages().indexOf(stage) : -1;
   };
   const busy = () => messages().some((m) => m.status === "pending" || m.status === "processing");
   const waiting = () => (busy() ? null : files()?.waiting ?? null);
@@ -79,8 +94,8 @@ export function StagePanel() {
         </Show>
       </div>
 
-      <ol class="grid grid-cols-6 gap-1">
-        <For each={FILM_STAGES}>
+      <ol class="grid gap-1" style={{ "grid-template-columns": `repeat(${stages().length}, minmax(0, 1fr))` }}>
+        <For each={stages()}>
           {(stage, i) => {
             const state = () => (i() < index() ? "done" : i() === index() ? "current" : "todo");
             return (
@@ -114,7 +129,7 @@ export function StagePanel() {
             {(stage) => (
               <span class="text-[10px] text-muted-foreground">
                 <Show when={round()}>{(r) => <span class="text-foreground">{r()} · </span>}</Show>
-                {STAGE_HINT[stage()]}
+                {hint(stage())}
               </span>
             )}
           </Show>

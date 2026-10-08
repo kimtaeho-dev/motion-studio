@@ -27,7 +27,8 @@ if (!existsSync(base)) {
   console.error(`❌ ${base}가 없습니다. 먼저 node tools/render.mjs ${filmArg}`);
   process.exit(1);
 }
-const format = formatArg ?? readdirSync(base).sort()[0];
+// out/<이름>/lottie/는 Lottie 내보내기 폴더라 포맷이 아니다
+const format = formatArg ?? readdirSync(base).filter((d) => d !== 'lottie').sort()[0];
 const dir = join(base, format);
 const video = [join(dir, 'final.mp4'), join(dir, 'draft.mp4')].find(existsSync);
 if (!video) {

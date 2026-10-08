@@ -1,0 +1,28 @@
+{
+  "title": "성공 체크",
+  "kind": "lottie",
+  "dur": 2,
+  "bpm": 120,
+  "beatOffset": 0,
+  "fps": 60,
+  "formats": {
+    "512x512": [
+      512,
+      512
+    ]
+  },
+  "transparent": true,
+  "params": {
+    "accent": {
+      "type": "color",
+      "value": "#2F6BFF",
+      "label": "포인트 컬러"
+    },
+    "mark": {
+      "type": "color",
+      "value": "#FFFFFF",
+      "label": "체크 색"
+    }
+  },
+  "timeline": {}
+}

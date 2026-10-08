@@ -3,6 +3,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { spawn, type ChildProcess } from "node:child_process";
 import type { Plugin, ViteDevServer } from "vite";
+import { defaultRole, roleFixed } from "../src/types/common";
 import type { ChatAttachment, ChatAuthFailure, ChatEffort, ChatMessage, ChatModel, ChatProgress, ChatSettings } from "../src/types/common";
 import { json, readJsonBody } from "./http";
 import { readState, writeState } from "./state";
@@ -185,24 +186,41 @@ const QUALITY_PROMPT: Record<string, string> = {
   launch: "launch(모든 항목 8점 이상까지, 6라운드 상한)",
 };
 
+function isLottieFilm(filmDir: string): boolean {
+  try {
+    return (JSON.parse(fs.readFileSync(path.join(filmDir, "film.json"), "utf8")) as { kind?: unknown }).kind === "lottie";
+  } catch {
+    return false;
+  }
+}
+
 /** The opening of every turn's prompt: which film, where it stands, and what the user attached or approved. */
 function buildPrompt(item: QueueItem, filmsDir: string): string {
   let prompt = `현재 대상 필름은 films/${item.film} 이다. 다른 필름 폴더는 참고로 읽기만 하고 고치지 않는다. `;
   // state.json is written by the app (quality, approvals) and by the agent; a film made outside the app has none.
   const state = readState(path.join(filmsDir, item.film));
   if (state.quality && QUALITY_PROMPT[state.quality]) prompt += `이 필름의 품질 단계는 ${QUALITY_PROMPT[state.quality]}다. `;
+  if (isLottieFilm(path.join(filmsDir, item.film))) {
+    prompt += `이 필름은 Lottie 필름이다(앱·웹에 넣을 애니메이션, 결과물은 films/${item.film}/lottie.json). 작업 전에 prompts/lottie.md를 읽고 그 작업 순서와 검사를 따른다. `;
+  }
   if (state.stage) prompt += `state.json의 현재 단계는 ${state.stage}${state.round ? ` (검수 ${state.round}라운드)` : ""}다. `;
   if (item.approval) {
     prompt += `디자이너가 앱의 승인 버튼으로 ${APPROVALS[item.approval]}를 승인했다. CLAUDE.md 작업 순서의 다음 단계부터 진행한다. `;
   }
   if (item.attachments.length > 0) {
-    const lines = item.attachments.map((a) => `- ${a.path} (${a.kind}, 원본 파일명: ${a.name})`).join("\n");
+    const role = (a: ChatAttachment) => a.role ?? defaultRole(a);
+    const lines = item.attachments
+      .map((a) => `- ${a.path} (${a.kind}, ${role(a) === "asset" ? "내 에셋 — 그대로 쓴다" : "레퍼런스 — 문법만"}, 원본 파일명: ${a.name})`)
+      .join("\n");
     prompt += `디자이너가 파일을 첨부했다. 이미 필름 폴더에 저장돼 있다:\n${lines}\n`;
-    if (item.attachments.some((a) => a.kind !== "model")) {
-      prompt += "이미지·영상은 레퍼런스다. CLAUDE.md의 레퍼런스 규칙대로 문법만 가져온다. ";
+    if (item.attachments.some((a) => role(a) === "reference")) {
+      prompt += "레퍼런스는 CLAUDE.md의 레퍼런스 규칙대로 문법만 가져온다. ";
+    }
+    if (item.attachments.some((a) => role(a) === "asset")) {
+      prompt += "내 에셋은 디자이너 소유의 소재다. 다시 그리지 말고 파일 그대로 필름에 넣고, brief.md의 에셋 목록에 적는다(CLAUDE.md, 에셋). ";
     }
     if (item.attachments.some((a) => a.kind === "model")) {
-      prompt += "3D 모델(.glb)은 필름에 직접 쓰는 소재다. lib/stage3d.js의 model()로 불러온다(CLAUDE.md, 3D). ";
+      prompt += "3D 모델(.glb)은 lib/stage3d.js의 model()로 불러온다(CLAUDE.md, 3D). ";
     }
   }
   prompt += item.userText || "첨부한 파일을 보고 어떻게 쓰면 좋을지 제안해줘.";
@@ -271,7 +289,9 @@ export function mailboxPlugin(options: MailboxOptions = {}): Plugin {
       const file = path.resolve(workspaceRoot, a.path);
       if (!kind || !file.startsWith(filmDir) || !fs.existsSync(file)) continue;
       const rel = path.relative(workspaceRoot, file).split(path.sep).join("/");
-      out.push({ name: a.name.slice(0, 200), path: rel, url: "/" + rel.split("/").map(encodeURIComponent).join("/"), kind });
+      const name = a.name.slice(0, 200);
+      const role = !roleFixed(kind) && (a.role === "asset" || a.role === "reference") ? a.role : defaultRole({ kind, name });
+      out.push({ name, path: rel, url: "/" + rel.split("/").map(encodeURIComponent).join("/"), kind, role });
     }
     return out;
   }

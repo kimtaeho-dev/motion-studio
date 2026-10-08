@@ -46,6 +46,8 @@ interface Job {
   noContact: boolean;
   /** 3D scene check (lib/stage3d-inspect.js): overlaps, occlusion, cropping, motion graphs. */
   check3d: boolean;
+  /** Lottie films: draw the same frames in Skottie and lottie-web and compare (lib/lottie/parity.js). */
+  parity: boolean;
 }
 
 interface StageFilm {
@@ -100,6 +102,7 @@ function parseJob(argv: string[]): Job {
     codec: (codec as Codec | undefined) ?? "h264",
     noContact: opt("no-contact") !== undefined,
     check3d: opt("check3d") !== undefined,
+    parity: opt("parity") !== undefined,
   };
 }
 
@@ -159,13 +162,26 @@ async function openFilm(pageUrl: string): Promise<{ win: BrowserWindow; film: St
     window.__canvas = document.getElementById('c');
     window.__copy = document.createElement('canvas');
     window.__copyCtx = window.__copy.getContext('2d', { willReadFrequently: true });
-    window.__grab = (t) => {
+    // flatten: a transparent film going to a codec without alpha (MP4) is laid on a light
+    // checkerboard here, so motion blur averages finished pixels instead of see-through ones
+    // (which darkened every moving edge) and the transparency still reads as transparency.
+    window.__grab = (t, flatten) => {
       window.seek(t);
-      const c = window.__canvas, w = c.width, h = c.height;
+      const c = window.__canvas, w = c.width, h = c.height, g = window.__copyCtx;
       if (window.__copy.width !== w || window.__copy.height !== h) { window.__copy.width = w; window.__copy.height = h; }
-      window.__copyCtx.globalCompositeOperation = 'copy';
-      window.__copyCtx.drawImage(c, 0, 0);
-      return window.__copyCtx.getImageData(0, 0, w, h).data;
+      if (flatten) {
+        const s = Math.max(8, Math.round(Math.min(w, h) / 54));
+        g.globalCompositeOperation = 'copy';
+        g.fillStyle = '#F2F2F0'; g.fillRect(0, 0, w, h);
+        g.globalCompositeOperation = 'source-over';
+        g.fillStyle = '#E2E2DF';
+        for (let y = 0; y * s < h; y++) for (let x = y % 2; x * s < w; x += 2) g.fillRect(x * s, y * s, s, s);
+        g.drawImage(c, 0, 0);
+      } else {
+        g.globalCompositeOperation = 'copy';
+        g.drawImage(c, 0, 0);
+      }
+      return g.getImageData(0, 0, w, h).data;
     };
     window.__png = (t) => { window.seek(t); return window.__canvas.toDataURL('image/png'); };
     true;
@@ -243,7 +259,8 @@ async function renderVideo(
   if (!(to > from)) throw new FilmError(`--from ${from} --to ${to}: 구간이 비어 있습니다`);
   const total = Math.round((to - from) * fps * sub);
   const enc = encoder(job.codec, job.draft, film.transparent);
-  if (film.transparent && job.codec === "h264") emit({ type: "warn", message: "투명 배경 필름입니다. MP4에는 알파가 없습니다 (--codec prores 또는 webm)." });
+  const flatten = film.transparent && job.codec === "h264";
+  if (flatten) emit({ type: "warn", message: "투명 배경 필름입니다. MP4에는 알파가 없어 밝은 체커보드 위에 합성합니다 (알파가 필요하면 --codec prores 또는 webm)." });
   const whole = from === 0 && to === film.dur;
   const out = path.join(outDir, whole ? `${enc.base}.${enc.ext}` : `part_${from}-${to}.${enc.ext}`);
   partialFile = out.replace(new RegExp(`\\.${enc.ext}$`), `.partial.${enc.ext}`);
@@ -269,7 +286,7 @@ async function renderVideo(
   let lastReport = 0;
   for (let i = 0; i < total; i++) {
     const t = from + i / (fps * sub);
-    const pixels = (await win.webContents.executeJavaScript(`window.__grab(${t})`)) as Uint8ClampedArray;
+    const pixels = (await win.webContents.executeJavaScript(`window.__grab(${t}, ${flatten})`)) as Uint8ClampedArray;
     await ff.write(new Uint8Array(pixels.buffer, pixels.byteOffset, pixels.byteLength));
     if (Date.now() - lastReport > 250 || i === total - 1) {
       lastReport = Date.now();
@@ -411,6 +428,37 @@ async function check3d(win: BrowserWindow, film: StageFilm, outDir: string, emit
   emit({ type: "file", format: film.format, kind: "check", path: dir, seconds: (Date.now() - started) / 1000 });
 }
 
+/** Runs lib/lottie/parity.js inside a Lottie film page and writes out/<film>/<format>/parity/. */
+async function parity(win: BrowserWindow, film: StageFilm, filmDir: string, outDir: string, emit: (e: WorkerEvent) => void): Promise<void> {
+  const started = Date.now();
+  let params: Record<string, unknown> = {};
+  try {
+    params = (JSON.parse(fs.readFileSync(path.join(filmDir, "film.json"), "utf8")) as { params?: Record<string, unknown> }).params ?? {};
+  } catch {
+    // the page already loaded this film.json; an unreadable one would have failed there
+  }
+  const result = (await win.webContents.executeJavaScript(`(async () => {
+    // 필름이 실제로 쓰는 엔진 폴더의 비교 코드를 쓴다 (엔진이 고정된 필름은 lib-versions/<지문>/lib/)
+    const used = performance.getEntriesByType('resource').map((e) => e.name).find((n) => n.split('?')[0].endsWith('/stage-lottie.js'));
+    if (!used) throw new Error('Lottie 필름이 아닙니다 (lib/stage-lottie.js를 쓰지 않는다)');
+    const m = await import(new URL('lottie/parity.js', used).href);
+    return await m.check(${JSON.stringify({ params })});
+  })()`)) as { pass: boolean; passPct: number; max: number; frames: { frame: number; t: number; pct: number }[]; images: Record<string, string> };
+  const dir = path.join(outDir, "parity");
+  fs.mkdirSync(dir, { recursive: true });
+  for (const [name, url] of Object.entries(result.images)) fs.writeFileSync(path.join(dir, `${name}.png`), Buffer.from(url.split(",")[1], "base64"));
+  const { images, ...report } = result;
+  fs.writeFileSync(path.join(dir, "report.json"), JSON.stringify(report, null, 1));
+  const lines = [
+    result.pass
+      ? `판정: 통과 — Skottie와 lottie-web이 프레임마다 ${result.passPct}% 미만으로 다르다 (최대 ${result.max}%). 그림을 열지 않아도 된다`
+      : `판정: 고칠 것 — 최대 ${result.max}% 다르다 (기준 ${result.passPct}% 미만). parity/parity.png에서 빨간 곳을 보고 그 구성을 prompts/lottie.md의 대안으로 바꾼다`,
+    `프레임별 차이: ${result.frames.map((f) => `f${f.frame} ${f.pct}%`).join(" · ")}`,
+  ];
+  emit({ type: "report", format: film.format, lines });
+  emit({ type: "file", format: film.format, kind: "check", path: dir, seconds: (Date.now() - started) / 1000 });
+}
+
 async function render(job: Job, emit: (e: WorkerEvent) => void): Promise<void> {
   const root = process.cwd();
   const html = fs.existsSync(path.join(job.film, "index.html")) ? path.join(job.film, "index.html") : job.film;
@@ -437,9 +485,10 @@ async function render(job: Job, emit: (e: WorkerEvent) => void): Promise<void> {
         const outDir = path.join(root, "out", name, film.format);
         fs.mkdirSync(outDir, { recursive: true });
         fs.writeFileSync(path.join(outDir, "film.json"), JSON.stringify(film, null, 1));
-        const total = job.stills || job.check3d ? 0 : Math.round(((job.to ?? film.dur) - (job.from ?? 0)) * (job.fps ?? (job.draft ? 30 : film.fps || 60)) * (job.sub ?? (job.draft ? 1 : 4)));
-        emit({ type: "start", title: film.title, format: film.format, W: film.W, H: film.H, dur: film.dur, bpm: film.bpm, mode: job.stills || job.check3d ? "stills" : "video", total });
+        const total = job.stills || job.check3d || job.parity ? 0 : Math.round(((job.to ?? film.dur) - (job.from ?? 0)) * (job.fps ?? (job.draft ? 30 : film.fps || 60)) * (job.sub ?? (job.draft ? 1 : 4)));
+        emit({ type: "start", title: film.title, format: film.format, W: film.W, H: film.H, dur: film.dur, bpm: film.bpm, mode: job.stills || job.check3d || job.parity ? "stills" : "video", total });
         if (job.check3d) await check3d(win, film, outDir, emit);
+        else if (job.parity) await parity(win, film, path.dirname(path.resolve(html)), outDir, emit);
         else if (job.stills) await renderStills(win, film, job.stills, outDir, emit, !job.noContact);
         else await renderVideo(win, film, job, outDir, emit);
       } finally {

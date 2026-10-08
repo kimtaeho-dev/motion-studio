@@ -25,7 +25,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Markdown } from "@/lib/markdown";
 import { useChat } from "@/context/chat";
-import type { ChatAttachment, ChatEffort, ChatMessage, ChatModel } from "@/types";
+import { useFilms } from "@/context/films";
+import { defaultRole, roleFixed, type AttachmentRole, type ChatAttachment, type ChatEffort, type ChatMessage, type ChatModel } from "@/types";
 
 const MAX_TEXTAREA_HEIGHT = 128; // px — grows up to this, then scrolls internally
 
@@ -37,6 +38,12 @@ const ACCEPT = "image/*,video/*,.svg,.glb";
 
 const KIND_ICON = { image: Image, video: Film, model: Box } as const;
 
+const ROLE_LABEL: Record<AttachmentRole, string> = { reference: "참고용", asset: "그대로 쓰기" };
+const ROLE_HINT: Record<AttachmentRole, string> = {
+  reference: "스타일만 참고해요. 눌러서 '그대로 쓰기'로 바꿀 수 있어요.",
+  asset: "이 파일을 영상에 그대로 넣어요. 눌러서 '참고용'으로 바꿀 수 있어요.",
+};
+
 /** A file being uploaded (no attachment yet) or ready to send. */
 interface Staged {
   id: number;
@@ -44,7 +51,14 @@ interface Staged {
   attachment?: ChatAttachment;
 }
 
-function AttachmentChip(props: { name: string; kind?: ChatAttachment["kind"]; onRemove?: () => void; href?: string }) {
+function AttachmentChip(props: {
+  name: string;
+  kind?: ChatAttachment["kind"];
+  role?: AttachmentRole;
+  onToggleRole?: () => void;
+  onRemove?: () => void;
+  href?: string;
+}) {
   const KindIcon = () => {
     const C = props.kind ? KIND_ICON[props.kind] : Paperclip;
     return <C class="size-3 shrink-0" />;
@@ -59,6 +73,24 @@ function AttachmentChip(props: { name: string; kind?: ChatAttachment["kind"]; on
       </Show>
       <Show when={!props.kind}>
         <span class="shrink-0 text-muted-foreground">올리는 중…</span>
+      </Show>
+      <Show when={props.role}>
+        {(role) => (
+          <Show
+            when={props.onToggleRole}
+            fallback={<span class="shrink-0 text-muted-foreground">· {ROLE_LABEL[role()]}</span>}
+          >
+            <button
+              type="button"
+              onClick={props.onToggleRole}
+              title={ROLE_HINT[role()]}
+              class="shrink-0 rounded-sm px-1 hover:bg-background hover:text-foreground focus-ring"
+              classList={{ "text-foreground font-strong": role() === "asset", "text-muted-foreground": role() !== "asset" }}
+            >
+              {ROLE_LABEL[role()]}
+            </button>
+          </Show>
+        )}
       </Show>
       <Show when={props.onRemove}>
         <button
@@ -257,6 +289,8 @@ function SettingsMenu() {
 
 export function ChatPanel() {
   const params = useParams();
+  const { films } = useFilms();
+  const isLottie = () => films().find((f) => f.slug === params.film)?.kind === "lottie";
   const { messages, sending, send, cancel, reset, upload, composeRequest } = useChat();
   const [text, setText] = createSignal("");
   const [staged, setStaged] = createSignal<Staged[]>([]);
@@ -450,13 +484,28 @@ export function ChatPanel() {
           when={messages().length > 0}
           fallback={
             <div class="flex flex-col gap-1 px-1">
-              <span class="text-xxs text-foreground">어떤 영상을 만들지 편하게 말씀해 주세요.</span>
-              <span class="text-xxs text-muted-foreground">
-                예: "앱 출시를 알리는 15초 세로 영상", "버튼이 로더를 거쳐 체크로 바뀌는 루프"
-              </span>
-              <span class="text-xxs text-muted-foreground">
-                에이전트가 먼저 브리프와 장면 목록을 보여주고, 확인을 받은 다음 만들기 시작해요. 레퍼런스나 음악은 끌어다 놓으면 돼요.
-              </span>
+              <Show
+                when={isLottie()}
+                fallback={
+                  <>
+                    <span class="text-xxs text-foreground">어떤 영상을 만들지 편하게 말씀해 주세요.</span>
+                    <span class="text-xxs text-muted-foreground">
+                      예: "앱 출시를 알리는 15초 세로 영상", "버튼이 로더를 거쳐 체크로 바뀌는 루프"
+                    </span>
+                    <span class="text-xxs text-muted-foreground">
+                      에이전트가 먼저 브리프와 장면 목록을 보여주고, 확인을 받은 다음 만들기 시작해요. 레퍼런스·로고·스크린샷은 끌어다 놓으면 돼요.
+                    </span>
+                  </>
+                }
+              >
+                <span class="text-xxs text-foreground">앱·웹에 넣을 애니메이션을 편하게 말씀해 주세요.</span>
+                <span class="text-xxs text-muted-foreground">
+                  예: "결제가 끝나면 체크가 그려지는 성공 표시", "끊김 없이 도는 로딩 스피너", "로고가 그려지듯 나타나기"
+                </span>
+                <span class="text-xxs text-muted-foreground">
+                  아이콘 하나 같은 작은 건 바로 만들고, 웹·앱 플레이어에서도 똑같이 나오는지 검사한 뒤 넘겨드려요. 로고 SVG는 끌어다 놓으면 그대로 써요.
+                </span>
+              </Show>
             </div>
           }
         >
@@ -488,6 +537,9 @@ export function ChatPanel() {
                               return <C class="size-3 shrink-0" />;
                             })()}
                             <span class="truncate">{att.name}</span>
+                            <Show when={att.kind !== "video"}>
+                              <span class="shrink-0 opacity-70">· {ROLE_LABEL[att.role ?? defaultRole(att)]}</span>
+                            </Show>
                           </a>
                         )}
                       </For>
@@ -531,6 +583,19 @@ export function ChatPanel() {
                   <AttachmentChip
                     name={item.name}
                     kind={item.attachment?.kind}
+                    role={item.attachment && (item.attachment.role ?? defaultRole(item.attachment))}
+                    onToggleRole={
+                      item.attachment && !roleFixed(item.attachment.kind)
+                        ? () =>
+                            setStaged((list) =>
+                              list.map((s) => {
+                                if (s.id !== item.id || !s.attachment) return s;
+                                const current = s.attachment.role ?? defaultRole(s.attachment);
+                                return { ...s, attachment: { ...s.attachment, role: current === "asset" ? "reference" : "asset" } };
+                              }),
+                            )
+                        : undefined
+                    }
                     onRemove={item.attachment ? () => setStaged((list) => list.filter((s) => s.id !== item.id)) : undefined}
                   />
                 )}

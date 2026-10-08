@@ -1,7 +1,7 @@
 # 엔진 API (2D) — lib/motion.js · lib/stage.js
 
 구현할 때 이 문서를 본다. `lib/*.js` 소스를 통째로 읽지 않는다(필요한 게 여기 없을 때만 `grep`으로 그 부분).
-3D·물리는 `prompts/3d.md`.
+3D·물리는 `prompts/3d.md`. 디자이너가 준 SVG(로고·아이콘)는 아래 [SVG 에셋](#svg-에셋).
 
 ## 필름 뼈대
 
@@ -73,3 +73,48 @@ Stage.film((film) => {
 | `Stage.cursor(g, x, y, scale=1, down=0)` | 화살표 커서. down 0~1 = 눌림 |
 
 폰트: `'600 46px Pretendard'`, `'500 30px Geist'`, `'400 24px "Geist Mono"'` (Pretendard 400/500/600/700, Geist 400/500/600/700, Geist Mono 400).
+
+## SVG 에셋
+
+디자이너가 **그대로 쓰기**로 첨부한 SVG(로고·아이콘·일러스트)는 다시 그리지 않고 `Stage.svg`로 불러 벡터 그대로 그린다. 확대해도 흐려지지 않고, 도형마다 따로 움직일 수 있다.
+
+```html
+<script src="../../lib/motion.js"></script>
+<script src="../../lib/stage.js"></script>
+<script type="module">
+const { track, sp, range, clamp } = M;
+const logo = await Stage.svg('refs/logo.svg');   // Stage.film 밖에서 한 번만 (module 스크립트라 await 가능)
+
+Stage.film((film) => {
+  const { P, T } = film;
+  return {
+    draw(g, t, S) {
+      logo.draw(g, S.cx, S.cy, {
+        width: 520 * S.unit,                           // width / height / scale 중 하나. 비율은 유지
+        recolor: { '#111111': P.ink },                 // 원래 색 → params 색 (속성 패널에서 바꿀 수 있게)
+        part: (p, i) => {                              // 도형마다: p = { i, id, groups, cx, cy, w, h, length, ... }
+          const t0 = T.logo + i * 0.06;
+          return { trace: range(t0, t0 + 0.5, t), fill: range(t0 + 0.4, t0 + 0.7, t) };
+        },
+      });
+    },
+  };
+});
+</script>
+```
+
+| 항목 | 설명 |
+|---|---|
+| `await Stage.svg(경로)` | 필름 폴더 기준 경로(`refs/x.svg`). 같은 경로는 한 번만 읽는다. 지원하지 않는 요소가 있으면 콘솔 경고 + `svg.warnings` |
+| `svg.w` · `svg.h` · `svg.aspect` | viewBox 크기 |
+| `svg.parts` | 그리는 순서대로 도형 목록. `{ i, id, groups, cx, cy, x, y, w, h, length }` (SVG 단위). 왼쪽부터 등장시키려면 `cx`로 정렬해 순번을 매긴다 |
+| `svg.part(이름)` | `id`가 그 이름이거나 그 이름의 `<g id>` 안에 있는 도형들 |
+| `svg.box(x, y, opts)` | 그릴 자리 `{ x, y, w, h, k }` (draw와 같은 opts). 옆에 글자를 붙일 때 |
+| `svg.draw(g, x, y, opts)` | `(x, y)`에 `anchor`(기본 `[0.5, 0.5]`, SVG 상자 기준) 맞춰 그린다. 위 표의 box를 돌려준다 |
+
+`draw` opts: `width` · `height` · `scale` · `anchor` · `alpha` · `fill`(모든 칠을 한 색으로) · `recolor`(`{ 원래 hex: 새 색 }`, 그라데이션 정지점에도) · `only`(id나 그룹 이름, 배열 가능) · `traceWidth`(선 없는 도형의 윤곽 굵기, SVG 단위) · `part(p, n)` → `{ alpha, trace, fill, dx, dy, scale, rotate }`.
+- `trace` 0~1: 윤곽이 그려진 정도. 선이 있는 도형은 그 선이, 없는 도형은 칠 색 윤곽이 그려진다. 기본 1.
+- `fill` 0~1: 칠의 알파. 그려지는 동안 0으로 두고 다 그려질 때 채운다. 기본 1.
+- `dx` · `dy`는 화면 px(`S.unit` 곱해서), `scale` · `rotate`(라디안)는 도형 중심 기준.
+
+지원: path·rect·circle·ellipse·line·polyline·polygon, `<g>`·`<use>`, transform, 단색·linear/radialGradient 칠과 선, opacity, fill-rule, 선 끝·이음. **그리지 않는 것**: `<text>`(디자이너에게 글자를 아웃라인으로 바꾼 SVG를 받는다), `<image>`, clipPath·mask·filter, gradientTransform. 경고가 나오면 디자이너에게 알린다.

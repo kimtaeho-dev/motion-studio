@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { QUALITY_LABEL } from "@/components/stage-panel";
 import { useFilms } from "@/context/films";
-import type { FilmQuality } from "@/types";
+import { LOTTIE_DUR, LOTTIE_SIZES, type FilmKind, type FilmQuality } from "@/types";
 
 // Kept in sync with FORMAT_SIZES in server/films.ts.
 const FORMATS = [
@@ -23,10 +23,18 @@ const FORMATS = [
 
 const QUALITIES: FilmQuality[] = ["fast", "standard", "launch"];
 
+// Designers think in where the result goes, not in file formats.
+const KINDS: { value: FilmKind; label: string; hint: string }[] = [
+  { value: "film", label: "영상으로 올릴 것", hint: "MP4 · SNS · 발표 · 출시 릴" },
+  { value: "lottie", label: "앱·웹에 넣을 것", hint: "Lottie · 개발자에게 전달" },
+];
+
 const label = "text-[10px] font-strong text-muted-foreground";
 
 export function NewFilmDialog(props: { open: boolean; onOpenChange: (open: boolean) => void; onCreated: (slug: string) => void }) {
   const { createFilm } = useFilms();
+  const [kind, setKind] = createSignal<FilmKind>("film");
+  const [size, setSize] = createSignal<string>(LOTTIE_SIZES[0].value);
   const [name, setName] = createSignal("새 필름");
   const [formats, setFormats] = createSignal<string[]>(["1x1"]);
   const [dur, setDur] = createSignal(12);
@@ -37,7 +45,14 @@ export function NewFilmDialog(props: { open: boolean; onOpenChange: (open: boole
   const toggleFormat = (f: string) =>
     setFormats((list) => (list.includes(f) ? (list.length > 1 ? list.filter((x) => x !== f) : list) : [...list, f]));
 
-  const valid = () => name().trim().length > 0 && formats().length > 0 && dur() >= 2 && dur() <= 180;
+  const lottie = () => kind() === "lottie";
+  const durRange = () => (lottie() ? LOTTIE_DUR : { min: 2, max: 180 });
+  const valid = () => name().trim().length > 0 && formats().length > 0 && dur() >= durRange().min && dur() <= durRange().max;
+  const pickKind = (k: FilmKind) => {
+    if (k === kind()) return;
+    setKind(k);
+    setDur(k === "lottie" ? 2 : 12);
+  };
 
   const submit = async () => {
     if (!valid() || busy()) return;
@@ -45,7 +60,11 @@ export function NewFilmDialog(props: { open: boolean; onOpenChange: (open: boole
     setError(null);
     try {
       const order = FORMATS.map((f) => f.value).filter((f) => formats().includes(f));
-      const slug = await createFilm({ name: name().trim(), formats: order, dur: dur(), quality: quality() });
+      const slug = await createFilm(
+        lottie()
+          ? { name: name().trim(), kind: "lottie", size: size(), formats: [size()], dur: dur(), quality: quality() }
+          : { name: name().trim(), formats: order, dur: dur(), quality: quality() },
+      );
       props.onOpenChange(false);
       props.onCreated(slug);
       setName("새 필름");
@@ -71,6 +90,29 @@ export function NewFilmDialog(props: { open: boolean; onOpenChange: (open: boole
             void submit();
           }}
         >
+          <div class="flex flex-col gap-1.5">
+            <span class={label}>어디에 쓰나요?</span>
+            <div class="grid grid-cols-2 gap-1.5">
+              <For each={KINDS}>
+                {(k) => (
+                  <button
+                    type="button"
+                    onClick={() => pickKind(k.value)}
+                    aria-pressed={kind() === k.value}
+                    class="flex flex-col items-start gap-0.5 rounded-md border px-2 py-1.5 text-left focus-ring"
+                    classList={{
+                      "border-foreground bg-muted": kind() === k.value,
+                      "border-border hover:bg-accent": kind() !== k.value,
+                    }}
+                  >
+                    <span class="text-xxs text-foreground">{k.label}</span>
+                    <span class="text-[9px] text-muted-foreground">{k.hint}</span>
+                  </button>
+                )}
+              </For>
+            </div>
+          </div>
+
           <label class="flex flex-col gap-1.5">
             <span class={label}>이름</span>
             <input
@@ -81,7 +123,32 @@ export function NewFilmDialog(props: { open: boolean; onOpenChange: (open: boole
             />
           </label>
 
-          <div class="flex flex-col gap-1.5">
+          <Show when={lottie()}>
+            <div class="flex flex-col gap-1.5">
+              <span class={label}>크기</span>
+              <div class="grid grid-cols-4 gap-1.5">
+                <For each={LOTTIE_SIZES}>
+                  {(s) => (
+                    <button
+                      type="button"
+                      onClick={() => setSize(s.value)}
+                      aria-pressed={size() === s.value}
+                      class="flex flex-col items-start gap-0.5 rounded-md border px-2 py-1.5 text-left focus-ring"
+                      classList={{
+                        "border-foreground bg-muted": size() === s.value,
+                        "border-border hover:bg-accent": size() !== s.value,
+                      }}
+                    >
+                      <span class="text-xxs text-foreground">{s.label}</span>
+                      <span class="font-mono text-[9px] text-muted-foreground">{s.value}</span>
+                    </button>
+                  )}
+                </For>
+              </div>
+            </div>
+          </Show>
+
+          <div class="flex flex-col gap-1.5" classList={{ hidden: lottie() }}>
             <span class={label}>포맷 (여러 개 고를 수 있어요)</span>
             <div class="grid grid-cols-4 gap-1.5">
               <For each={FORMATS}>
@@ -109,9 +176,9 @@ export function NewFilmDialog(props: { open: boolean; onOpenChange: (open: boole
             <div class="flex items-center gap-2">
               <input
                 type="number"
-                min="2"
-                max="180"
-                step="0.5"
+                min={durRange().min}
+                max={durRange().max}
+                step={lottie() ? 0.1 : 0.5}
                 value={dur()}
                 onInput={(e) => setDur(Number(e.currentTarget.value))}
                 class="h-8 w-24 rounded-md bg-input px-2 font-mono text-xxs text-foreground outline-none focus-ring"

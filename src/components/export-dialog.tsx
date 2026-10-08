@@ -10,9 +10,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { useFilms } from "@/context/films";
 import { usePlayer } from "@/context/player";
 import { onServerEvent } from "@/lib/live";
 import type { ExportJob, ExportKind } from "@/types";
+
+const LOTTIE_KIND = { value: "lottie" as ExportKind, label: "Lottie", hint: "앱·웹용 · .json과 .lottie · 개발자에게 전달" };
 
 const KINDS: { value: ExportKind; label: string; hint: string }[] = [
   { value: "mp4", label: "MP4", hint: "SNS·발표용" },
@@ -44,7 +47,15 @@ function Toggle(props: { on: boolean; onClick: () => void; title: string; hint?:
 /** The player header's "내보내기": pick formats and kinds, then follow the export to its folder. */
 export function ExportButton() {
   const params = useParams();
-  const { film } = usePlayer();
+  const { film, json } = usePlayer();
+  const { films } = useFilms();
+  const isLottie = () => films().find((f) => f.slug === params.film)?.kind === "lottie";
+  const transparent = () => !!json()?.transparent;
+  // MP4 cannot carry alpha: for a transparent film it is a preview, laid on a checkerboard (render-worker).
+  const kindList = () => {
+    const list = transparent() ? KINDS.map((k) => (k.value === "mp4" ? { ...k, hint: "미리보기용 · 투명 대신 체커보드" } : k)) : KINDS;
+    return isLottie() ? [LOTTIE_KIND, ...list] : list;
+  };
   const [open, setOpen] = createSignal(false);
   const [formats, setFormats] = createSignal<string[]>([]);
   const [kinds, setKinds] = createSignal<ExportKind[]>(["mp4"]);
@@ -64,7 +75,14 @@ export function ExportButton() {
   onServerEvent<{ job: ExportJob | null }>("export:update", (payload) => setJob(payload.job));
 
   // Opening the dialog starts from every format the film has.
-  createEffect(on(open, (isOpen) => isOpen && setFormats(film()?.formats ?? [])));
+  createEffect(
+    on(open, (isOpen) => {
+      if (!isOpen) return;
+      setFormats(film()?.formats ?? []);
+      // Start from what this film is for: the Lottie file, the formats that keep transparency, or MP4.
+      setKinds(isLottie() ? ["lottie"] : transparent() ? ["webm", "prores"] : ["mp4"]);
+    }),
+  );
 
   // An export of this film: running, or finished and not yet dismissed.
   const mine = () => (job()?.film === params.film ? job() : null);
@@ -120,7 +138,7 @@ export function ExportButton() {
                 <div class="flex flex-col gap-1.5">
                   <span class={label}>형식</span>
                   <div class="grid grid-cols-2 gap-1.5">
-                    <For each={KINDS}>
+                    <For each={kindList()}>
                       {(k) => <Toggle on={kinds().includes(k.value)} onClick={() => setKinds(flip(kinds(), k.value))} title={k.label} hint={k.hint} />}
                     </For>
                   </div>

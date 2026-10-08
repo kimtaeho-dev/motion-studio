@@ -7,6 +7,8 @@ export interface FilmSummary {
   dur?: number;
   bpm?: number;
   formats: string[];
+  /** "lottie": the deliverable is films/<slug>/lottie.json (prompts/lottie.md); otherwise a video film. */
+  kind?: FilmKind;
   /** Set when film.json is missing or does not parse; the film still lists so it can be fixed or deleted. */
   error?: string;
   /** Epoch ms of the newest file in the film folder — the list is sorted by it. */
@@ -27,8 +29,21 @@ export interface FilmParam {
   step?: number;
 }
 
+export type FilmKind = "film" | "lottie";
+
+/** Canvas sizes offered for a new Lottie film (the agent can change w/h in lottie.json). */
+export const LOTTIE_SIZES = [
+  { value: "512x512", label: "아이콘·상태", size: [512, 512] },
+  { value: "1080x1080", label: "정사각 장면", size: [1080, 1080] },
+  { value: "1920x1080", label: "가로", size: [1920, 1080] },
+  { value: "1080x1920", label: "세로", size: [1080, 1920] },
+] as const;
+export const LOTTIE_DUR = { min: 0.5, max: 30 } as const;
+
 export interface FilmJson {
   title?: string;
+  /** "lottie" films are written by tools/lottie.mjs sync from lottie.json; their length is not edited in the app. */
+  kind?: FilmKind;
   dur: number;
   bpm?: number;
   beatOffset?: number;
@@ -134,7 +149,7 @@ export interface RenderJob {
 }
 
 /** What the export dialog can deliver (server/export.ts). */
-export type ExportKind = "mp4" | "gif" | "prores" | "webm" | "png";
+export type ExportKind = "lottie" | "mp4" | "gif" | "prores" | "webm" | "png";
 
 export interface ExportStep {
   label: string;
@@ -165,7 +180,23 @@ export interface ChatAttachment {
   /** URL the app can show it from. */
   url: string;
   kind: "image" | "video" | "model";
+  /**
+   * What the agent does with it: "reference" borrows only the style (CLAUDE.md, 레퍼런스),
+   * "asset" puts the file itself in the film (the designer's own logo, icon, screenshot, .glb).
+   * Missing on attachments sent before this existed — read those as their kind's default.
+   */
+  role?: AttachmentRole;
 }
+
+export type AttachmentRole = "reference" | "asset";
+
+/** The role an attachment starts with, and whether the designer may change it. */
+export function defaultRole(a: Pick<ChatAttachment, "kind" | "name">): AttachmentRole {
+  if (a.kind === "model") return "asset";
+  if (a.kind === "image" && /\.svg$/i.test(a.name)) return "asset";
+  return "reference";
+}
+export const roleFixed = (kind: ChatAttachment["kind"]) => kind !== "image";
 
 /** Which Claude model a turn runs on. Mirrors the CLI's `--model` aliases. */
 export type ChatModel = "haiku" | "sonnet" | "opus";
