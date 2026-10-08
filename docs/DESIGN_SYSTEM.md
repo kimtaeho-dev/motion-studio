@@ -25,6 +25,7 @@
 | `assets/brand/favicon.svg` | 16–32px. 플레이트가 꽉 차고 줄기가 더 굵다 |
 | `assets/brand/mark.svg` | 플레이트 없는 마크. `currentColor` |
 | `assets/brand/wordmark.svg` | `MOT▾ON STUDIO`. Geist Mono, 자간 0.1em, 아웃라인. I 자리가 재생 헤드(브랜드 빨강), 글자는 `currentColor` |
+| `assets/brand/wordmark-dark.svg` | 어두운 바탕용 워드마크. 글자가 stone-100 `#F5F5F4`로 고정. `<img>`는 `currentColor`를 물려받지 못해서 README의 다크 모드(`<picture>`)에 쓴다 |
 
 **아이콘 구성.** 헤드 폭 224, 줄기 56. 마크는 헤드가 무거워 보이는 만큼 플레이트 중심보다 16 아래에 둔다.
 

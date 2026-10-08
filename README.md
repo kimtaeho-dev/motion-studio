@@ -2,7 +2,12 @@
   <img src="build/icon.svg" width="96" height="96" alt="Motion Studio">
 </p>
 
-<h1 align="center">Motion Studio</h1>
+<h1 align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/brand/wordmark-dark.svg">
+    <img src="assets/brand/wordmark.svg" height="28" alt="Motion Studio">
+  </picture>
+</h1>
 
 <p align="center">
   <b>말로 만드는 모션 영상</b><br>
