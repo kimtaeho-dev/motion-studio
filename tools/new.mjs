@@ -15,7 +15,7 @@ if (lottie) {
   const dur = Number(opt('dur', '2'));
   if (!(w > 0 && h > 0 && dur > 0)) { console.error('--size 512x512 · --dur 2 (초)'); process.exit(1); }
   cpSync('films/_template-lottie', dir, { recursive: true });
-  for (const f of ['index.html', 'lottie.json', 'brief.md']) {
+  for (const f of ['index.html', 'lottie.json', 'build.mjs', 'brief.md']) {
     writeFileSync(`${dir}/${f}`, readFileSync(`${dir}/${f}`, 'utf8').replaceAll('__NAME__', name)
       .replaceAll('__W__', String(w)).replaceAll('__H__', String(h)).replaceAll('__OP__', String(Math.round(dur * 60))));
   }

@@ -88,7 +88,7 @@ export function StagePanel() {
         <Show when={files()}>
           {(f) => (
             <span class="text-[10px] text-muted-foreground">
-              품질 {QUALITY_LABEL[f().quality].label} · {QUALITY_LABEL[f().quality].hint}
+              품질 {QUALITY_LABEL[f().quality].label} · {lottie() && f().quality === "standard" ? "검수 최대 3라운드" : QUALITY_LABEL[f().quality].hint}
             </span>
           )}
         </Show>

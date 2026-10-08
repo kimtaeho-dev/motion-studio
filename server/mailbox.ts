@@ -199,7 +199,9 @@ function buildPrompt(item: QueueItem, filmsDir: string): string {
   let prompt = `현재 대상 필름은 films/${item.film} 이다. 다른 필름 폴더는 참고로 읽기만 하고 고치지 않는다. `;
   // state.json is written by the app (quality, approvals) and by the agent; a film made outside the app has none.
   const state = readState(path.join(filmsDir, item.film));
-  if (state.quality && QUALITY_PROMPT[state.quality]) prompt += `이 필름의 품질 단계는 ${QUALITY_PROMPT[state.quality]}다. `;
+  // Lottie films stop early when a round finds nothing to fix (prompts/lottie.md); video films keep their fixed rounds.
+  const quality = state.quality === "standard" && isLottieFilm(path.join(filmsDir, item.film)) ? "standard(검수 최대 3라운드, 고칠 게 없으면 일찍 끝)" : state.quality && QUALITY_PROMPT[state.quality];
+  if (quality) prompt += `이 필름의 품질 단계는 ${quality}다. `;
   if (isLottieFilm(path.join(filmsDir, item.film))) {
     prompt += `이 필름은 Lottie 필름이다(앱·웹에 넣을 애니메이션, 결과물은 films/${item.film}/lottie.json). 작업 전에 prompts/lottie.md를 읽고 그 작업 순서와 검사를 따른다. `;
   }

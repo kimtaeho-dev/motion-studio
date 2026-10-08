@@ -20,7 +20,8 @@ Lottie는 벡터 키프레임만 담는다. 블러·글로우 같은 이펙트, 
 
 ```
 films/<이름>/
-  lottie.json   결과물. 에이전트가 손으로 쓴다
+  build.mjs     lottie.json을 만드는 스크립트. 에이전트는 이것을 고친다 (아래 build.mjs)
+  lottie.json   결과물. build.mjs가 쓴다 — 손으로 고치지 않는다
   film.json     lottie.json에서 sync로 맞춘다(kind·dur·fps·formats·params). params의 label만 손으로 고친다
   index.html    고정 셸 — Stage.lottieFilm() 한 줄. 고치지 않는다
   brief.md      브리프 (Lottie용 템플릿)
@@ -41,8 +42,8 @@ films/<이름>/
 3. **갈래**
    - **에셋 하나**(아이콘, 로더, 상태 피드백, 마이크로 인터랙션 하나, 로고 리빌 하나): 숏리스트 게이트 없이 바로 4로.
    - **장면·챕터가 여럿**: `shotlist.md`(비트 | 시각 | 상태 / 동작 | 커서 표)를 쓰고 `stage=shotlist waiting=approval`, 채팅에 표를 보여주고 **턴을 끝낸다.** 승인(앱 승인 버튼 또는 채팅의 분명한 OK) 전에는 `lottie.json`을 쓰지 않는다. 챕터 나누기는 `prompts/lottie-recipes/chapterization-transition-grammar.md`.
-4. **만들기 + 스틸** (`stage=stills`) — `lottie.json`을 쓴다 → `node tools/lottie.mjs sync films/<이름>` → `film.json` params의 `label`을 한국어로 → `node tools/lottie.mjs check films/<이름>`(BLOCK 0) → `node tools/render.mjs films/<이름> --stills 0.2,0.5,1`(핵심 시각) 또는 `--stills beats`(컨택트 시트)를 **직접 열어서 본다.** 고칠 점은 모아서 한 번에 고치고, 바뀐 시각만 몇 장 다시 본다.
-5. **크리틱** (라운드마다 `stage=critique round=<N>`) — 매 라운드: `lottie.mjs check`(BLOCK 0, WARN 확인) → `render.mjs --parity`(통과) → 스틸/컨택트 시트 → 움직임은 풀 렌더(`node tools/render.mjs films/<이름>`) 뒤 `node tools/critique.mjs films/<이름>`의 strip·seam·phone으로 본다 → `prompts/critique-pass.md` 기준 채점(아래 [검사와 완료 조건](#검사와-완료-조건)의 해석) → `review_log.md`에 `## 라운드 N`. 라운드 수는 `state.json`의 `quality`를 따른다(`fast` 1 · `standard` 3 · `launch` 모든 항목 8점 이상, 최소 3, 6을 넘기면 `waiting=answer`).
+4. **만들기 + 스틸** (`stage=stills`) — `build.mjs`를 쓰고 `node films/<이름>/build.mjs` → `node tools/lottie.mjs sync films/<이름>` → `film.json` params의 `label`을 한국어로 → `node tools/lottie.mjs check films/<이름>`(BLOCK 0) → `node tools/render.mjs films/<이름> --stills 0.2,0.5,1`(핵심 시각) 또는 `--stills beats`(컨택트 시트)를 **직접 열어서 본다.** 고칠 점은 모아서 한 번에 고치고, 바뀐 시각만 몇 장 다시 본다.
+5. **크리틱** (라운드마다 `stage=critique round=<N>`) — 매 라운드: `lottie.mjs check`(BLOCK 0, WARN 확인) → `render.mjs --parity`(통과) → 스틸/컨택트 시트 → 움직임은 풀 렌더(`node tools/render.mjs films/<이름>`) 뒤 `node tools/critique.mjs films/<이름>`의 strip·seam·phone으로 본다 → `prompts/critique-pass.md` 기준 채점(아래 [검사와 완료 조건](#검사와-완료-조건)의 해석) → `review_log.md`에 `## 라운드 N`. 라운드 수는 `state.json`의 `quality`를 따른다(`fast` 1 · `standard` 최대 3 — 고칠 점이 없고 7점 미만 항목도 없는 라운드에서 끝 · `launch` 모든 항목 8점 이상, 최소 3, 6을 넘기면 `waiting=answer`). 전달 뒤 수정 요청은 라운드 하나(고친 곳 + 검사 + 바뀐 구간 스틸)로 끝낸다.
 6. **전달** (`stage=deliver waiting=none`) — `node tools/lottie.mjs export films/<이름>` → `out/<이름>/lottie/<이름>.json`(이미지 포함) · `<이름>.lottie`. 포스터 프레임: `--stills <시각>` 결과(`out/<이름>/<WxH>/stills/`)를 `out/<이름>/<WxH>/poster.png`로 복사. 다음에 개선할 점 한 줄. 앱의 내보내기 창에도 "Lottie"(그리고 MP4/GIF/WebM 렌더)가 있다.
 
 `lottie.json`을 고칠 때마다: 다시 읽고(앱이 film.json을 고쳤을 수 있다) → 고치고 → `sync` → label 확인 → `check`.
@@ -56,6 +57,15 @@ films/<이름>/
 | 길이 | 마이크로 인터랙션 0.2~0.5초 · 상태 피드백 0.5~1.25초 · 로더 1~2초 루프 · 로고 0.75~2초 · 여러 장면 2~4초 |
 | 배경 | **투명**(로고·아이콘·로더·오버레이·SVG 파생). 화면 전체를 채우는 카드·일러스트일 때만 칠한 배경 |
 | 루프 | 로더·앰비언트는 루프, 상태·로고는 한 번 재생 후 멈춤(마지막 포즈가 정지 화면이 된다) |
+
+## build.mjs
+
+`lottie.json`은 손으로 쓰지 않고 `films/<이름>/build.mjs`(Node 스크립트)로 만든다. 다음 수정 때 몇 줄만 고쳐 다시 실행하면 되도록, 스크립트를 `/tmp` 같은 바깥에 두지 않는다.
+
+- 조각은 `tools/lottie/kit.mjs`: `layer` · `group` · `ellipse` · `rect` · `path` · `fill` · `stroke` · `trim` · `slot` · `kf` · `lottie` · `write` (쓰는 법은 그 파일 맨 위 주석). `kf`의 이징 이름은 아래 [움직임](#움직임) 표의 이름(`entrance-sharp` · `travel-balanced` · `settle-soft` · `exit-accelerate` · `travel-cut` · `kinetic-ui` · `linear`).
+- 예시: `films/sample-lottie/build.mjs`. 장면의 의도(무엇이 언제 왜 움직이는지)를 짧은 주석으로 남긴다 — 다음 수정에서 다시 생각할 것을 줄인다.
+- 실행: `node films/<이름>/build.mjs && node tools/lottie.mjs sync films/<이름>`.
+- `build.mjs`가 없는 필름(이 규칙 전에 만든 것)을 고칠 때는 먼저 지금 `lottie.json`을 그대로 내는 `build.mjs`를 만들고 거기서 고친다.
 
 ## 슬롯과 속성 패널
 
@@ -72,6 +82,7 @@ films/<이름>/
 - `sync` 뒤 각 param의 `label`을 디자이너가 알아볼 한국어로 고친다("포인트 컬러", "체크 색", "배경"). label이 sid 그대로면 `check`가 BLOCK.
 - `sync`는 label과 디자이너가 바꾼 값을 지킨다. 슬롯의 종류(color↔number)가 바뀌면 그 param만 `lottie.json` 값으로 다시 시작한다 — 종류를 바꿔야 하면 디자이너에게 먼저 말한다.
 - 디자이너가 바꾼 값은 내보낼 때 슬롯에 구워진다. `lottie.json`의 슬롯 기본값을 디자이너 값으로 덮어쓰거나 되돌리지 않는다(CLAUDE.md).
+- **슬롯 값을 말로 바꿔 달라는 요청**("초록으로 바꿔줘", "선을 더 굵게")은 `film.json`의 `params.<sid>.value`를 고친다. 화면과 내보내기는 이 값을 쓰므로 `build.mjs`의 기본값만 고치면 아무것도 안 바뀐다. 새 슬롯을 만들 때만 `build.mjs`의 기본값이 처음 값이 된다.
 - 무엇을 슬롯으로: 포인트 컬러, 잉크(글자·선) 색, 칠한 배경이면 `bg`, 필요하면 선 굵기. 전부 슬롯으로 만들지 않는다 — 디자이너가 실제로 바꿀 것만.
 - 같은 sid를 여러 속성이 참조해도 된다(값 종류가 모두 맞아야 한다). 색 슬롯은 `[r, g, b, a]` 0~1.
 - 문구는 슬롯이 아니다. 글자는 아웃라인이라(아래 [글자](#글자)) 문구를 바꾸려면 대화로 요청받아 `lottie.mjs text`로 다시 만든다.
@@ -267,6 +278,10 @@ CLAUDE.md의 룩 규칙 위에, 앱·웹 에셋에서 특히:
 
 **크리틱 채점** (`prompts/critique-pass.md`의 7항목을 Lottie에 맞게 읽는다)
 
+채점 전에 두 가지를 먼저 대조한다. 점수는 그다음이다.
+1. **의도 대조**: `build.mjs` 주석에 적은 의도(무엇이 몇 프레임에 어디서 시작해 어디로)를 하나씩 스틸과 맞춰 본다. "12시에서 시작" 같은 문장이 그 프레임에서 실제로 그렇게 보이는지, 시작·끝 프레임에 점·조각 같은 잔여물이 없는지. 하나라도 어긋나면 "고칠 점 있음"이다.
+2. **룩 대조**: 마지막 정지 프레임을 [룩](#룩) 규칙과 맞춰 본다. 요소 하나씩 지웠다고 상상해 의미가 그대로면 크롬이다(장식 링·테두리·그림자). 같은 계열 색이 두 톤 이상이면 표면 톤 위반. 실제 크기(예: 48px)로 줄였을 때 1~2px로 뭉개지는 선이 없는지. 걸리면 구도·브랜드 정확도를 7점 미만으로 매긴다.
+
 | 항목 | Lottie에서 |
 |---|---|
 | 훅 | 처음 0.3초 안에 무엇이 일어나는지 보이는가(에셋), 첫 2초(여러 장면) |
@@ -277,7 +292,7 @@ CLAUDE.md의 룩 규칙 위에, 앱·웹 에셋에서 특히:
 | 브랜드 정확도 | 색·서체·원본 SVG 락업과의 일치 |
 | 리듬 | 엇갈림 간격과 비트(곡이 있으면 비트 그리드) |
 
-점수와 가장 큰 문제 3개(프레임/시각과 함께), 고친 점을 `review_log.md`에 남긴다. 루프 이음새와 parity 결과도 한 줄씩.
+두 대조 결과(맞음/어긋남과 프레임), 점수와 가장 큰 문제 3개(프레임/시각과 함께), 고친 점을 `review_log.md`에 남긴다. 루프 이음새와 parity 결과도 한 줄씩.
 
 ## 레시피 라우팅
 

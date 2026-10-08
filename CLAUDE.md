@@ -39,7 +39,7 @@ After Effects를 쓰지 않는다. 모든 영상은 HTML 한 장에 들어 있�
 ## Lottie (앱·웹에 넣을 애니메이션)
 
 - `film.json`의 `kind`가 `"lottie"`인 필름은 결과물이 `films/<이름>/lottie.json`이다. 개발자가 앱·웹에 넣는 파일이라 영상 필름과 규칙이 다르다. **작업 전에 `prompts/lottie.md`를 읽고 그 작업 순서·검사를 따른다.** 브리프 단계에서도 읽는다(무엇을 물을지가 다르다).
-- `index.html`은 고정 셸(`Stage.lottieFilm()`)이라 고치지 않는다. `lottie.json`을 고칠 때마다 `node tools/lottie.mjs sync films/<이름>`으로 `film.json`을 맞춘다.
+- `index.html`은 고정 셸(`Stage.lottieFilm()`)이라 고치지 않는다. `lottie.json`은 손으로 쓰지 않고 필름 폴더의 `build.mjs`로 만든다(`tools/lottie/kit.mjs`). 고칠 때마다 `node films/<이름>/build.mjs && node tools/lottie.mjs sync films/<이름>`.
 - 디자이너가 바꿀 값은 Lottie 슬롯으로 열고, `film.json`의 `params` 키 = 슬롯 id다. 디자이너가 바꾼 값은 말없이 되돌리지 않는다(위 규칙 그대로).
 - 아이콘·로더·상태 피드백처럼 **단일 애셋은 숏리스트 승인 없이** 바로 만든다. 장면이 여러 개면 영상 필름처럼 숏리스트를 승인받는다. Lottie에는 초안(`draft`) 단계가 없다.
 - 전달 조건: `node tools/lottie.mjs check` BLOCK 0, `node tools/render.mjs films/<이름> --parity` 통과(미리보기 렌더러와 웹 플레이어가 같게 그린다), `node tools/lottie.mjs export`.
@@ -61,7 +61,7 @@ Lottie 필름은 `prompts/lottie.md`의 작업 순서를 따른다(단일 애셋
 3. **숏리스트** (`stage=shotlist`): `films/<이름>/shotlist.md`에 비트 그리드 위의 상태 목록을 마크다운 표로 적는다(비트 | 시각 | 상태 / 동작 | 커서). 다 쓰면 `waiting=approval`로 기록하고, 채팅에 표를 보여주고 승인을 부탁한 뒤 **턴을 끝낸다.** **디자이너 승인 전에는 코드를 쓰지 않는다.** 승인은 앱의 승인 버튼(`state.json`의 `approved`에 `shotlist`가 들어간다) 또는 채팅의 분명한 OK다. 수정 요청이 오면 숏리스트를 고치고 다시 `waiting=approval`.
 4. **스틸** (`stage=stills`): `node tools/render.mjs films/<이름> --stills beats`로 비트마다 1장 → `contact-beats.png`를 **직접 열어서 본다.** 그리드에서 벗어남, 답답함, 읽기 어려움을 고친다. 고칠 점은 한 번에 모아서 고치고, 확인은 바뀐 비트만 `--stills 2.5,3` 처럼 몇 장으로 본다(컨택트 시트 전체를 고칠 때마다 다시 열지 않는다 — 이미지 한 장 한 장이 이후 모든 단계의 비용이 된다). 3D 필름은 주 포맷 하나로 `--check3d`도 돌린다(판정이 통과면 끝, `prompts/3d.md`의 3D 검사).
 5. **초안** (`stage=draft`): `--draft`로 빠르게 렌더해서 타이밍을 확인한다.
-6. **크리틱 루프** (라운드마다 `stage=critique round=<N>`): 풀 렌더 → `node tools/critique.mjs` (3D면 마지막 라운드에 모든 포맷 `--check3d`) → `prompts/critique-pass.md` 기준으로 점수를 매긴다. 라운드 수는 `films/<이름>/state.json`의 `quality`를 따른다: `fast` 1라운드 · `standard`(없을 때 기본) 3라운드 · `launch` 모든 항목이 8점 이상이 될 때까지(최소 3라운드, 6라운드를 넘기면 멈추고 `waiting=answer`로 디자이너에게 묻는다). 매 라운드 `films/<이름>/review_log.md`에 `## 라운드 N` 제목 아래 점수와 고친 점을 남긴다.
+6. **크리틱 루프** (라운드마다 `stage=critique round=<N>`): 풀 렌더 → `node tools/critique.mjs` (3D면 마지막 라운드에 모든 포맷 `--check3d`) → `prompts/critique-pass.md` 기준으로 점수를 매긴다. 라운드 수는 `films/<이름>/state.json`의 `quality`를 따른다: `fast` 1라운드 · `standard`(없을 때 기본) 3라운드 · `launch` 모든 항목이 8점 이상이 될 때까지(최소 3라운드, 6라운드를 넘기면 멈추고 `waiting=answer`로 디자이너에게 묻는다). 매 라운드 `films/<이름>/review_log.md`에 `## 라운드 N` 제목 아래 점수와 고친 점을 남긴다. (Lottie 필름의 라운드 규칙은 `prompts/lottie.md`.)
 7. **전달** (`stage=deliver waiting=none`): `out/<이름>/<포맷>/final.mp4`, `contact-beats.png`, 포스터 프레임(`--stills <시각>` 결과를 `poster.png`로 복사)을 전달하고, 다음에 개선할 점을 한 줄 덧붙인다. `stage=deliver`가 필름을 지금 엔진으로 고정한다(앱이 업데이트돼도 같은 결과). 전달한 필름을 다시 고칠 때는 먼저 `stage`를 앞 단계로 바꾼다 — 최신 엔진으로 풀리니 검사를 다시 돈다.
 
 수정할 때는 바뀐 구간만 `--from/--to`로 다시 렌더해서 확인한 뒤, 마지막에 전체를 렌더한다.

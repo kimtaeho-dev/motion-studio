@@ -54,7 +54,10 @@ function sync(dir, { quiet = false } = {}) {
   const slots = slotsOf(doc);
   const prev = film.params || {};
   const params = {};
-  for (const [sid, s] of Object.entries(slots)) {
+  // 속성 패널 순서 = params 순서: 이미 있던 것은 그 자리, 새 슬롯은 뒤에
+  const order = [...Object.keys(prev).filter((k) => slots[k]), ...Object.keys(slots).filter((k) => !prev[k])];
+  for (const sid of order) {
+    const s = slots[sid];
     if (s.animated) { notes.push(`슬롯 ${sid}: 키프레임이 있는 슬롯은 속성 패널에 올리지 않는다`); continue; }
     if (s.type === 'vec2') { notes.push(`슬롯 ${sid}: 위치·크기 슬롯은 속성 패널에 올리지 않는다`); continue; }
     const old = prev[sid];

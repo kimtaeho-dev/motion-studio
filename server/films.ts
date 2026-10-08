@@ -185,6 +185,7 @@ function createLottieFilm(ws: Workspace, { name, formats, dur, quality }: NewFil
   fs.cpSync(template, dir, { recursive: true });
   const escaped: Record<string, string> = {
     "lottie.json": JSON.stringify(name).slice(1, -1),
+    "build.mjs": JSON.stringify(name).slice(1, -1).replace(/'/g, "\\'"),
     "index.html": name.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]!),
     "brief.md": name,
   };
@@ -252,12 +253,13 @@ function readOutputs(ws: Workspace, slug: string): FilmOutput[] {
  * film with no recorded stage (made outside the app, or before state.json)
  * is judged by what each step leaves behind.
  */
-function inferStage(docs: FilmFiles["docs"], outputs: FilmOutput[], state: Record<string, unknown>): FilmStage {
+function inferStage(docs: FilmFiles["docs"], outputs: FilmOutput[], state: Record<string, unknown>, lottie: boolean): FilmStage {
   const recorded = FILM_STAGES.find((s) => s === state.stage);
   if (recorded) return recorded;
   return outputs.some((o) => o.poster) ? "deliver"
     : docs.review ? "critique"
-    : outputs.some((o) => o.final || o.draft) ? "draft"
+    // A Lottie film has no draft stage: a rendered video there is a preview of the stills stage.
+    : outputs.some((o) => o.final || o.draft) ? (lottie ? "stills" : "draft")
     : outputs.some((o) => o.contact) ? "stills"
     : docs.shotlist ? "shotlist"
     : "brief";
@@ -275,7 +277,13 @@ function readFilmFiles(ws: Workspace, slug: string): FilmFiles {
   const quality = QUALITIES.find((q) => q === state.quality) ?? "standard";
   const waiting = state.waiting === "approval" || state.waiting === "answer" ? state.waiting : null;
   const round = typeof state.round === "number" && state.round > 0 ? Math.floor(state.round) : null;
-  return { docs, outputs, stage: inferStage(docs, outputs, state), quality, waiting, round };
+  let lottie = false;
+  try {
+    lottie = (JSON.parse(fs.readFileSync(path.join(dir, "film.json"), "utf8")) as { kind?: unknown }).kind === "lottie";
+  } catch {
+    // no readable film.json: infer as a video film
+  }
+  return { docs, outputs, stage: inferStage(docs, outputs, state, lottie), quality, waiting, round };
 }
 
 /** Rewrites only `title`, keeping every other key (and their order) as the agent left them. */
