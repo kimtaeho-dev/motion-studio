@@ -52,7 +52,7 @@
   --tertiary-pressing: #d6d3d1;
 
   --muted: #e7e5e4;
-  --muted-foreground: #6f6863;  /* 5.0:1 on #f5f5f4, 5.5:1 on white */
+  --muted-foreground: #66605b;  /* 4.9:1 on --muted #e7e5e4, 5.7:1 on #f5f5f4 */
   --disabled-foreground: #a8a29e;
   --accent: #f5f5f4;            /* hover and focus background for list and menu items */
   --accent-foreground: #57534e;
@@ -77,7 +77,7 @@
   --overlay-soft: rgba(12, 10, 9, 0.4);
   --selection: #d6d3d1;
   --selection-foreground: #1c1917;
-  --selection-muted-foreground: #6f6863;
+  --selection-muted-foreground: #44403c;  /* 6.9:1 on --selection */
 
   /* Timeline: scene markers are neutral (the logo's ticks), the playhead is brand */
   --marker: #57534e;
@@ -119,7 +119,7 @@
   --tertiary-pressing: #57534e;
 
   --muted: #44403c;
-  --muted-foreground: #a8a29e;  /* 6.9:1 on #1c1917 */
+  --muted-foreground: #b5afaa;  /* 4.7:1 on --muted #44403c, 8.1:1 on #1c1917 */
   --disabled-foreground: #57534e;
   --accent: #292524;
   --accent-foreground: #b5afaa;
@@ -143,7 +143,7 @@
   --overlay-soft: rgba(12, 10, 9, 0.4);
   --selection: #57534e;
   --selection-foreground: #f5f5f4;
-  --selection-muted-foreground: #292524;
+  --selection-muted-foreground: #d6d3d1;  /* 5.1:1 on --selection */
   --inset: #44403c;
 
   --marker: #a8a29e;
