@@ -87,6 +87,7 @@ node tools/lottie.mjs check films/<이름>           # Lottie: 웹 플레이어 
 node tools/render.mjs films/<이름> --parity        # Lottie: 미리보기(Skottie)와 웹 플레이어(lottie-web)를 그려 비교
 node tools/lottie.mjs export films/<이름>          # Lottie: 슬롯 값을 구워 .json · .lottie
 node tools/lottie.mjs text "문구" --font Pretendard-Bold --size 72  # 글자 → 아웃라인 셰이프 레이어
+node tools/turn-timing.mjs films/<이름>             # 앱 채팅 턴마다 시간 쪼개기: 모델·도구(종류별)·네트워크 멈춤
 ```
 
 ## effort
