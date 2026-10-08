@@ -5,7 +5,7 @@
 <h1 align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/brand/wordmark-dark.svg">
-    <img src="assets/brand/wordmark.svg" height="28" alt="Motion Studio">
+    <img src="assets/brand/wordmark-light.svg" height="28" alt="Motion Studio">
   </picture>
 </h1>
 
