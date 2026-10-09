@@ -106,6 +106,8 @@ Stage.film((film) => {
 | 항목 | 설명 |
 |---|---|
 | `await Stage.svg(경로)` | 필름 폴더 기준 경로(`refs/x.svg`). 같은 경로는 한 번만 읽는다. 지원하지 않는 요소가 있으면 콘솔 경고 + `svg.warnings` |
+| `await Stage.svg(경로, { split: true })` | 한 패스에 여러 조각이 든 것(외곽선 글자, 합쳐진 아이콘)을 조각마다 나눈다. 글자 속 구멍은 바깥 조각에 붙는다. 조각은 `p.piece` 번호를 갖고, 원래 패스의 `id`를 같이 쓴다. 글자 단위가 아니라 **자모·획 단위**일 수 있으니 `cx`·`cy`로 정렬해 엇갈림을 준다 |
+| Figma에서 내보낸 SVG | 깨진 한글 레이어 이름을 되살린다(`part('OPEN 1주년…')`로 찾을 수 있다). 바깥 프레임에서 딸려 온 배경 사각형은 `p.background`로 표시되고 그리지 않는다(`draw`에 `background: true`면 그림) |
 | `svg.w` · `svg.h` · `svg.aspect` | viewBox 크기 |
 | `svg.parts` | 그리는 순서대로 도형 목록. `{ i, id, groups, cx, cy, x, y, w, h, length }` (SVG 단위). 왼쪽부터 등장시키려면 `cx`로 정렬해 순번을 매긴다 |
 | `svg.part(이름)` | `id`가 그 이름이거나 그 이름의 `<g id>` 안에 있는 도형들 |

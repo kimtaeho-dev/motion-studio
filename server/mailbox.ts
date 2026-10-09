@@ -225,6 +225,9 @@ function buildPrompt(item: QueueItem, filmsDir: string): string {
       prompt += "3D 모델(.glb)은 lib/stage3d.js의 model()로 불러온다(CLAUDE.md, 3D). ";
     }
   }
+  if (/figma\.com\/(design|file)\//.test(item.userText)) {
+    prompt += `디자이너가 Figma 링크를 줬다. prompts/figma.md를 읽고 그 순서대로 받는다(호출 수가 정해져 있으니 아껴 쓰고, 받은 것은 films/${item.film}/refs/figma/에 저장한다). `;
+  }
   prompt += item.userText || "첨부한 파일을 보고 어떻게 쓰면 좋을지 제안해줘.";
   return prompt;
 }

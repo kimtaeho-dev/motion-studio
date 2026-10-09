@@ -15,7 +15,7 @@ After Effects를 쓰지 않는다. 모든 영상은 HTML 한 장에 들어 있�
 - 금지: CSS transition/animation, `setTimeout`, `setInterval`, 렌더 모드의 `requestAnimationFrame`, 프레임 사이에 이어지는 상태(누적 변수), `Math.random` (→ `M.rng(seed)`), `Date.now()`.
 - 움직임은 `M.spring` / `M.track` / `M.loopTrack` / `M.stretch`로 만든다. 고정 곡선 이징은 선 그리기 진행도처럼 스프링이 어색한 곳에만 쓴다.
 - 목표가 여러 번 바뀌는 값은 반드시 `track()`(루프면 `loopTrack()`)을 쓴다. 스프링을 새로 시작하지 않고 더한다.
-- 폰트는 `assets/fonts`의 Pretendard / Geist / Geist Mono만 쓴다. 시스템 폰트에 의존하지 않는다.
+- 폰트는 `assets/fonts`의 Pretendard / Geist / Geist Mono만 쓴다. 시스템 폰트에 의존하지 않는다. (디자이너가 Figma에서 준 다른 글꼴의 글자는 외곽선 SVG 에셋으로 쓴다 — `prompts/figma.md`)
 - **에셋과 레퍼런스를 구분한다.** 디자이너가 첨부할 때 고른다(앱의 첨부 칩: 참고용 / 그대로 쓰기). SVG·.glb는 기본이 그대로 쓰기, 이미지·영상은 기본이 참고용이다.
   - 레퍼런스: 아래 작업 순서 2번처럼 문법만 가져온다.
   - 내 에셋(디자이너 소유의 로고·아이콘·서비스 스크린샷·모델): 다시 그리거나 비슷하게 흉내 내지 않고 **파일 그대로** 쓴다. SVG는 `Stage.svg`(`prompts/api.md`의 SVG 에셋), 이미지는 `Image`를 `Stage.film` 밖에서 미리 불러 `drawImage`, .glb는 `model()`. 받은 에셋은 `brief.md`의 `<inputs>`에 "에셋" 목록으로 적어 다음 턴에도 구분이 남게 한다. 에셋의 색을 바꿔야 하면 `recolor`로 `params`에 연결한다.
@@ -43,6 +43,11 @@ After Effects를 쓰지 않는다. 모든 영상은 HTML 한 장에 들어 있�
 - 디자이너가 바꿀 값은 Lottie 슬롯으로 열고, `film.json`의 `params` 키 = 슬롯 id다. 디자이너가 바꾼 값은 말없이 되돌리지 않는다(위 규칙 그대로).
 - 아이콘·로더·상태 피드백처럼 **단일 애셋은 숏리스트 승인 없이** 바로 만든다. 장면이 여러 개면 영상 필름처럼 숏리스트를 승인받는다. Lottie에는 초안(`draft`) 단계가 없다.
 - 전달 조건: `node tools/lottie.mjs check` BLOCK 0, `node tools/render.mjs films/<이름> --parity` 통과(미리보기 렌더러와 웹 플레이어가 같게 그린다), `node tools/lottie.mjs export`.
+
+## Figma
+
+- 디자이너가 Figma 링크를 주면 **`prompts/figma.md`를 읽고 따른다.** Figma 화면을 상상으로 다시 그리지 않고, 구조·글자·이미지를 받아 그 숫자 그대로 움직인다.
+- Figma 읽기 호출은 요금제에 따라 한 달 20번까지일 수 있다. 받은 것은 `films/<이름>/refs/figma/`에 저장하고 다시 부르지 않는다.
 
 ## 소리와 템포
 
