@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Motion Studio — 말로 만드는 모션</title>
+<meta name="description" content="원하는 모션을 문장으로 설명하면 AI가 장면을 구성하고 렌더링한 뒤, 결과를 직접 보며 다듬어요. 영상과 앱·웹용 Lottie를 만드는 macOS 앱이에요.">
+<meta property="og:title" content="Motion Studio — 말로 만드는 모션">
+<meta property="og:description" content="원하는 모션을 문장으로 설명하면 AI가 만들고, 결과를 직접 보며 다듬어요. 영상부터 앱·웹용 Lottie까지.">
+<meta property="og:image" content="https://kimtaeho-dev.github.io/motion-studio/assets/og.png">
+<meta property="og:url" content="https://kimtaeho-dev.github.io/motion-studio/">
+<meta name="twitter:card" content="summary_large_image">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#F3F1EC">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<style>
+@font-face { font-family: "Geist Mono"; src: url("assets/GeistMono-Regular.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+
+:root {
+  --paper: #F3F1EC;
+  --paper-2: #EAE7E0;
+  --ink: #1C1917;
+  --ink-2: #57534E;
+  --ink-3: #78716C;
+  --rule: rgba(28, 25, 23, 0.14);
+  --stage: #2A2A2A;
+  --red: #E5383B;
+  --sans: "Pretendard Variable", Pretendard, "Apple SD Gothic Neo", sans-serif;
+  --mono: "Geist Mono", "Pretendard Variable", Pretendard, sans-serif;  /* 한글은 Geist Mono에 없어 Pretendard로 */
+  --gutter: clamp(20px, 5vw, 72px);
+  --rail: 56px;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink);
+  font-family: var(--sans); font-size: 17px; line-height: 1.65; letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+}
+img, video { display: block; max-width: 100%; height: auto; }
+a { color: inherit; }
+::selection { background: var(--ink); color: var(--paper); }
+
+/* ── 재생 헤드: 왼쪽 레일을 따라 스크롤과 함께 내려간다. 이 페이지에서 빨강은 여기에만 쓴다 ── */
+.rail { position: fixed; inset: 0 auto 0 0; width: var(--rail); pointer-events: none; z-index: 20; }
+.rail::before { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; border-left: 1px solid var(--rule); }
+.rail .tick { position: absolute; left: calc(50% - 4px); width: 9px; border-top: 1px solid var(--rule); }
+.playhead { position: absolute; left: 50%; top: 0; transform: translate(-50%, 0); will-change: transform; }
+.playhead svg { width: 14px; height: 14px; display: block; margin: 0 auto; }
+.playhead .stem { width: 2px; height: 46px; margin: -2px auto 0; background: var(--red); }
+.playhead .tc { position: absolute; left: 22px; top: -2px; font: 500 11px/1 var(--mono); color: var(--red); white-space: nowrap; letter-spacing: 0.02em; }
+
+.wrap { padding-left: calc(var(--rail) + var(--gutter)); padding-right: var(--gutter); max-width: 1440px; margin: 0 auto; }
+
+/* ── 머리줄 ── */
+header.top { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--paper) 88%, transparent); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid transparent; transition: border-color .2s; }
+header.top.scrolled { border-bottom-color: var(--rule); }
+header.top .wrap { display: flex; align-items: center; justify-content: space-between; height: 64px; gap: 24px; }
+header.top .logo img { height: 15px; width: auto; }  /* 비율은 파일의 viewBox를 따른다 */
+header.top nav { display: flex; gap: 28px; align-items: center; font-size: 14px; }
+header.top nav a { text-decoration: none; color: var(--ink-2); }
+header.top nav a:hover { color: var(--ink); }
+header.top nav a.btn, header.top nav a.btn:hover { color: var(--paper); }
+
+.btn { display: inline-flex; align-items: center; gap: 10px; height: 48px; padding: 0 22px; border-radius: 999px; background: var(--ink); color: var(--paper); text-decoration: none; font-weight: 600; font-size: 16px; letter-spacing: -0.01em; transition: transform .15s ease, background .15s; white-space: nowrap; }
+.btn:hover { background: #000; transform: translateY(-1px); }
+.btn:active { transform: translateY(0); }
+.btn svg { width: 16px; height: 16px; }
+.btn.small { height: 36px; padding: 0 16px; font-size: 14px; }
+.btn.ghost { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1px var(--rule); }
+.btn.ghost:hover { box-shadow: inset 0 0 0 1px var(--ink); background: transparent; }
+
+.mono { font-family: var(--mono); letter-spacing: 0.01em; }
+.beat { font: 400 12px/1 var(--mono); color: var(--ink-3); letter-spacing: 0.04em; display: flex; align-items: center; gap: 12px; }
+.beat::after { content: ""; flex: 0 0 48px; border-top: 1px solid var(--rule); }
+
+section { padding: clamp(80px, 12vw, 160px) 0; border-top: 1px solid var(--rule); }
+section.hero { border-top: 0; padding-top: clamp(48px, 7vw, 96px); }
+h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.025em; line-height: 1.1; }
+h2 { font-size: clamp(36px, 5.2vw, 72px); margin-top: 24px; max-width: 14ch; }
+p.lead { font-size: clamp(18px, 1.6vw, 21px); color: var(--ink-2); max-width: 34em; margin: 28px 0 0; }
+
+/* ── 첫 화면 ── */
+.hero-grid { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 7fr); gap: clamp(32px, 5vw, 80px); align-items: end; }
+.hero h1 { font-size: clamp(52px, 7.2vw, 124px); letter-spacing: -0.03em; line-height: 1.02; margin-top: 28px; }
+.hero h1 span { display: block; white-space: nowrap; }
+body { word-break: keep-all; }
+.hero h1 .reveal { opacity: 0; transform: translateY(0.35em); animation: rise .9s cubic-bezier(.2,.75,.34,.94) forwards; }
+.hero h1 .reveal:nth-child(2) { animation-delay: .12s; }
+@keyframes rise { to { opacity: 1; transform: none; } }
+.hero .meta { margin-top: 40px; display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: center; }
+.hero .meta small { color: var(--ink-3); font-size: 13px; }
+.hero .meta small a { color: var(--ink-2); }
+
+.stage { position: relative; background: var(--stage); border-radius: 18px; overflow: hidden; aspect-ratio: 16 / 9; box-shadow: 0 1px 0 rgba(255,255,255,.4) inset, 0 40px 80px -40px rgba(28,25,23,.45); }
+.stage video, .stage img { width: 100%; height: 100%; object-fit: cover; }
+.scrub { display: flex; align-items: center; gap: 14px; margin-top: 14px; font: 400 12px/1 var(--mono); color: var(--ink-3); }
+.scrub .bar { position: relative; flex: 1; height: 1px; background: var(--rule); }
+.scrub .bar i { position: absolute; top: -6px; width: 2px; height: 13px; background: var(--ink); left: 0; }
+
+/* ── 이렇게 만듭니다 ── */
+.steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 72px; border-top: 1px solid var(--ink); }
+.step { padding: 22px 28px 0 0; position: relative; }
+.step::before { content: ""; position: absolute; top: -5px; left: 0; width: 9px; height: 9px; border-radius: 50%; background: var(--paper); box-shadow: inset 0 0 0 1px var(--ink); }
+.step .tc { font: 400 12px/1 var(--mono); color: var(--ink-3); }
+.step h3 { font-size: 22px; margin-top: 18px; letter-spacing: -0.02em; }
+.step p { color: var(--ink-2); font-size: 15.5px; margin: 10px 0 0; }
+.shot { margin-top: 72px; border-radius: 14px; overflow: hidden; box-shadow: 0 0 0 1px var(--rule), 0 50px 100px -50px rgba(28,25,23,.35); background: #fff; }
+
+/* ── 두 갈래 ── */
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(24px, 4vw, 56px); margin-top: 72px; }
+.card { border-top: 1px solid var(--ink); padding-top: 22px; }
+.card .kind { font: 400 12px/1 var(--mono); color: var(--ink-3); }
+.card h3 { font-size: clamp(26px, 2.6vw, 36px); margin-top: 16px; }
+.card p { color: var(--ink-2); margin: 14px 0 0; }
+.card ul { list-style: none; padding: 0; margin: 22px 0 0; font-size: 15px; }
+.card li { padding: 11px 0; border-top: 1px solid var(--rule); display: flex; justify-content: space-between; gap: 16px; }
+.card li span:last-child { font-family: var(--mono); font-size: 13px; color: var(--ink-3); text-align: right; }
+.lottie-demo { margin-top: 28px; background: #fff; border-radius: 14px; box-shadow: 0 0 0 1px var(--rule); display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+.lottie-demo .player { aspect-ratio: 1; width: min(100%, 300px); margin: 0 auto; }
+.lottie-demo .controls { padding: 24px; border-left: 1px solid var(--rule); display: flex; flex-direction: column; gap: 12px; align-self: stretch; justify-content: center; }
+.lottie-demo .controls b { font: 400 11px/1.4 var(--mono); color: var(--ink-3); font-weight: 400; }
+.swatches { display: grid; grid-template-columns: repeat(2, 28px); gap: 8px; }
+.swatches button { width: 28px; height: 28px; border-radius: 50%; border: 0; cursor: pointer; box-shadow: 0 0 0 1px rgba(0,0,0,.1) inset; transition: transform .15s; }
+.swatches button[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--paper), 0 0 0 3.5px var(--ink); }
+.swatches button:hover { transform: scale(1.08); }
+.demo-note { font-size: 13px; color: var(--ink-3); margin-top: 12px; }
+
+/* ── Figma ── */
+.figma { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(32px, 6vw, 96px); align-items: start; }
+.link-line { margin-top: 40px; background: #fff; border-radius: 12px; box-shadow: 0 0 0 1px var(--rule); padding: 18px 20px; font: 400 13.5px/1.5 var(--mono); color: var(--ink-2); word-break: break-all; }
+.link-line em { color: var(--ink); font-style: normal; }
+.flow { list-style: none; margin: 8px 0 0; padding: 0; counter-reset: f; }
+.flow li { counter-increment: f; display: grid; grid-template-columns: 56px 1fr; gap: 8px; padding: 22px 0; border-bottom: 1px solid var(--rule); }
+.flow li::before { content: "0" counter(f); font: 400 12px/2 var(--mono); color: var(--ink-3); }
+.flow h3 { font-size: 20px; letter-spacing: -0.02em; }
+.flow p { margin: 6px 0 0; color: var(--ink-2); font-size: 15.5px; }
+.fine { font-size: 13.5px; color: var(--ink-3); margin-top: 22px; }
+
+/* ── 직접 고치기 ── */
+.edit { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(32px, 5vw, 80px); align-items: center; margin-top: 72px; }
+.edit dl { margin: 0; }
+.edit dt { font-weight: 600; font-size: 19px; letter-spacing: -0.02em; padding-top: 20px; border-top: 1px solid var(--rule); }
+.edit dt:first-child { border-top: 1px solid var(--ink); }
+.edit dd { margin: 6px 0 20px; color: var(--ink-2); font-size: 15.5px; }
+kbd { font: 400 12px/1 var(--mono); padding: 3px 6px; border-radius: 5px; background: #fff; box-shadow: 0 0 0 1px var(--rule), 0 1px 0 var(--rule); }
+
+/* ── 다운로드 ── */
+.download { background: var(--ink); color: var(--paper); border-top: 0; }
+.download .beat { color: #A8A29E; }
+.download .beat::after { border-color: rgba(245,245,244,.2); }
+.download h2 { max-width: 12ch; }
+.download .btn { background: var(--paper); color: var(--ink); }
+.download .btn:hover { background: #fff; }
+.download .btn.ghost { background: transparent; color: var(--paper); box-shadow: inset 0 0 0 1px rgba(245,245,244,.3); }
+.download .btn.ghost:hover { box-shadow: inset 0 0 0 1px var(--paper); }
+.dl-grid { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); gap: clamp(32px, 6vw, 96px); margin-top: 56px; }
+.dl-buttons { display: flex; flex-wrap: wrap; gap: 12px; }
+.dl-meta { margin-top: 18px; font: 400 12.5px/1.6 var(--mono); color: #A8A29E; }
+.install { list-style: none; margin: 0; padding: 0; counter-reset: i; }
+.install li { counter-increment: i; padding: 14px 0 14px 40px; position: relative; border-top: 1px solid rgba(245,245,244,.14); color: #D6D3D1; font-size: 15.5px; }
+.install li::before { content: counter(i); position: absolute; left: 0; top: 14px; font: 400 12px/1.9 var(--mono); color: #A8A29E; }
+.install b { color: var(--paper); font-weight: 600; }
+
+footer { padding: 40px 0 56px; font-size: 13.5px; color: var(--ink-3); }
+footer .wrap { display: flex; flex-wrap: wrap; gap: 14px 28px; justify-content: space-between; }
+footer nav { display: flex; flex-wrap: wrap; gap: 8px 22px; }
+footer a { color: var(--ink-2); text-decoration: none; }
+footer a:hover { color: var(--ink); text-decoration: underline; }
+
+/* 스크롤하며 들어오기: 한 번만, 짧게 */
+.in { opacity: 0; transform: translateY(18px); transition: opacity .7s cubic-bezier(.2,.75,.34,.94), transform .7s cubic-bezier(.2,.75,.34,.94); }
+.in.seen { opacity: 1; transform: none; }
+
+@media (max-width: 960px) {
+  :root { --rail: 0px; }
+  .rail { display: none; }
+  header.top nav a:not(.btn) { display: none; }
+  .hero-grid, .figma, .edit, .dl-grid, .split { grid-template-columns: 1fr; }
+  .steps { grid-template-columns: 1fr 1fr; row-gap: 40px; }
+  .lottie-demo { grid-template-columns: 1fr; }
+  .lottie-demo .controls { border-left: 0; border-top: 1px solid var(--rule); flex-direction: row; align-items: center; justify-content: space-between; }
+  .swatches { grid-template-columns: repeat(4, 28px); }
+}
+@media (max-width: 560px) {
+  body { font-size: 16px; }
+  .steps { grid-template-columns: 1fr; }
+  .hero .meta .btn { width: 100%; justify-content: center; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .hero h1 .reveal, .in { animation: none; opacity: 1; transform: none; transition: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="rail" aria-hidden="true">
+  <div class="playhead" id="playhead">
+    <svg viewBox="0 0 14 14"><path d="M1 0h12v8l-6 6-6-6z" fill="#E5383B"/></svg>
+    <div class="stem"></div>
+    <span class="tc" id="tc">00:00.00</span>
+  </div>
+</div>
+
+<header class="top" id="top">
+  <div class="wrap">
+    <a class="logo" href="#" aria-label="Motion Studio"><img src="assets/wordmark-light.svg" alt="Motion Studio" width="200" height="19"></a>
+    <nav>
+      <a href="#how">작동 방식</a>
+      <a href="#outputs">결과물</a>
+      <a href="#figma">Figma</a>
+      <a class="btn small" href="#download">다운로드</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section class="hero" data-tc="0">
+    <div class="wrap">
+      <div class="beat">00:00 · macOS 앱 · <span id="ver">v0.6.0</span></div>
+      <div class="hero-grid">
+        <div>
+          <h1><span class="reveal">말하면,</span><span class="reveal">움직입니다.</span></h1>
+          <p class="lead">원하는 모션을 문장으로 설명하면, AI가 장면을 구성하고 렌더링한 뒤 <strong>결과를 직접 보며 다듬어요.</strong> After Effects도, 코드도 필요 없어요.</p>
+          <div class="meta">
+            <a class="btn" href="#download" data-dl="arm64">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v9M4 7.5 8 11.5 12 7.5M2.5 14h11"/></svg>
+              Mac용 다운로드
+            </a>
+            <small>Apple Silicon · <a href="#download" data-dl="x64">Intel 맥</a> · 무료</small>
+          </div>
+        </div>
+        <div>
+          <div class="stage">
+            <video id="hero-video" src="assets/hero.mp4?v=2" poster="assets/hero-poster.jpg?v=2" autoplay muted loop playsinline preload="metadata" aria-label="Motion Studio로 만든 소개 영상"></video>
+          </div>
+          <div class="scrub" aria-hidden="true"><span id="vt">00:00.00</span><div class="bar"><i id="vbar"></i></div><span>Motion Studio로 만든 영상</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="how" data-tc="4">
+    <div class="wrap">
+      <div class="beat">00:04 · 작동 방식</div>
+      <h2 class="in">채팅 한 줄에서 완성본까지.</h2>
+      <p class="lead in">원하는 걸 말하고, 확인하고, 받기만 하세요. 그 사이의 장면 설계와 렌더링, 검수는 AI가 맡아요.</p>
+      <div class="steps">
+        <div class="step in"><span class="tc">00:04</span><h3>말하기</h3><p>"버튼이 로더를 거쳐 체크로 바뀌는 4초 루프"처럼 적으면 돼요. 로고, 스크린샷, Figma 링크도 함께 넣을 수 있어요.</p></div>
+        <div class="step in"><span class="tc">00:05</span><h3>장면 확인</h3><p>언제 무엇이 움직일지 장면 표로 먼저 보여 드려요. 확인하고 승인하면 그때 만들기 시작해요.</p></div>
+        <div class="step in"><span class="tc">00:06</span><h3>스스로 점검</h3><p>AI가 렌더링 결과를 직접 열어 보고, 글자가 잘 읽히는지, 비어 보이는 구간은 없는지 점검하며 고쳐요.</p></div>
+        <div class="step in"><span class="tc">00:07</span><h3>받기</h3><p>MP4·ProRes·GIF 영상이나 개발자에게 넘길 Lottie 파일로 받아요. 다운로드 폴더에 모아 드려요.</p></div>
+      </div>
+      <figure class="shot in" style="margin-left:0;margin-right:0"><img src="assets/shot-app.png?v=3" alt="Motion Studio 앱 화면: 왼쪽 필름 목록, 가운데 플레이어, 오른쪽 진행 단계와 AI 채팅" loading="lazy" width="1600" height="1000"></figure>
+    </div>
+  </section>
+
+  <section id="outputs" data-tc="8">
+    <div class="wrap">
+      <div class="beat">00:08 · 결과물</div>
+      <h2 class="in">올릴 영상도, 앱에 넣을 애니메이션도.</h2>
+      <div class="split">
+        <div class="card in">
+          <div class="kind">영상으로 올릴 것</div>
+          <h3>출시 릴, SNS, 발표</h3>
+          <p>UI 모핑부터 폰 목업이 도는 3D, 떨어지고 부딪히는 물리 효과까지 만들어요. 글자는 늘 선명하고, 몇 번을 다시 뽑아도 같은 결과가 나와요.</p>
+          <ul>
+            <li><span>MP4 · GIF</span><span>SNS · 슬랙 · 노션</span></li>
+            <li><span>ProRes 4444 · WebM</span><span>영상 편집 툴 · 투명 배경</span></li>
+            <li><span>포맷</span><span>1:1 · 9:16 · 16:9 · 4:5</span></li>
+          </ul>
+        </div>
+        <div class="card in">
+          <div class="kind">앱·웹에 넣을 것</div>
+          <h3>로더, 성공 체크, 아이콘</h3>
+          <p>개발자에게 넘길 Lottie 파일을 만들어요. 웹과 앱에서도 똑같이 재생되는지 직접 비교해 보고 넘겨요.</p>
+          <div class="lottie-demo">
+            <div class="player" id="lottie" role="img" aria-label="Motion Studio로 만든 성공 체크 Lottie"></div>
+            <div class="controls">
+              <b>포인트 컬러</b>
+              <div class="swatches" id="swatches">
+                <button style="background:#2F6BFF" data-c="#2F6BFF" aria-pressed="true" aria-label="파랑"></button>
+                <button style="background:#12B76A" data-c="#12B76A" aria-pressed="false" aria-label="초록"></button>
+                <button style="background:#1C1917" data-c="#1C1917" aria-pressed="false" aria-label="검정"></button>
+                <button style="background:#F79009" data-c="#F79009" aria-pressed="false" aria-label="주황"></button>
+              </div>
+            </div>
+          </div>
+          <p class="demo-note">지금 이 페이지에서 재생 중인 Lottie예요(2KB). 색을 눌러 보세요. 앱에서 바꾼 색이 파일에도 그대로 반영돼요.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="figma" data-tc="12">
+    <div class="wrap figma">
+      <div>
+        <div class="beat">00:12 · Figma</div>
+        <h2 class="in">Figma 링크 하나면 충분해요.</h2>
+        <p class="lead in">디자인을 비슷하게 다시 그리지 않아요. 링크를 붙여 넣으면 그 프레임의 글자와 이미지, 배치를 그대로 가져와 움직여요.</p>
+        <div class="link-line in">figma.com/design/<em>…</em>?node-id=<em>215-32</em></div>
+      </div>
+      <ol class="flow">
+        <li class="in"><div><h3>레이어와 문구를 그대로</h3><p>위치와 크기, 문구를 Figma에서 그대로 가져와요. 문구는 앱에서 바로 고칠 수 있게 열어 둬요.</p></div></li>
+        <li class="in"><div><h3>이미지는 원본 파일로</h3><p>사진, 일러스트, 로고는 원본 파일을 그대로 써요. 어떤 글꼴로 쓴 제목이든 모양 그대로 옮겨 와요.</p></div></li>
+        <li class="in"><div><h3>디자인한 화면으로 마무리</h3><p>영상의 마지막 장면은 Figma에서 그린 바로 그 화면이에요. 완성되면 원본과 나란히 놓고 한 번 더 확인해요.</p></div></li>
+      </ol>
+    </div>
+    <div class="wrap"><p class="fine">claude.ai 설정의 커넥터에서 Figma를 한 번 연결해 두면 돼요. 편집 권한이 있는 파일만 가져올 수 있고, 한 달에 가져올 수 있는 횟수는 Figma 요금제에 따라 달라요.</p></div>
+  </section>
+
+  <section data-tc="16">
+    <div class="wrap">
+      <div class="beat">00:16 · 직접 고치기</div>
+      <h2 class="in">작은 수정은 손으로, 나머지는 말로.</h2>
+      <div class="edit">
+        <figure class="shot in" style="margin:0;max-width:440px"><img src="assets/shot-props.png?v=3" alt="속성 패널: 포인트 컬러, 배경, 버튼 문구 등을 바로 바꿀 수 있는 화면" loading="lazy" width="400" height="430" style="width:100%"></figure>
+        <dl class="in">
+          <dt>문구 · 색 · 숫자</dt><dd>AI가 열어 둔 값은 속성 패널에서 바로 바꿀 수 있어요.</dd>
+          <dt>장면 타이밍</dt><dd>타임라인에서 장면 표시를 끌어 옮기면 움직임이 함께 따라와요. 박자에 맞춰 딱 붙어요.</dd>
+          <dt>되돌리기</dt><dd><kbd>⌘Z</kbd> · <kbd>⇧⌘Z</kbd>로 언제든 되돌릴 수 있어요. 내가 직접 바꾼 값은 AI가 마음대로 되돌리지 않아요.</dd>
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <section class="download" id="download" data-tc="20">
+    <div class="wrap">
+      <div class="beat">00:20 · 다운로드</div>
+      <h2>지금 Mac에서 시작하세요.</h2>
+      <div class="dl-grid">
+        <div>
+          <div class="dl-buttons">
+            <a class="btn" data-dl="arm64" href="https://github.com/kimtaeho-dev/motion-studio/releases/latest">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v9M4 7.5 8 11.5 12 7.5M2.5 14h11"/></svg>
+              Apple Silicon (M1 이후)
+            </a>
+            <a class="btn ghost" data-dl="x64" href="https://github.com/kimtaeho-dev/motion-studio/releases/latest">Intel 맥</a>
+          </div>
+          <div class="dl-meta" id="dl-meta">macOS · 무료 · 최신 버전</div>
+          <p class="lead" style="color:#D6D3D1">Claude 계정으로 로그인해서 사용해요. AI 작업은 Claude Code가 맡아요.</p>
+        </div>
+        <ol class="install">
+          <li>dmg 파일을 열고 <b>Motion Studio</b>를 응용 프로그램 폴더로 끌어다 놓으세요.</li>
+          <li>처음 열 때 "확인되지 않은 개발자" 안내가 나오면 <b>시스템 설정 → 개인정보 보호 및 보안</b>에서 <b>그래도 열기</b>를 눌러 주세요.</li>
+          <li>처음 실행하면 필요한 설치와 로그인을 앱이 차례로 안내해요. 따로 준비할 건 없어요.</li>
+          <li>왼쪽 위 <b>+</b>로 새 필름을 만들고, 채팅창에 원하는 모션을 적어 보세요.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Motion Studio</span>
+    <nav>
+      <a href="https://github.com/kimtaeho-dev/motion-studio">GitHub</a>
+      <a href="https://github.com/kimtaeho-dev/motion-studio/releases">릴리스 노트</a>
+      <a href="https://github.com/kimtaeho-dev/motion-studio#사용-가이드">사용 가이드</a>
+      <a href="https://github.com/kimtaeho-dev/motion-studio/blob/main/LICENSES/README.md">포함된 오픈소스와 라이선스</a>
+    </nav>
+  </div>
+</footer>
+
+<script src="assets/lottie_svg.min.js" defer></script>
+<script>
+(() => {
+  // 재생 헤드: 스크롤 진행도 → 레일 위 위치와 타임코드. 섹션의 data-tc(초)를 이어서 읽는다
+  const head = document.getElementById('playhead'), tc = document.getElementById('tc'), top = document.getElementById('top');
+  const rail = document.querySelector('.rail');
+  const marks = [...document.querySelectorAll('section[data-tc]')];
+  const pad = (n, w = 2) => String(Math.floor(n)).padStart(w, '0');
+  const fmt = (s) => `${pad(s / 60)}:${pad(s % 60)}.${pad((s % 1) * 100)}`;
+  function ticks() {
+    rail.querySelectorAll('.tick').forEach((t) => t.remove());
+    for (let i = 1; i < 24; i++) { const t = document.createElement('i'); t.className = 'tick'; t.style.top = `${(i / 24) * 100}%`; rail.appendChild(t); }
+  }
+  function onScroll() {
+    const max = document.documentElement.scrollHeight - innerHeight;
+    const p = max > 0 ? Math.min(1, Math.max(0, scrollY / max)) : 0;
+    head.style.transform = `translate(-50%, ${p * (innerHeight - 70)}px)`;
+    // 지금 화면 가운데에 걸린 섹션의 타임코드 + 그 섹션 안 진행도(4초)
+    const mid = scrollY + innerHeight * 0.4;
+    let sec = 0;
+    for (const m of marks) {
+      const top0 = m.offsetTop, h = m.offsetHeight;
+      if (mid >= top0) sec = Number(m.dataset.tc) + Math.min(1, (mid - top0) / h) * 4;
+    }
+    tc.textContent = fmt(sec);
+    top.classList.toggle('scrolled', scrollY > 8);
+  }
+  ticks(); onScroll();
+  addEventListener('scroll', onScroll, { passive: true });
+  addEventListener('resize', onScroll);
+
+  // 스크롤해 들어오면 한 번만 나타난다
+  const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('seen'); io.unobserve(e.target); } }), { rootMargin: '0px 0px -8% 0px' });
+  document.querySelectorAll('.in').forEach((el, i) => { el.style.transitionDelay = `${(i % 4) * 70}ms`; io.observe(el); });
+
+  // 첫 화면 영상의 시각을 스크러버에
+  const v = document.getElementById('hero-video'), vt = document.getElementById('vt'), vbar = document.getElementById('vbar');
+  (function loop() {
+    if (v.duration) { vt.textContent = fmt(v.currentTime); vbar.style.left = `calc(${(v.currentTime / v.duration) * 100}% - 1px)`; }
+    requestAnimationFrame(loop);
+  })();
+
+  // 다운로드 링크: 최신 릴리스의 dmg를 바로 가리킨다(못 읽으면 릴리스 페이지)
+  fetch('https://api.github.com/repos/kimtaeho-dev/motion-studio/releases/latest').then((r) => r.ok ? r.json() : null).then((rel) => {
+    if (!rel) return;
+    const arm = rel.assets.find((a) => /arm64\.dmg$/.test(a.name)), x64 = rel.assets.find((a) => /\.dmg$/.test(a.name) && !/arm64/.test(a.name));
+    document.querySelectorAll('#download [data-dl="arm64"]').forEach((a) => arm && (a.href = arm.browser_download_url));
+    document.querySelectorAll('#download [data-dl="x64"]').forEach((a) => x64 && (a.href = x64.browser_download_url));
+    const mb = (a) => a ? `${Math.round(a.size / 1048576)}MB` : '';
+    document.getElementById('ver').textContent = rel.tag_name;
+    document.getElementById('dl-meta').textContent = `${rel.tag_name} · macOS · 무료 · Apple Silicon ${mb(arm)} · Intel ${mb(x64)}`;
+  }).catch(() => {});
+
+  // Lottie: 슬롯 색을 바꿔 다시 그린다 (앱의 속성 패널이 하는 일과 같다)
+  let doc = null, anim = null;
+  const hexToRgba = (hex) => { const n = parseInt(hex.slice(1), 16); return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255, 1]; };
+  function bake(d, sid, rgba) {
+    const c = JSON.parse(JSON.stringify(d));
+    if (c.slots && c.slots[sid]) c.slots[sid].p.k = rgba;
+    (function walk(n) { if (Array.isArray(n)) return n.forEach(walk); if (!n || typeof n !== 'object') return; if (n.sid === sid && 'k' in n) n.k = rgba; for (const k in n) if (k !== 'slots') walk(n[k]); })(c.layers);
+    return c;
+  }
+  function play(color) {
+    if (!doc || !window.lottie) return;
+    if (anim) anim.destroy();
+    anim = lottie.loadAnimation({ container: document.getElementById('lottie'), renderer: 'svg', loop: true, autoplay: !matchMedia('(prefers-reduced-motion: reduce)').matches, animationData: bake(doc, 'accent', hexToRgba(color)) });
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) anim.goToAndStop(anim.totalFrames - 1, true);
+  }
+  addEventListener('load', () => fetch('assets/check.json').then((r) => r.json()).then((d) => { doc = d; play('#2F6BFF'); }));
+  document.getElementById('swatches').addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    document.querySelectorAll('#swatches button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    play(b.dataset.c);
+  });
+})();
+</script>
+</body>
+</html>
