@@ -1,0 +1,40 @@
+<!doctype html>
+<meta charset="utf-8">
+<!-- 랜딩 페이지 공유 카드(site/assets/og.png, 1200x630)의 원본. 브라우저로 열어 1200x630 영역을 2배로 캡처한 뒤 1200x630으로 줄여 덮어쓴다. -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<style>
+@font-face { font-family: "Geist Mono"; src: url("../site/assets/GeistMono-Regular.woff2") format("woff2"); }
+html, body { margin: 0; }
+.card { position: relative; width: 1200px; height: 630px; background: #F3F1EC; color: #1C1917; font-family: "Pretendard Variable"; overflow: hidden; }
+/* 타임라인 눈금: 사이트의 왼쪽 레일을 가로로 */
+.rule { position: absolute; left: 0; right: 0; bottom: 92px; border-top: 1.5px solid rgba(28,25,23,.16); }
+.tick { position: absolute; bottom: 86px; width: 0; height: 12px; border-left: 1.5px solid rgba(28,25,23,.16); }
+.left { position: absolute; left: 76px; top: 70px; }
+.left img { height: 26px; display: block; }
+h1 { margin: 74px 0 0; font-size: 104px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.04; }
+.sub { position: absolute; left: 76px; bottom: 38px; font: 500 22px/1 "Pretendard Variable"; color: #78716C; letter-spacing: -0.01em; }
+.right { position: absolute; right: 120px; top: 118px; width: 300px; height: 300px; }
+.disc { width: 300px; height: 300px; border-radius: 50%; background: #1C1917; display: grid; place-items: center; box-shadow: 0 30px 60px -30px rgba(28,25,23,.5); }
+.disc svg { width: 170px; height: 170px; }
+/* 재생 헤드: 빨강은 여기에만 */
+.playhead { position: absolute; left: 920px; bottom: 60px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; }
+.playhead .head { width: 22px; height: 22px; }
+.playhead .stem { width: 3px; height: 50px; background: #E5383B; margin-top: -3px; }
+.tc { position: absolute; left: 942px; bottom: 112px; font: 400 18px/1 "Geist Mono"; color: #E5383B; }
+</style>
+<div class="card">
+  <div class="rule"></div>
+  <div id="ticks"></div>
+  <div class="left">
+    <img src="../site/assets/wordmark-light.svg" alt="">
+    <h1>말하면,<br>움직입니다.</h1>
+  </div>
+  <div class="sub">말로 만드는 모션 · 영상과 Lottie · macOS 앱</div>
+  <div class="right"><div class="disc"><svg viewBox="0 0 100 100" fill="none" stroke="#fff" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"><path d="M24 52 L42 70 L77 32"/></svg></div></div>
+  <div class="playhead"><svg class="head" viewBox="0 0 14 14"><path d="M1 0h12v8l-6 6-6-6z" fill="#E5383B"/></svg><div class="stem"></div></div>
+  <div class="tc">00:04.00</div>
+</div>
+<script>
+const t = document.getElementById('ticks');
+for (let x = 76; x < 1200; x += 56) { const d = document.createElement('div'); d.className = 'tick'; d.style.left = x + 'px'; t.appendChild(d); }
+</script>
