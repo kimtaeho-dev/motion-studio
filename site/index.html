@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Motion Studio — 말로 만드는 모션</title>
-<meta name="description" content="원하는 모션을 문장으로 설명하면 AI가 장면을 구성하고 렌더링한 뒤, 결과를 직접 보며 다듬어요. 영상과 앱·웹용 Lottie를 만드는 macOS 앱이에요.">
+<meta name="description" content="원하는 모션을 문장으로 설명하면 AI가 장면을 짜서 영상으로 만들고, 결과를 직접 보며 다듬어요. 영상과 앱·웹용 Lottie를 만드는 macOS 앱이에요.">
 <meta property="og:title" content="Motion Studio — 말로 만드는 모션">
 <meta property="og:description" content="원하는 모션을 문장으로 설명하면 AI가 만들고, 결과를 직접 보며 다듬어요. 영상부터 앱·웹용 Lottie까지.">
 <meta property="og:image" content="https://kimtaeho-dev.github.io/motion-studio/assets/og.png?v=2">
@@ -22,34 +22,8 @@
 <meta name="theme-color" content="#F3F1EC">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="assets/base.css?v=1">
 <style>
-@font-face { font-family: "Geist Mono"; src: url("assets/GeistMono-Regular.woff2") format("woff2"); font-weight: 400; font-display: swap; }
-
-:root {
-  --paper: #F3F1EC;
-  --paper-2: #EAE7E0;
-  --ink: #1C1917;
-  --ink-2: #57534E;
-  --ink-3: #78716C;
-  --rule: rgba(28, 25, 23, 0.14);
-  --stage: #2A2A2A;
-  --red: #E5383B;
-  --sans: "Pretendard Variable", Pretendard, "Apple SD Gothic Neo", sans-serif;
-  --mono: "Geist Mono", "Pretendard Variable", Pretendard, sans-serif;  /* 한글은 Geist Mono에 없어 Pretendard로 */
-  --gutter: clamp(20px, 5vw, 72px);
-  --rail: 56px;
-}
-* { box-sizing: border-box; }
-html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
-body {
-  margin: 0; background: var(--paper); color: var(--ink);
-  font-family: var(--sans); font-size: 17px; line-height: 1.65; letter-spacing: -0.01em;
-  -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
-}
-img, video { display: block; max-width: 100%; height: auto; }
-a { color: inherit; }
-::selection { background: var(--ink); color: var(--paper); }
-
 /* ── 재생 헤드: 왼쪽 레일을 따라 스크롤과 함께 내려간다. 이 페이지에서 빨강은 여기에만 쓴다 ── */
 .rail { position: fixed; inset: 0 auto 0 0; width: var(--rail); pointer-events: none; z-index: 20; }
 .rail::before { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; border-left: 1px solid var(--rule); }
@@ -59,33 +33,8 @@ a { color: inherit; }
 .playhead .stem { width: 2px; height: 46px; margin: -2px auto 0; background: var(--red); }
 .playhead .tc { position: absolute; left: 22px; top: -2px; font: 500 11px/1 var(--mono); color: var(--red); white-space: nowrap; letter-spacing: 0.02em; }
 
-.wrap { padding-left: calc(var(--rail) + var(--gutter)); padding-right: var(--gutter); max-width: 1440px; margin: 0 auto; }
-
-/* ── 머리줄 ── */
-header.top { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--paper) 88%, transparent); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid transparent; transition: border-color .2s; }
-header.top.scrolled { border-bottom-color: var(--rule); }
-header.top .wrap { display: flex; align-items: center; justify-content: space-between; height: 64px; gap: 24px; }
-header.top .logo img { height: 15px; width: auto; }  /* 비율은 파일의 viewBox를 따른다 */
-header.top nav { display: flex; gap: 28px; align-items: center; font-size: 14px; }
-header.top nav a { text-decoration: none; color: var(--ink-2); }
-header.top nav a:hover { color: var(--ink); }
-header.top nav a.btn, header.top nav a.btn:hover { color: var(--paper); }
-
-.btn { display: inline-flex; align-items: center; gap: 10px; height: 48px; padding: 0 22px; border-radius: 999px; background: var(--ink); color: var(--paper); text-decoration: none; font-weight: 600; font-size: 16px; letter-spacing: -0.01em; transition: transform .15s ease, background .15s; white-space: nowrap; }
-.btn:hover { background: #000; transform: translateY(-1px); }
-.btn:active { transform: translateY(0); }
-.btn svg { width: 16px; height: 16px; }
-.btn.small { height: 36px; padding: 0 16px; font-size: 14px; }
-.btn.ghost { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1px var(--rule); }
-.btn.ghost:hover { box-shadow: inset 0 0 0 1px var(--ink); background: transparent; }
-
-.mono { font-family: var(--mono); letter-spacing: 0.01em; }
-.beat { font: 400 12px/1 var(--mono); color: var(--ink-3); letter-spacing: 0.04em; display: flex; align-items: center; gap: 12px; }
-.beat::after { content: ""; flex: 0 0 48px; border-top: 1px solid var(--rule); }
-
 section { padding: clamp(80px, 12vw, 160px) 0; border-top: 1px solid var(--rule); }
 section.hero { border-top: 0; padding-top: clamp(48px, 7vw, 96px); }
-h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.025em; line-height: 1.1; }
 h2 { font-size: clamp(36px, 5.2vw, 72px); margin-top: 24px; max-width: 14ch; }
 p.lead { font-size: clamp(18px, 1.6vw, 21px); color: var(--ink-2); max-width: 34em; margin: 28px 0 0; }
 
@@ -93,7 +42,6 @@ p.lead { font-size: clamp(18px, 1.6vw, 21px); color: var(--ink-2); max-width: 34
 .hero-grid { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 7fr); gap: clamp(32px, 5vw, 80px); align-items: end; }
 .hero h1 { font-size: clamp(52px, 7.2vw, 124px); letter-spacing: -0.03em; line-height: 1.02; margin-top: 28px; }
 .hero h1 span { display: block; white-space: nowrap; }
-body { word-break: keep-all; }
 .hero h1 .reveal { opacity: 0; transform: translateY(0.35em); animation: rise .9s cubic-bezier(.2,.75,.34,.94) forwards; }
 .hero h1 .reveal:nth-child(2) { animation-delay: .12s; }
 @keyframes rise { to { opacity: 1; transform: none; } }
@@ -152,7 +100,6 @@ body { word-break: keep-all; }
 .edit dt { font-weight: 600; font-size: 19px; letter-spacing: -0.02em; padding-top: 20px; border-top: 1px solid var(--rule); }
 .edit dt:first-child { border-top: 1px solid var(--ink); }
 .edit dd { margin: 6px 0 20px; color: var(--ink-2); font-size: 15.5px; }
-kbd { font: 400 12px/1 var(--mono); padding: 3px 6px; border-radius: 5px; background: #fff; box-shadow: 0 0 0 1px var(--rule), 0 1px 0 var(--rule); }
 
 /* ── 다운로드 ── */
 .download { background: var(--ink); color: var(--paper); border-top: 0; }
@@ -171,20 +118,12 @@ kbd { font: 400 12px/1 var(--mono); padding: 3px 6px; border-radius: 5px; backgr
 .install li::before { content: counter(i); position: absolute; left: 0; top: 14px; font: 400 12px/1.9 var(--mono); color: #A8A29E; }
 .install b { color: var(--paper); font-weight: 600; }
 
-footer { padding: 40px 0 56px; font-size: 13.5px; color: var(--ink-3); }
-footer .wrap { display: flex; flex-wrap: wrap; gap: 14px 28px; justify-content: space-between; }
-footer nav { display: flex; flex-wrap: wrap; gap: 8px 22px; }
-footer a { color: var(--ink-2); text-decoration: none; }
-footer a:hover { color: var(--ink); text-decoration: underline; }
-
 /* 스크롤하며 들어오기: 한 번만, 짧게 */
 .in { opacity: 0; transform: translateY(18px); transition: opacity .7s cubic-bezier(.2,.75,.34,.94), transform .7s cubic-bezier(.2,.75,.34,.94); }
 .in.seen { opacity: 1; transform: none; }
 
 @media (max-width: 960px) {
-  :root { --rail: 0px; }
   .rail { display: none; }
-  header.top nav a:not(.btn) { display: none; }
   .hero-grid, .figma, .edit, .dl-grid, .split { grid-template-columns: 1fr; }
   .steps { grid-template-columns: 1fr 1fr; row-gap: 40px; }
   .lottie-demo { grid-template-columns: 1fr; }
@@ -192,12 +131,10 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
   .swatches { grid-template-columns: repeat(4, 28px); }
 }
 @media (max-width: 560px) {
-  body { font-size: 16px; }
   .steps { grid-template-columns: 1fr; }
   .hero .meta .btn { width: 100%; justify-content: center; }
 }
 @media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
   .hero h1 .reveal, .in { animation: none; opacity: 1; transform: none; transition: none; }
 }
 </style>
@@ -219,6 +156,7 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
       <a href="#how">작동 방식</a>
       <a href="#outputs">결과물</a>
       <a href="#figma">Figma</a>
+      <a href="guide.html">사용 가이드</a>
       <a class="btn small" href="#download">다운로드</a>
     </nav>
   </div>
@@ -231,7 +169,7 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
       <div class="hero-grid">
         <div>
           <h1><span class="reveal">말하면,</span><span class="reveal">움직입니다.</span></h1>
-          <p class="lead">원하는 모션을 문장으로 설명하면, AI가 장면을 구성하고 렌더링한 뒤 <strong>결과를 직접 보며 다듬어요.</strong> After Effects도, 코드도 필요 없어요.</p>
+          <p class="lead">원하는 모션을 문장으로 설명하면, AI가 장면을 짜서 영상으로 만들고 <strong>결과를 직접 보며 다듬어요.</strong> After Effects도, 코드도 필요 없어요.</p>
           <div class="meta">
             <a class="btn" href="#download" data-dl="arm64">
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v9M4 7.5 8 11.5 12 7.5M2.5 14h11"/></svg>
@@ -254,11 +192,11 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
     <div class="wrap">
       <div class="beat">00:04 · 작동 방식</div>
       <h2 class="in">채팅 한 줄에서 완성본까지.</h2>
-      <p class="lead in">원하는 걸 말하고, 확인하고, 받기만 하세요. 그 사이의 장면 설계와 렌더링, 검수는 AI가 맡아요.</p>
+      <p class="lead in">원하는 걸 말하고, 확인하고, 받기만 하세요. 그 사이에 장면을 짜고, 영상으로 뽑고, 다듬는 일은 AI가 맡아요.</p>
       <div class="steps">
         <div class="step in"><span class="tc">00:04</span><h3>말하기</h3><p>"버튼이 로더를 거쳐 체크로 바뀌는 4초 루프"처럼 적으면 돼요. 로고, 스크린샷, Figma 링크도 함께 넣을 수 있어요.</p></div>
         <div class="step in"><span class="tc">00:05</span><h3>장면 확인</h3><p>언제 무엇이 움직일지 장면 표로 먼저 보여 드려요. 확인하고 승인하면 그때 만들기 시작해요.</p></div>
-        <div class="step in"><span class="tc">00:06</span><h3>스스로 점검</h3><p>AI가 렌더링 결과를 직접 열어 보고, 글자가 잘 읽히는지, 비어 보이는 구간은 없는지 점검하며 고쳐요.</p></div>
+        <div class="step in"><span class="tc">00:06</span><h3>스스로 점검</h3><p>AI가 만든 영상을 직접 돌려 보고, 글자가 잘 읽히는지, 비어 보이는 구간은 없는지 점검하며 고쳐요.</p></div>
         <div class="step in"><span class="tc">00:07</span><h3>받기</h3><p>MP4·ProRes·GIF 영상이나 개발자에게 넘길 Lottie 파일로 받아요. 다운로드 폴더에 모아 드려요.</p></div>
       </div>
       <figure class="shot in" style="margin-left:0;margin-right:0"><img src="assets/shot-app.png?v=3" alt="Motion Studio 앱 화면: 왼쪽 필름 목록, 가운데 플레이어, 오른쪽 진행 단계와 AI 채팅" loading="lazy" width="1600" height="1000"></figure>
@@ -277,7 +215,7 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
           <ul>
             <li><span>MP4 · GIF</span><span>SNS · 슬랙 · 노션</span></li>
             <li><span>ProRes 4444 · WebM</span><span>영상 편집 툴 · 투명 배경</span></li>
-            <li><span>포맷</span><span>1:1 · 9:16 · 16:9 · 4:5</span></li>
+            <li><span>화면 비율</span><span>1:1 · 9:16 · 16:9 · 4:5</span></li>
           </ul>
         </div>
         <div class="card in">
@@ -348,13 +286,14 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
             <a class="btn ghost" data-dl="x64" href="https://github.com/kimtaeho-dev/motion-studio/releases/latest">Intel 맥</a>
           </div>
           <div class="dl-meta" id="dl-meta">macOS · 무료 · 최신 버전</div>
-          <p class="lead" style="color:#D6D3D1">Claude 계정으로 로그인해서 사용해요. AI 작업은 Claude Code가 맡아요.</p>
+          <p class="lead" style="color:#D6D3D1">Claude 계정으로 로그인해서 사용해요. 필요한 준비는 앱이 알아서 해요.</p>
         </div>
         <ol class="install">
-          <li>dmg 파일을 열고 <b>Motion Studio</b>를 응용 프로그램 폴더로 끌어다 놓으세요.</li>
+          <li>받은 파일을 열고 <b>Motion Studio</b>를 응용 프로그램 폴더로 끌어다 놓으세요.</li>
           <li>처음 열 때 "확인되지 않은 개발자" 안내가 나오면 <b>시스템 설정 → 개인정보 보호 및 보안</b>에서 <b>그래도 열기</b>를 눌러 주세요.</li>
           <li>처음 실행하면 필요한 설치와 로그인을 앱이 차례로 안내해요. 따로 준비할 건 없어요.</li>
           <li>왼쪽 위 <b>+</b>로 새 필름을 만들고, 채팅창에 원하는 모션을 적어 보세요.</li>
+          <li>그다음은 <a href="guide.html"><b>사용 가이드</b></a>에서 차근차근 알려 드려요.</li>
         </ol>
       </div>
     </div>
@@ -365,9 +304,9 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
   <div class="wrap">
     <span>Motion Studio</span>
     <nav>
-      <a href="https://github.com/kimtaeho-dev/motion-studio">GitHub</a>
+      <a href="https://github.com/kimtaeho-dev/motion-studio">GitHub · 기여하기</a>
       <a href="https://github.com/kimtaeho-dev/motion-studio/releases">릴리스 노트</a>
-      <a href="https://github.com/kimtaeho-dev/motion-studio#사용-가이드">사용 가이드</a>
+      <a href="guide.html">사용 가이드</a>
       <a href="https://github.com/kimtaeho-dev/motion-studio/blob/main/LICENSES/README.md">포함된 오픈소스와 라이선스</a>
     </nav>
   </div>

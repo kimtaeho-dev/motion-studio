@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>사용 가이드 — Motion Studio</title>
+<meta name="description" content="Motion Studio를 설치하고, 원하는 모션을 말하고, 직접 손보고, 파일로 받기까지. 처음 쓰는 분을 위한 사용 가이드예요.">
+<meta property="og:title" content="사용 가이드 — Motion Studio">
+<meta property="og:description" content="설치하고, 말하고, 손보고, 파일로 받기까지.">
+<meta property="og:image" content="https://kimtaeho-dev.github.io/motion-studio/assets/og.png?v=2">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:site_name" content="Motion Studio">
+<meta property="og:locale" content="ko_KR">
+<meta property="og:url" content="https://kimtaeho-dev.github.io/motion-studio/guide.html">
+<meta property="og:type" content="article">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#F3F1EC">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="assets/base.css?v=1">
+<style>
+:root { --rail: 0px; }
+
+.intro { padding: clamp(48px, 7vw, 96px) 0 clamp(40px, 5vw, 64px); border-bottom: 1px solid var(--rule); }
+.intro h1 { font-size: clamp(44px, 6vw, 88px); letter-spacing: -0.03em; line-height: 1.04; margin-top: 24px; }
+.intro p { font-size: clamp(17px, 1.5vw, 20px); color: var(--ink-2); max-width: 34em; margin: 24px 0 0; }
+
+/* 목차는 타임라인처럼: 장마다 타임코드 하나 */
+.doc { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: clamp(32px, 6vw, 96px); align-items: start; }
+.toc { position: sticky; top: 88px; padding: 40px 0; }
+.toc ol { list-style: none; margin: 0; padding: 0; border-left: 1px solid var(--rule); }
+.toc a { display: grid; grid-template-columns: 52px 1fr; padding: 7px 0 7px 16px; margin-left: -1px; border-left: 2px solid transparent; text-decoration: none; color: var(--ink-3); font-size: 14.5px; line-height: 1.4; }
+.toc a span { font: 400 11px/1.9 var(--mono); }
+.toc a:hover { color: var(--ink); }
+.toc a.on { color: var(--ink); border-left-color: var(--red); }
+.toc a.on span { color: var(--red); }
+
+article { max-width: 46em; padding-bottom: 96px; }
+article section { padding: 56px 0 8px; border-top: 1px solid var(--rule); scroll-margin-top: 64px; }
+article section:first-child { border-top: 0; }
+article h2 { font-size: clamp(30px, 3.4vw, 44px); margin-top: 18px; }
+article h3 { font-size: 20px; letter-spacing: -0.02em; margin: 40px 0 0; }
+article p, article li { color: var(--ink-2); }
+article p { margin: 14px 0 0; }
+article strong, article b { color: var(--ink); font-weight: 600; }
+article ul, article ol { margin: 14px 0 0; padding-left: 1.25em; }
+article li { margin: 6px 0; }
+article li::marker { color: var(--ink-3); }
+article code { font: 400 0.86em/1 var(--mono); background: #fff; padding: 2px 6px; border-radius: 5px; box-shadow: 0 0 0 1px var(--rule); word-break: break-all; }
+
+/* 예시 요청: 채팅 말풍선처럼 */
+.say { list-style: none; padding: 0; margin: 20px 0 0; display: grid; gap: 10px; }
+.say li { margin: 0; background: #fff; border-radius: 14px 14px 14px 4px; padding: 14px 18px; color: var(--ink); box-shadow: 0 0 0 1px var(--rule); max-width: 36em; }
+
+table { width: 100%; border-collapse: collapse; margin: 22px 0 0; font-size: 15px; }
+th, td { text-align: left; vertical-align: top; padding: 12px 16px 12px 0; border-top: 1px solid var(--rule); }
+thead th { font-size: 13px; font-weight: 500; color: var(--ink-3); border-top: 1px solid var(--ink); }
+td { color: var(--ink-2); }
+td:first-child { color: var(--ink); font-weight: 600; white-space: nowrap; }
+
+.note { margin: 24px 0 0; padding: 16px 20px; border-radius: 12px; background: var(--paper-2); color: var(--ink-2); font-size: 15px; }
+.note b { color: var(--ink); }
+
+/* 둘 중 하나 고르기 */
+.pick { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 22px 0 0; }
+.pick > div { background: #fff; border-radius: 14px; padding: 20px 22px; box-shadow: 0 0 0 1px var(--rule); }
+.pick h3 { margin: 0; font-size: 18px; }
+.pick p { margin: 8px 0 0; font-size: 15px; }
+.pick small { display: block; margin-top: 12px; font-size: 13px; color: var(--ink-3); }
+
+/* 만드는 단계: 앱에 보이는 이름은 작은 꼬리표로 */
+.flowlist { list-style: none; padding: 0; margin: 22px 0 0; counter-reset: s; }
+.flowlist li { counter-increment: s; position: relative; padding: 16px 0 16px 44px; margin: 0; border-top: 1px solid var(--rule); }
+.flowlist li::before { content: counter(s); position: absolute; left: 0; top: 16px; width: 26px; height: 26px; border-radius: 50%; box-shadow: inset 0 0 0 1px var(--ink); font-size: 13px; font-weight: 600; color: var(--ink); display: grid; place-items: center; line-height: 1; }
+.flowlist li > b:first-of-type { display: block; margin-bottom: 2px; }
+.tag { float: right; margin-left: 12px; font-size: 12px; color: var(--ink-3); background: var(--paper-2); border-radius: 999px; padding: 2px 10px; }
+
+.faq { margin: 22px 0 0; }
+.faq dt { font-weight: 600; padding-top: 18px; border-top: 1px solid var(--rule); }
+.faq dd { margin: 6px 0 18px; color: var(--ink-2); }
+p.small { font-size: 14.5px; color: var(--ink-3); }
+
+.next { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 56px; }
+
+@media (max-width: 960px) {
+  .doc { grid-template-columns: 1fr; }
+  .toc { position: static; padding: 32px 0 0; }
+  .toc ol { display: grid; grid-template-columns: 1fr 1fr; border-left: 0; gap: 0 16px; }
+  .toc a { padding-left: 0; border-left: 0; border-top: 1px solid var(--rule); }
+}
+@media (max-width: 560px) {
+  td:first-child { white-space: normal; }
+  .pick { grid-template-columns: 1fr; }
+  .tag { float: none; display: inline-block; margin: 0 0 6px; }
+  th, td { padding-right: 10px; }
+}
+</style>
+</head>
+<body>
+
+<header class="top" id="top">
+  <div class="wrap">
+    <a class="logo" href="./" aria-label="Motion Studio 처음으로"><img src="assets/wordmark-light.svg" alt="Motion Studio" width="200" height="19"></a>
+    <nav>
+      <a href="./#how">작동 방식</a>
+      <a href="./#outputs">결과물</a>
+      <a href="guide.html" aria-current="page">사용 가이드</a>
+      <a class="btn small" href="./#download">다운로드</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="intro">
+    <div class="wrap">
+      <div class="beat">사용 가이드</div>
+      <h1>처음부터 끝까지.</h1>
+      <p>앱을 설치하고, 원하는 모션을 말하고, 마음에 들 때까지 고친 다음 파일로 받기까지. 처음 쓸 때 궁금한 것들을 순서대로 모았어요.</p>
+    </div>
+  </div>
+
+  <div class="wrap doc">
+    <nav class="toc" aria-label="목차">
+      <ol>
+        <li><a href="#install"><span>00:00</span>설치하기</a></li>
+        <li><a href="#new"><span>00:04</span>무엇을 만들지 고르기</a></li>
+        <li><a href="#ask"><span>00:08</span>원하는 걸 말하기</a></li>
+        <li><a href="#process"><span>00:12</span>만들어지는 동안</a></li>
+        <li><a href="#edit"><span>00:16</span>직접 손보기</a></li>
+        <li><a href="#export"><span>00:20</span>파일로 받기</a></li>
+        <li><a href="#trouble"><span>00:24</span>막혔을 때</a></li>
+      </ol>
+    </nav>
+
+    <article>
+      <section id="install">
+        <div class="beat">00:00</div>
+        <h2>설치하기</h2>
+        <ol>
+          <li><a href="./#download">다운로드</a>에서 설치 파일을 받아요. 2020년 말 이후에 산 맥이라면 대부분 <b>Apple Silicon</b>이에요. 잘 모르겠다면 화면 왼쪽 위 사과 메뉴 → <b>이 Mac에 관하여</b>에서 칩 이름을 보세요. M1, M2처럼 M으로 시작하면 Apple Silicon, Intel이라고 적혀 있으면 Intel이에요.</li>
+          <li>받은 파일을 열고 <b>Motion Studio</b> 아이콘을 응용 프로그램 폴더로 끌어다 놓아요.</li>
+          <li>처음 열 때 "확인되지 않은 개발자"라는 안내가 나올 수 있어요. <b>시스템 설정 → 개인정보 보호 및 보안</b>으로 가서 <b>그래도 열기</b>를 한 번만 눌러 주세요.</li>
+          <li>처음 실행하면 앱이 필요한 준비를 알아서 하고, Claude 계정으로 로그인하도록 안내해요. 따로 설치하거나 설정할 건 없어요.</li>
+        </ol>
+        <p>앱에는 예시 작업 몇 개가 들어 있어요. 하나 열어서 재생해 보고, 오른쪽에서 색을 바꿔 보면 어떻게 쓰는지 금방 감이 와요.</p>
+      </section>
+
+      <section id="new">
+        <div class="beat">00:04</div>
+        <h2>무엇을 만들지 고르기</h2>
+        <p>왼쪽 위 <b>+</b>를 누르면 <b>어디에 쓰나요?</b>를 먼저 물어봐요.</p>
+        <div class="pick">
+          <div>
+            <h3>영상으로 올릴 것</h3>
+            <p>SNS 게시물, 발표 자료, 출시 영상처럼 영상 파일로 쓸 때 골라요. 화면 비율(정사각 · 세로 · 가로 · 피드)과 길이를 정해요.</p>
+          </div>
+          <div>
+            <h3>앱·웹에 넣을 것</h3>
+            <p>로딩 표시, 완료 체크, 아이콘처럼 서비스 화면 안에서 움직일 걸 만들 때 골라요. 개발자에게 바로 넘길 수 있는 Lottie 파일로 나와요. 크기와 길이를 정해요.</p>
+          </div>
+        </div>
+        <h3>얼마나 공들일지</h3>
+        <p>영상은 AI가 완성본을 직접 보고 고치는 과정을 몇 번 거칠지 고를 수 있어요.</p>
+        <ul>
+          <li><b>빠르게</b>: 한 번만 보고 고쳐요. 방향부터 빨리 보고 싶을 때 좋아요.</li>
+          <li><b>기본</b>: 세 번 보고 고쳐요. 대부분은 이걸로 충분해요.</li>
+          <li><b>런칭용</b>: 모든 항목이 충분히 좋아질 때까지 계속 고쳐요. 시간이 가장 오래 걸려요.</li>
+        </ul>
+        <p>여기서 고른 비율과 길이는 AI가 마음대로 바꾸지 않아요. 다르게 하는 게 낫겠다 싶으면 먼저 물어봐요.</p>
+      </section>
+
+      <section id="ask">
+        <div class="beat">00:08</div>
+        <h2>원하는 걸 말하기</h2>
+        <p>오른쪽 아래 채팅창에 원하는 모션을 평소 말하듯 적어 주세요. <b>무엇이, 어떤 순서로, 몇 초 동안</b> 움직이는지 알려 주면 가장 잘 알아들어요.</p>
+        <ul class="say">
+          <li>버튼이 로딩을 거쳐 체크로 바뀌는 4초짜리 반복 영상. 포인트 컬러는 파랑</li>
+          <li>앱 출시를 알리는 15초 세로 영상. 첫 화면 → 검색 → 결과 → 저장 순서로</li>
+          <li>폰이 돌면서 결제 화면이 체크로 바뀌고, 옆에 'Ship'이 입체 글자로</li>
+        </ul>
+        <p>정해지지 않은 게 있으면 AI가 먼저 물어봐요. 고민되면 "알아서 정해 줘"라고 해도 괜찮아요. 무엇으로 정했는지는 알려 드려요.</p>
+
+        <h3>파일 같이 보내기</h3>
+        <p>이미지, 영상, 로고, 3D 모델을 채팅창에 끌어다 놓을 수 있어요. 보낸 파일 옆에 붙은 표시를 눌러 어떻게 쓸지 골라 주세요.</p>
+        <div class="pick">
+          <div>
+            <h3>참고용</h3>
+            <p>"이런 느낌으로"를 전할 때 써요. 분위기, 색, 리듬만 참고하고 그림이나 로고는 가져오지 않아요. 다른 브랜드 영상의 캡처를 보낼 때 고르세요.</p>
+            <small>이미지와 영상은 처음에 참고용으로 들어가요.</small>
+          </div>
+          <div>
+            <h3>그대로 쓰기</h3>
+            <p>그 파일이 화면에 그대로 들어가요. 비슷하게 다시 그리지 않아요. 우리 로고, 아이콘, 서비스 화면 캡처, 제품 3D 모델을 보낼 때 고르세요.</p>
+            <small>SVG와 3D 모델은 처음에 그대로 쓰기로 들어가요.</small>
+          </div>
+        </div>
+        <ul>
+          <li>AI는 우리 서비스 화면을 상상해서 그리지 않아요. 실제 화면이 나와야 하면 캡처를 <b>그대로 쓰기</b>로 보내 주세요.</li>
+          <li>로고나 아이콘은 SVG로 주면 가장 좋아요. 크게 키워도 선명하고, 획이 하나씩 그려지는 것처럼 부분마다 따로 움직일 수 있어요. Figma에서 SVG로 내보내면 글자도 모양 그대로 들어가요.</li>
+        </ul>
+
+        <h3>Figma 링크 보내기</h3>
+        <p>Figma에서 만든 화면을 그대로 움직이고 싶다면 링크를 보내 주세요. 레이어 위치, 문구, 이미지를 그대로 가져와요.</p>
+        <ol>
+          <li>처음 한 번만, claude.ai 설정의 <b>커넥터</b>에서 Figma를 연결해요.</li>
+          <li>Figma에서 움직이고 싶은 프레임을 오른쪽 클릭하고 <b>선택 항목 링크 복사</b>를 눌러요. 파일 전체 링크가 아니라 프레임 링크여야 해요.</li>
+          <li>채팅에 링크를 붙이고, 어떻게 움직이면 좋을지 함께 적어요.</li>
+        </ol>
+        <div class="note">
+          <b>내가 편집할 수 있는 파일만 가져올 수 있어요.</b> 보기만 가능한 파일이라면 Figma에서 파일 이름 옆 메뉴 → <b>내 드래프트로 복제</b>를 한 뒤 복제본의 링크를 보내 주세요.
+          Figma 무료 요금제에서는 한 달에 가져올 수 있는 횟수가 정해져 있어요(20번 정도). 화면 하나에 최대 3번을 쓰고, 한 번 가져온 화면은 다시 불러오지 않아요.
+        </div>
+
+        <h3>음악에 맞추고 싶다면</h3>
+        <p>영상에는 소리가 들어가지 않아요. 음악은 편집 프로그램에서 얹어 주세요. 쓸 곡이 정해져 있다면 곡의 빠르기(<b>BPM</b>)와 <b>첫 박이 나오는 시간</b>을 알려 주세요. 장면이 바뀌는 순간을 박자에 맞춰 드려요.</p>
+      </section>
+
+      <section id="process">
+        <div class="beat">00:12</div>
+        <h2>만들어지는 동안</h2>
+        <p>AI가 지금 무엇을 하고 있는지 앱 오른쪽 위에 단계로 보여요. 내가 해야 할 건 <b>질문에 답하기</b>와 <b>장면 계획 승인하기</b>, 두 가지뿐이에요.</p>
+        <ol class="flowlist">
+          <li><span class="tag">브리프</span><b>무엇을 만들지 정리해요.</b> 빠진 내용이 있으면 질문이 와요. 답해 주세요.</li>
+          <li><span class="tag">숏리스트</span><b>장면 계획을 보여 드려요.</b> 몇 초에 무엇이 나오고 어떻게 움직이는지 적은 표예요. 괜찮으면 <b>승인</b>을, 바꾸고 싶으면 채팅으로 말해 주세요. 승인하기 전에는 만들기 시작하지 않아요.</li>
+          <li><span class="tag">스틸 · 초안</span><b>장면마다 한 장씩 뽑아 보고, 빠르게 한 번 돌려 봐요.</b> 배치와 글자, 타이밍을 다듬는 단계예요.</li>
+          <li><span class="tag">검수</span><b>완성본을 직접 보며 고쳐요.</b> 글자가 잘 읽히는지, 멈춰 보이는 구간은 없는지 점수를 매기고 부족한 곳을 손봐요.</li>
+          <li><span class="tag">전달</span><b>완성이에요.</b> 재생해 보고, 더 고칠 게 있으면 말하거나 파일로 받으면 돼요.</li>
+        </ol>
+        <p>영상을 뽑는 동안에는 플레이어 아래에 진행률이 보이고, 원하면 거기서 멈출 수 있어요.</p>
+        <h3>앱·웹에 넣을 것은 더 빨라요</h3>
+        <ul>
+          <li>아이콘이나 로딩 표시처럼 하나로 끝나는 애니메이션은 장면 계획 승인 없이 바로 만들어요.</li>
+          <li>고칠 게 없으면 검수를 일찍 끝내요.</li>
+          <li>개발자에게 넘기기 전에, 실제 웹과 앱에서도 똑같이 보이는지 비교해 보고 넘겨요.</li>
+        </ul>
+        <h3>다 만든 뒤에도 고칠 수 있어요</h3>
+        <p>"로고가 조금 더 늦게 나오게", "마지막 문구를 더 크게"처럼 바꾸고 싶은 것만 말하면 그 부분을 고치고 다시 확인해요.</p>
+      </section>
+
+      <section id="edit">
+        <div class="beat">00:16</div>
+        <h2>직접 손보기</h2>
+        <p>문구 하나, 색 하나 바꾸는 건 AI를 기다릴 필요 없어요.</p>
+        <ul>
+          <li><b>속성</b>: 문구, 색, 크기 같은 값을 바로 바꿔요. 전체 길이를 바꾸면 장면들이 같은 비율로 늘어나거나 줄어들어요.</li>
+          <li><b>타임라인</b>: 장면 표시를 끌어서 옮기면 움직임이 함께 따라와요. 박자에 딱 붙고, <kbd>⌥</kbd>를 누른 채 끌면 더 세밀하게 옮길 수 있어요.</li>
+          <li>내가 직접 바꾼 값은 AI가 몰래 되돌리지 않아요. 꼭 바꿔야 할 땐 먼저 이유를 말해요.</li>
+        </ul>
+        <table>
+          <thead><tr><th>키</th><th>하는 일</th></tr></thead>
+          <tbody>
+            <tr><td><kbd>Space</kbd></td><td>재생 · 멈춤</td></tr>
+            <tr><td><kbd>←</kbd> <kbd>→</kbd></td><td>한 컷씩 앞뒤로</td></tr>
+            <tr><td><kbd>⇧←</kbd> <kbd>⇧→</kbd></td><td>한 박자씩 앞뒤로</td></tr>
+            <tr><td><kbd>Home</kbd></td><td>맨 처음으로</td></tr>
+            <tr><td><kbd>⌘Z</kbd> <kbd>⇧⌘Z</kbd></td><td>실행 취소 · 다시 실행</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="export">
+        <div class="beat">00:20</div>
+        <h2>파일로 받기</h2>
+        <p>플레이어 오른쪽 위 <b>내보내기</b>에서 원하는 형식을 골라요. 여러 개를 한 번에 골라도 돼요. 받은 파일은 <b>다운로드 폴더 → Motion Studio</b>에 작업별로 모여요.</p>
+        <table>
+          <thead><tr><th>형식</th><th>이럴 때 골라요</th></tr></thead>
+          <tbody>
+            <tr><td>MP4</td><td>SNS에 올리거나 발표 자료에 넣을 때. 가장 무난해요.</td></tr>
+            <tr><td>GIF</td><td>슬랙이나 노션에 바로 붙일 때.</td></tr>
+            <tr><td>ProRes 4444</td><td>프리미어, 파이널 컷 같은 편집 프로그램에서 다른 영상 위에 얹을 때. 배경이 투명하게 나와요.</td></tr>
+            <tr><td>WebM</td><td>웹페이지에 투명 배경 영상으로 넣을 때.</td></tr>
+            <tr><td>포스터·컨택트 시트</td><td>썸네일로 쓸 대표 장면 한 장과, 장면들을 한눈에 모아 본 이미지가 필요할 때.</td></tr>
+            <tr><td>Lottie</td><td>개발자에게 넘길 때. 앱·웹에 넣을 것으로 만든 작업에서만 보여요. 속성에서 바꾼 값이 그대로 담겨요.</td></tr>
+          </tbody>
+        </table>
+        <p class="small">배경을 투명하게 만든 작업을 MP4로 받으면, 투명한 부분이 바둑판 무늬로 채워져요. MP4는 투명 배경을 담을 수 없어서예요. 투명하게 쓰려면 ProRes 4444나 WebM을 골라 주세요.</p>
+      </section>
+
+      <section id="trouble">
+        <div class="beat">00:24</div>
+        <h2>막혔을 때</h2>
+        <dl class="faq">
+          <dt>"이 필름을 열 수 없어요"라고 나와요</dt>
+          <dd>채팅에 "필름이 안 열려"라고 보내면 AI가 고쳐요.</dd>
+          <dt>"로그인이 풀렸어요"라고 나와요</dt>
+          <dd><b>다시 로그인</b>을 누르고, 로그인이 끝나면 <b>다시 보내기</b>를 눌러요. 보냈던 메시지가 그대로 다시 가요.</dd>
+          <dt>영상 뽑는 데 오래 걸려요</dt>
+          <dd>12초짜리 정사각 영상이 30초 안팎 걸려요. 맥 사양에 따라 더 걸릴 수 있고, 플레이어 아래 진행률 옆에서 멈출 수 있어요.</dd>
+          <dt>Figma 링크를 못 읽어요</dt>
+          <dd>커넥터에 Figma가 연결돼 있는지, 내가 편집할 수 있는 파일인지 확인해 주세요. 이번 달 횟수를 다 썼다면 프레임을 PNG나 SVG로 내보내 채팅창에 끌어다 놓아도 돼요.</dd>
+          <dt>작업을 실수로 지웠어요</dt>
+          <dd>바로 사라지지 않아요. 작업 폴더 안의 <b>.trash</b> 폴더에 남아 있어요.</dd>
+        </dl>
+        <h3>내 작업은 어디에 저장되나요?</h3>
+        <p>맥 안에 저장되고, 앱을 업데이트해도 지워지지 않아요. Finder에서 직접 열어 보려면 <b>이동 → 폴더로 이동</b>(<kbd>⇧⌘G</kbd>)에 아래 주소를 붙여 넣으세요.</p>
+        <p><code>~/Library/Application Support/Motion Studio/workspace</code></p>
+        <p>그 밖에 막히는 곳이 있으면 <a href="https://github.com/kimtaeho-dev/motion-studio/issues">GitHub</a>에 남겨 주세요.</p>
+
+        <div class="next">
+          <a class="btn" href="./#download">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v9M4 7.5 8 11.5 12 7.5M2.5 14h11"/></svg>
+            Mac용 다운로드
+          </a>
+          <a class="btn ghost" href="./">소개 페이지로</a>
+        </div>
+      </section>
+    </article>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Motion Studio</span>
+    <nav>
+      <a href="https://github.com/kimtaeho-dev/motion-studio">GitHub · 기여하기</a>
+      <a href="https://github.com/kimtaeho-dev/motion-studio/releases">릴리스 노트</a>
+      <a href="https://github.com/kimtaeho-dev/motion-studio/blob/main/LICENSES/README.md">포함된 오픈소스와 라이선스</a>
+    </nav>
+  </div>
+</footer>
+
+<script>
+(() => {
+  // 머리줄 아래 선, 목차에서 지금 읽는 장 표시
+  const top = document.getElementById('top');
+  const links = [...document.querySelectorAll('.toc a')];
+  const secs = links.map((a) => document.querySelector(a.getAttribute('href')));
+  function onScroll() {
+    top.classList.toggle('scrolled', scrollY > 8);
+    const y = scrollY + innerHeight * 0.3;
+    let on = 0;
+    secs.forEach((s, i) => { if (s.offsetTop <= y) on = i; });
+    if (innerHeight + scrollY >= document.documentElement.scrollHeight - 4) on = secs.length - 1;
+    links.forEach((a, i) => a.classList.toggle('on', i === on));
+  }
+  onScroll();
+  addEventListener('scroll', onScroll, { passive: true });
+  addEventListener('resize', onScroll);
+})();
+</script>
+</body>
+</html>
