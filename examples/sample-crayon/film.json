@@ -1,0 +1,69 @@
+{
+  "title": "Sample · 손그림 3D (크레용 로켓)",
+  "dur": 9.2,
+  "bpm": 120,
+  "beatOffset": 0,
+  "fps": 60,
+  "formats": {
+    "16x9": [
+      1920,
+      1080
+    ],
+    "1x1": [
+      1080,
+      1080
+    ]
+  },
+  "transparent": false,
+  "params": {
+    "desk": {
+      "type": "color",
+      "value": "#22303C",
+      "label": "책상"
+    },
+    "paper": {
+      "type": "color",
+      "value": "#F6F4EC",
+      "label": "종이"
+    },
+    "red": {
+      "type": "color",
+      "value": "#E3442F",
+      "label": "크레용 빨강"
+    },
+    "blue": {
+      "type": "color",
+      "value": "#2F6FC0",
+      "label": "크레용 파랑"
+    },
+    "caption": {
+      "type": "text",
+      "value": "우주로 출발!",
+      "label": "종이 손글씨"
+    },
+    "date": {
+      "type": "text",
+      "value": "2026. 10. 14",
+      "label": "날짜"
+    }
+  },
+  "timeline": {
+    "inflate": {
+      "t": 1.2,
+      "label": "부풀기 시작"
+    },
+    "inflated": {
+      "t": 2.6,
+      "label": "부풀기 끝 · 떨림"
+    },
+    "launch": {
+      "t": 3.1,
+      "label": "발사"
+    },
+    "landed": {
+      "t": 7.7,
+      "label": "비행 끝 (다이빙 후)"
+    }
+  },
+  "loop": true
+}

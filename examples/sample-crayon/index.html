@@ -1,0 +1,493 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Sample · 손그림 3D</title>
+<!--
+샘플: 손그림 3D. 프리셋(material())이 아니라 THREE로 직접 짠 화풍을 렌더 계약 안에서 쓰는 예. 기법은 brief.md.
+- 0 ~ inflate      스케치북 위 납작한 크레용 그림 (질감이 0.13초마다 떨린다)
+- inflate~inflated 그림이 장난감처럼 부풀어 입체가 된다 (z 스케일 0.06 → 1, 오버슈트)
+- inflated~launch  떨림 + 불꽃 점화
+- launch~landed    곡선 경로 비행: 종이 윗변을 찢고 나가 카메라 쪽으로 돌고, 원래 자리로 다이빙(종이 아래로 잘린다)
+- landed~dur       찢긴 종이가 아물고 그림이 돌아온다 → 첫 프레임과 같은 상태 (루프)
+-->
+<script src="../../lib/motion.js"></script>
+<script src="../../lib/stage.js"></script>
+<script type="importmap">
+{ "imports": { "three": "../../lib/three/three.module.js", "three/addons/": "../../lib/three/addons/" } }
+</script>
+<script type="module">
+import { THREE, world } from '../../lib/stage3d.js';
+const { rng, clamp } = M;
+
+const V3 = THREE.Vector3;
+const smooth = (a, b, x) => { const k = clamp((x - a) / (b - a)); return k * k * (3 - 2 * k); };
+function mkCanvas(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
+
+// 질감용 난수: Stage.film이 불릴 때마다 같은 시드로 다시 시작 → 같은 질감
+let R = rng(7);
+const rand = (a, b) => a + R() * (b - a);
+
+/* ---------- 크레용 그리기 ---------- */
+function tracePath(ctx, pts, closed, jit) {
+  const p = pts.map(([x, y]) => [x + rand(-jit, jit), y + rand(-jit, jit)]);
+  const mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+  ctx.beginPath();
+  if (closed) {
+    const s = mid(p[p.length - 1], p[0]); ctx.moveTo(s[0], s[1]);
+    for (let i = 0; i < p.length; i++) { const m = mid(p[i], p[(i + 1) % p.length]); ctx.quadraticCurveTo(p[i][0], p[i][1], m[0], m[1]); }
+    ctx.closePath();
+  } else {
+    ctx.moveTo(p[0][0], p[0][1]);
+    for (let i = 1; i < p.length - 1; i++) { const m = mid(p[i], p[i + 1]); ctx.quadraticCurveTo(p[i][0], p[i][1], m[0], m[1]); }
+    ctx.lineTo(p[p.length - 1][0], p[p.length - 1][1]);
+  }
+}
+function waxStroke(ctx, pts, closed, color, w, passes = 3, jit = 1.5) {
+  ctx.save(); ctx.strokeStyle = color; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for (let i = 0; i < passes; i++) { ctx.globalAlpha = rand(.5, .78); ctx.lineWidth = w * rand(.75, 1.15); tracePath(ctx, pts, closed, jit); ctx.stroke(); }
+  ctx.restore();
+}
+function waxFill(ctx, pts, color, { sp = 4, angle = -0.9, alpha = [.55, .95], cross = false } = {}) {
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  pts.forEach(([x, y]) => { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); });
+  ctx.save(); tracePath(ctx, pts, true, 0); ctx.clip();
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, diag = Math.hypot(x1 - x0, y1 - y0) / 2 + 10;
+  const pass = (ang, a) => {
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(ang); ctx.strokeStyle = color; ctx.lineCap = 'round';
+    for (let d = -diag; d < diag; d += sp * rand(.7, 1.25)) {
+      let s = -diag;
+      while (s < diag) {
+        const len = rand(18, 70); ctx.globalAlpha = rand(a[0], a[1]); ctx.lineWidth = sp * rand(1, 1.7);
+        ctx.beginPath(); ctx.moveTo(s, d + rand(-.8, .8)); ctx.lineTo(s + len, d + rand(-.8, .8)); ctx.stroke(); s += len + rand(-2, 4);
+      }
+    }
+    ctx.restore();
+  };
+  pass(angle, alpha);
+  if (cross) pass(angle + 1.1, [alpha[0] * .4, alpha[1] * .5]);
+  ctx.restore();
+}
+function grain(ctx, w, h, n) {
+  ctx.save(); ctx.globalCompositeOperation = 'destination-out';
+  for (let i = 0; i < n; i++) { ctx.fillStyle = `rgba(0,0,0,${rand(.25, .9)})`; const s = rand(.6, 2.3); ctx.fillRect(rand(0, w), rand(0, h), s, s); }
+  ctx.restore();
+}
+const circlePts = (cx, cy, r, n = 18, wob = 0) => Array.from({ length: n }, (_, i) => { const a = i / n * Math.PI * 2; const rr = r * (1 + rand(-wob, wob)); return [cx + Math.cos(a) * rr, cy + Math.sin(a) * rr]; });
+const starPts = (cx, cy, r) => Array.from({ length: 10 }, (_, i) => { const a = -Math.PI / 2 + i * Math.PI / 5; const rr = i % 2 ? r * .45 : r; return [cx + Math.cos(a) * rr, cy + Math.sin(a) * rr]; });
+
+/* ---------- 로켓 윤곽 (2D 그림과 3D 모델이 같이 쓴다) ---------- */
+const bodyR = (y) => y < 0 ? 0.5 * Math.sqrt(Math.max(0, 1 - Math.pow(y / 1.15, 4))) : 0.5 - 0.06 * Math.pow(y / 0.95, 2);
+const BODY_N = 20, bodyYs = Array.from({ length: BODY_N + 1 }, (_, i) => -1.05 + i * 2 / BODY_N);
+const noseProf = [[0.44, 0.95], [0.43, 1.12], [0.38, 1.32], [0.29, 1.5], [0.17, 1.65], [0.05, 1.75], [0, 1.77]];
+const finPts = [[0, 0.3], [0.45, -0.25], [0.53, -0.5], [0.45, -0.72], [0, -0.45]];
+const FIN_X = 0.4, FIN_Y = -0.6;
+
+/* ---------- 종이 ---------- */
+const PW = 10, PH = 7, PXU = 204.8, BX = 4.45, BY = 3.1;
+const toPx = (x, y) => [(x + PW / 2) * PXU, (PH / 2 - y) * PXU];
+
+/* ---------- 비행 경로 (고정) ---------- */
+const S0 = 0.85, REST = new V3(0, -0.6, 0);
+const curve = new THREE.CatmullRomCurve3([
+  new V3(0, -0.6, 0.5 * S0), new V3(0.25, 1.2, 0.45), new V3(0.95, 3.15, 0.62), new V3(2.0, 4.7, 2.0),
+  new V3(3.7, 4.1, 4.0), new V3(4.2, 1.4, 5.4), new V3(2.4, -1.6, 5.6), new V3(-0.8, -1.9, 4.6),
+  new V3(-2.0, 0.4, 3.4), new V3(-0.6, 0.4, 2.2), new V3(0, -0.6, 0), new V3(0.15, -1.1, -2.5),
+], false, 'centripetal');
+let tearU = 0.2, tearX = 0.95, splashU = 0.9;
+{ let tf = false; for (let i = 0; i <= 800; i++) { const u = i / 800, p = curve.getPointAt(u); if (!tf && p.y >= BY) { tearU = u; tearX = p.x; tf = true; } if (u > 0.7 && p.z <= 0) { splashU = u; break; } } }
+const EA = 0.14, gEase = (f) => (f < EA ? f * f / (2 * EA) : f - EA / 2) / (1 - EA / 2);
+const gInv = (u) => { const g = u * (1 - EA / 2); return g < EA / 2 ? Math.sqrt(2 * EA * g) : g + EA / 2; };
+
+const CAM_BASE = new V3(0, -8.6, 11), CAM_TARGET = new V3(0.35, 0.55, 1.2);
+
+Stage.film((film) => {
+  const { P, T, dur: DUR } = film;
+  R = rng(7);
+  const C = { red: P.red, redDark: '#b8301f', body: '#dfe6f0', bodyShade: '#b9c6d8', grey: '#8a8f99', ring: '#9aa3ad', glass: '#2f7fd6', ink: '#2b2622', blue: P.blue, yellow: '#f2b705', orange: '#f08a24', green: '#5daa5d' };
+  const DEEP = M.mixColor(P.desk, '#000000', 0.32);
+
+  // 장면 시각 (film.T에서)
+  const INF0 = T.inflate, INF1 = T.inflated, FL0 = T.launch, FLD = T.landed - T.launch;
+  const TEAR_T = FL0 + gInv(tearU) * FLD, SPLASH_T = FL0 + gInv(splashU) * FLD;
+  const HEAL0 = T.landed + 0.45;
+
+  /* ---- 질감 ---- */
+  function rocketDrawing() {
+    const c = mkCanvas(512, 512), ctx = c.getContext('2d');
+    const Pp = (x, y) => [256 + x * 128, 256 - (y - 0.26) * 128];
+    const right = bodyYs.map((y) => Pp(bodyR(y), y)), left = bodyYs.slice().reverse().map((y) => Pp(-bodyR(y), y));
+    const body = [Pp(0, -1.05), ...right, Pp(0, 0.95), ...left];
+    const nose = [...noseProf.map(([r, y]) => Pp(r, y)), ...noseProf.slice().reverse().map(([r, y]) => Pp(-r, y))];
+    const finR = finPts.map(([x, y]) => Pp(FIN_X + x, FIN_Y + y)), finL = finPts.map(([x, y]) => Pp(-FIN_X - x, FIN_Y + y));
+    const nozzle = [Pp(-0.22, -1.05), Pp(0.22, -1.05), Pp(0.3, -1.29), Pp(-0.3, -1.29)];
+    [finR, finL].forEach((f) => waxFill(ctx, f, C.red, { sp: 3.5, cross: true }));
+    waxFill(ctx, nozzle, C.grey, { sp: 3 });
+    waxFill(ctx, body, C.body, { sp: 4, angle: -1.2 });
+    ctx.save(); tracePath(ctx, body, true, 0); ctx.clip();
+    waxFill(ctx, [Pp(-.6, -.55), Pp(.6, -.55), Pp(.6, -.35), Pp(-.6, -.35)], C.red, { sp: 3 });
+    waxFill(ctx, [Pp(-.6, .62), Pp(.6, .62), Pp(.6, .7), Pp(-.6, .7)], C.red, { sp: 2.5 });
+    waxFill(ctx, [Pp(.22, -1.1), Pp(.6, -1.1), Pp(.6, .95), Pp(.3, .95)], C.bodyShade, { sp: 3, alpha: [.3, .6] });
+    ctx.restore();
+    waxFill(ctx, nose, C.red, { sp: 3.5, cross: true });
+    const [wx, wy] = Pp(0, 0.25);
+    waxFill(ctx, circlePts(wx, wy, .205 * 128, 20), C.ring, { sp: 3 });
+    waxFill(ctx, circlePts(wx, wy, .15 * 128, 20), C.glass, { sp: 3, cross: true });
+    waxStroke(ctx, [[wx - 9, wy - 4], [wx - 4, wy - 11], [wx + 4, wy - 12]], false, '#ffffff', 4, 2, .6);
+    [body, nose, finR, finL, nozzle].forEach((s) => waxStroke(ctx, s, true, C.ink, 4.5, 2, 1.2));
+    waxStroke(ctx, circlePts(wx, wy, .205 * 128, 20), true, C.ink, 4, 2, 1);
+    grain(ctx, 512, 512, 2400);
+    const t = new THREE.CanvasTexture(c); t.anisotropy = 4; return t;
+  }
+  function waxTexture(color, { bg = '#fbfaf5', sp = 4, size = 256, stripes = [], shade = null } = {}) {
+    const c = mkCanvas(size, size), ctx = c.getContext('2d');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, size, size);
+    const full = [[0, 0], [size, 0], [size, size], [0, size]];
+    waxFill(ctx, full, color, { sp, cross: true });
+    if (shade) waxFill(ctx, full, shade, { sp: sp * 1.2, angle: 0.4, alpha: [.12, .3] });
+    stripes.forEach(([v0, v1, col]) => { const y0 = (1 - v1) * size, y1 = (1 - v0) * size; waxFill(ctx, [[0, y0], [size, y0], [size, y1], [0, y1]], col, { sp: sp * .9, cross: true }); });
+    ctx.save(); ctx.globalAlpha = .55; for (let i = 0; i < size * 5; i++) { ctx.fillStyle = bg; const s = rand(.6, 2); ctx.fillRect(rand(0, size), rand(0, size), s, s); } ctx.restore();
+    const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; return t;
+  }
+  function spriteTex(size, draw) { const c = mkCanvas(size, size), ctx = c.getContext('2d'); draw(ctx, size); grain(ctx, size, size, size * 4); return new THREE.CanvasTexture(c); }
+  function layer(draw) { const c = mkCanvas(PW * PXU, PH * PXU), ctx = c.getContext('2d'); draw(ctx); grain(ctx, c.width, c.height, 26000); return c; }
+
+  function makePaper() {
+    const c = mkCanvas(PW * PXU, PH * PXU), ctx = c.getContext('2d');
+    ctx.fillStyle = P.paper; ctx.fillRect(0, 0, c.width, c.height);
+    for (let i = 0; i < 16000; i++) { ctx.fillStyle = R() < .5 ? `rgba(120,108,88,${rand(.03, .09)})` : `rgba(255,255,255,${rand(.2, .5)})`; const s = rand(1, 3); ctx.fillRect(rand(0, c.width), rand(0, c.height), s, s); }
+    ctx.strokeStyle = 'rgba(140,128,105,.08)'; ctx.lineWidth = 1;
+    for (let i = 0; i < 500; i++) { const x = rand(0, c.width), y = rand(0, c.height), a = rand(0, 6.28), l = rand(6, 22); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); ctx.stroke(); }
+    const doodles = layer((ctx) => {
+      const edge = []; const step = .35;
+      for (let x = -BX; x < BX; x += step) edge.push(toPx(x, BY));
+      for (let y = BY; y > -BY; y -= step) edge.push(toPx(BX, y));
+      for (let x = BX; x > -BX; x -= step) edge.push(toPx(x, -BY));
+      for (let y = -BY; y < BY; y += step) edge.push(toPx(-BX, y));
+      waxStroke(ctx, edge, true, C.blue, 10, 3, 3);
+      [[-3.4, 2.2, .36], [3.1, 1.6, .28], [2.5, -2.2, .22], [-2.3, -0.9, .2], [-1.6, 2.5, .16], [3.9, -1.2, .17]].forEach(([x, y, r]) => {
+        const p = toPx(x, y), pts = starPts(p[0], p[1], r * PXU); waxFill(ctx, pts, C.yellow, { sp: 4 }); waxStroke(ctx, pts, true, C.orange, 5, 2, 1.5);
+      });
+      const pl = toPx(-3.15, -2.05);
+      waxFill(ctx, circlePts(pl[0], pl[1], .42 * PXU, 22, .03), C.green, { sp: 5, cross: true });
+      waxStroke(ctx, circlePts(pl[0], pl[1], .42 * PXU, 22, .02), true, '#2f6b3a', 5, 2, 1.5);
+      ctx.save(); ctx.translate(pl[0], pl[1]); ctx.rotate(-.35);
+      const ring = Array.from({ length: 24 }, (_, i) => { const a = i / 24 * Math.PI * 2; return [Math.cos(a) * .78 * PXU, Math.sin(a) * .2 * PXU]; });
+      waxStroke(ctx, ring.slice(3, 22), false, C.orange, 7, 3, 1.5); ctx.restore();
+      const mn = toPx(3.75, 0.35);
+      const moon = Array.from({ length: 16 }, (_, i) => { const a = -1.9 + i / 15 * 3.8; return [mn[0] + Math.cos(a) * .38 * PXU, mn[1] + Math.sin(a) * .38 * PXU]; })
+        .concat(Array.from({ length: 12 }, (_, i) => { const a = 1.7 - i / 11 * 3.4; return [mn[0] + .17 * PXU + Math.cos(a) * .3 * PXU, mn[1] + Math.sin(a) * .3 * PXU]; }));
+      waxFill(ctx, moon, '#f5d76e', { sp: 4 }); waxStroke(ctx, moon, true, '#c99a12', 5, 2, 1.2);
+      for (let i = 0; i < 22; i++) {
+        const p = toPx(rand(-4.2, 4.2), rand(-2.9, 2.9)); if (Math.abs(p[0] - PW / 2 * PXU) < 1.2 * PXU && p[1] > 2.4 * PXU && p[1] < 5.6 * PXU) continue;
+        waxStroke(ctx, circlePts(p[0], p[1], rand(3, 6), 6), true, C.blue, 4, 1, 1);
+      }
+      ctx.fillStyle = C.blue; ctx.textAlign = 'right'; ctx.textBaseline = 'alphabetic';
+      const tp = toPx(4.15, -2.85);
+      for (let i = 0; i < 3; i++) { ctx.globalAlpha = rand(.45, .7); ctx.font = `700 ${.4 * PXU}px Pretendard`; ctx.fillText(P.caption, tp[0] + rand(-2, 2), tp[1] + rand(-2, 2)); }
+      ctx.fillStyle = C.red; const dp = toPx(-3.9, 2.75); ctx.textAlign = 'left';
+      for (let i = 0; i < 3; i++) { ctx.globalAlpha = rand(.45, .7); ctx.font = `700 ${.26 * PXU}px Pretendard`; ctx.fillText(P.date, dp[0] + rand(-2, 2), dp[1] + rand(-2, 2)); }
+      ctx.globalAlpha = 1;
+    });
+    ctx.drawImage(doodles, 0, 0);
+    ctx.save(); ctx.globalCompositeOperation = 'destination-out';
+    for (let y = -3.15; y <= 3.2; y += 0.45) { const p = toPx(-4.74, y); ctx.beginPath(); ctx.arc(p[0], p[1], .075 * PXU, 0, 7); ctx.fill(); }
+    ctx.restore();
+    return c;
+  }
+
+  /* ---- 3D 장면 ---- */
+  // 툰·손그림: 톤매핑 없이, 색 변환 없이(sRGB 값 그대로 — 원본 r128과 같은 색), 종이 아래로 잘라내기
+  const W = world({ light: 'soft', shadow: false, ground: null, contactShadows: false, fov: 38,
+    render: { toneMapping: 'none', colorSpace: 'linear', clipping: true }, colorManagement: false, environment: false, ambient: 0.62 * Math.PI });
+  W.key.position.set(-4, -3, 9); W.key.intensity = 0.7 * Math.PI;   // r128 legacy 빛 = ×π
+  const scene = W.scene;
+
+  const gradMap = new THREE.DataTexture(new Uint8Array([105, 105, 105, 255, 190, 190, 190, 255, 255, 255, 255, 255]), 3, 1, THREE.RGBAFormat);
+  gradMap.minFilter = gradMap.magFilter = THREE.NearestFilter; gradMap.needsUpdate = true;
+  const clipPlane = new THREE.Plane(new V3(0, 0, 1), 0);
+  const OUT = { value: 0.028 };
+  const outlineMat = new THREE.MeshBasicMaterial({ color: 0x2b2622, side: THREE.BackSide, clippingPlanes: [clipPlane] });
+  outlineMat.onBeforeCompile = (sh) => { sh.uniforms.uW = OUT; sh.vertexShader = 'uniform float uW;\n' + sh.vertexShader.replace('#include <begin_vertex>', 'vec3 transformed = position + normal * uW;'); };
+  const waxMaps = [];
+  function toon(tex, rep = [1, 1]) { tex.repeat.set(rep[0], rep[1]); waxMaps.push(tex); return new THREE.MeshToonMaterial({ map: tex, gradientMap: gradMap, clippingPlanes: [clipPlane] }); }
+  function part(geo, mat, parent, outline = true) { const m = new THREE.Mesh(geo, mat); if (outline) m.add(new THREE.Mesh(geo, outlineMat)); parent.add(m); return m; }
+
+  // 종이
+  const paperCanvas = makePaper();
+  const tornCanvas = mkCanvas(paperCanvas.width, paperCanvas.height);
+  const paperTex = new THREE.CanvasTexture(paperCanvas); paperTex.anisotropy = 8;
+  const tornTex = new THREE.CanvasTexture(tornCanvas); tornTex.anisotropy = 8;
+  const paperGeo = new THREE.PlaneGeometry(PW, PH);
+  const paperA = new THREE.Mesh(paperGeo, new THREE.MeshBasicMaterial({ map: paperTex, transparent: true }));
+  const paperB = new THREE.Mesh(paperGeo, new THREE.MeshBasicMaterial({ map: tornTex, transparent: true, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }));
+  paperA.renderOrder = 0; paperB.renderOrder = 1;
+  const pShadow = new THREE.Mesh(new THREE.PlaneGeometry(PW + .3, PH + .3), new THREE.MeshBasicMaterial({ color: 0x0b1118, transparent: true, opacity: .35, depthWrite: false }));
+  pShadow.position.set(.16, -.2, -.03); pShadow.renderOrder = -1;
+  W.add({ 종이: paperA, 찢긴종이: paperB, 종이그림자: pShadow });
+
+  // 스프링 제본
+  const wireMat = toon(waxTexture('#9fa7b1', { sp: 3, size: 128 }), [2, 1]);
+  const wireGeo = new THREE.TorusGeometry(.17, .028, 8, 28, Math.PI * 1.35);
+  const binding = new THREE.Group();
+  for (let y = -3.15; y <= 3.2; y += 0.45) { const r = part(wireGeo, wireMat, binding); r.rotation.set(Math.PI / 2, 0, Math.PI * .82); r.position.set(-4.88, y, .03); }
+  W.add({ 제본: binding });
+
+  // 로켓
+  const rocket = new THREE.Group(), inner = new THREE.Group();
+  inner.position.y = -0.26; rocket.add(inner);
+  const vOf = (y) => ((y + 1.05) / 0.1 + 1) / (BODY_N + 2);
+  const bodyTex = waxTexture(C.body, { sp: 4, size: 512, shade: C.bodyShade, stripes: [[vOf(-0.55), vOf(-0.35), C.red], [vOf(0.62), vOf(0.7), C.red]] });
+  const bodyGeo = new THREE.LatheGeometry([new THREE.Vector2(0.001, -1.05), ...bodyYs.map((y) => new THREE.Vector2(bodyR(y), y)), new THREE.Vector2(0.001, 0.95)], 40);
+  part(bodyGeo, toon(bodyTex, [3, 1]), inner);
+  part(new THREE.LatheGeometry(noseProf.map(([r, y]) => new THREE.Vector2(Math.max(r, .001), y)), 40), toon(waxTexture(C.red, { shade: C.redDark }), [3, 1]), inner);
+  const noz = part(new THREE.CylinderGeometry(.22, .3, .24, 24), toon(waxTexture(C.grey, { size: 128 })), inner); noz.position.y = -1.17;
+  const ringM = part(new THREE.TorusGeometry(.19, .05, 12, 32), toon(waxTexture(C.ring, { size: 128 })), inner); ringM.position.set(0, .25, .49);
+  const glass = part(new THREE.SphereGeometry(.16, 24, 16), toon(waxTexture(C.glass, { size: 128, shade: '#1d4f99' })), inner, false); glass.position.set(0, .25, .47); glass.scale.z = .45;
+  const finShape = new THREE.Shape(); finShape.moveTo(...finPts[0]); finShape.lineTo(...finPts[1]); finShape.quadraticCurveTo(.57, -.5, .45, -.72); finShape.lineTo(...finPts[4]); finShape.lineTo(...finPts[0]);
+  const finGeo = new THREE.ExtrudeGeometry(finShape, { depth: .08, bevelEnabled: true, bevelThickness: .025, bevelSize: .025, bevelSegments: 2, curveSegments: 8 }); finGeo.translate(0, 0, -.04);
+  const finMat = toon(waxTexture(C.red, { shade: C.redDark }), [2, 2]);
+  [0, Math.PI, Math.PI / 2].forEach((a) => { const piv = new THREE.Group(); piv.rotation.y = a; inner.add(piv); const f = part(finGeo, finMat, piv); f.position.set(FIN_X, FIN_Y, 0); });
+
+  // 불꽃
+  const flameTex = spriteTex(128, (ctx, s) => { waxFill(ctx, [[0, 0], [s, 0], [s, s], [0, s]], C.orange, { sp: 4, angle: -1.5 }); waxFill(ctx, [[0, 0], [s, 0], [s, s * .45], [0, s * .45]], '#ffd23f', { sp: 4, angle: -1.5 }); });
+  const flameProf = [new THREE.Vector2(0.001, 0.02)];
+  for (let i = 0; i <= 12; i++) { const k = i / 12; flameProf.push(new THREE.Vector2(Math.max(.001, 0.27 * Math.pow(Math.sin(Math.PI * (0.12 + 0.88 * k)), .7) * (1 - .45 * k)), -k * 0.95)); }
+  const flame = new THREE.Group(); flame.position.y = -1.29; inner.add(flame);
+  const flameOuter = new THREE.Mesh(new THREE.LatheGeometry(flameProf, 20), new THREE.MeshBasicMaterial({ map: flameTex, transparent: true, opacity: .95, clippingPlanes: [clipPlane], depthWrite: false }));
+  const flameInner = new THREE.Mesh(flameOuter.geometry, new THREE.MeshBasicMaterial({ color: 0xfff1a8, transparent: true, opacity: .9, clippingPlanes: [clipPlane], depthWrite: false }));
+  flameInner.scale.set(.55, .6, .55); flame.add(flameOuter, flameInner);
+  W.add({ 로켓: rocket });
+
+  // 종이 위 2D 그림 (boil 3벌)
+  const drawTex = [rocketDrawing(), rocketDrawing(), rocketDrawing()];
+  const drawing = new THREE.Mesh(new THREE.PlaneGeometry(4, 4), new THREE.MeshBasicMaterial({ map: drawTex[0], transparent: true, depthWrite: false }));
+  drawing.position.set(REST.x, REST.y, .012); drawing.renderOrder = 4;
+
+  // 그림자
+  const shadowTex = (() => { const c = mkCanvas(128, 128), x = c.getContext('2d'); const g = x.createRadialGradient(64, 64, 4, 64, 64, 62); g.addColorStop(0, 'rgba(40,36,30,.75)'); g.addColorStop(1, 'rgba(40,36,30,0)'); x.fillStyle = g; x.fillRect(0, 0, 128, 128); return new THREE.CanvasTexture(c); })();
+  const shadow = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 3.1), new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false }));
+  shadow.renderOrder = 2;
+  W.add({ 그림: drawing, 로켓그림자: shadow });
+
+  // 링 · 팝 표시
+  const ringTex = spriteTex(256, (ctx, s) => waxStroke(ctx, circlePts(s / 2, s / 2, s * .42, 26, .03), true, C.blue, 7, 3, 2));
+  const dashTex = spriteTex(256, (ctx, s) => { for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2 + rand(-.1, .1); waxStroke(ctx, [[s / 2 + Math.cos(a) * s * .3, s / 2 + Math.sin(a) * s * .3], [s / 2 + Math.cos(a) * s * .45, s / 2 + Math.sin(a) * s * .45]], false, C.ink, 6, 2, 1); } });
+  function overlay(tex) { const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0 })); m.renderOrder = 3; scene.add(m); return m; }
+  const rings = [overlay(ringTex), overlay(ringTex), overlay(ringTex)], pops = [overlay(dashTex), overlay(dashTex)];
+  // 효과 표: [mesh, 시작, 길이, 크기 from, to]
+  const FX = [
+    [pops[0], INF0 + .05, .55, 1.6, 3.6], [pops[1], INF0 + .23, .5, 1.2, 3],
+    ...rings.map((r, i) => [r, SPLASH_T + i * .14, .9, .4, 3.2 + i * .6]),
+    [pops[0], SPLASH_T, .45, 1, 2.8],
+  ];
+
+  // 연기 (태어난 시각 + 시드로 t에서 바로 계산)
+  const smokeTex = spriteTex(128, (ctx, s) => { const pts = circlePts(s / 2, s / 2, s * .36, 14, .12); waxFill(ctx, pts, '#f2efe6', { sp: 4 }); waxStroke(ctx, pts, true, '#8f97a2', 4, 2, 1.5); });
+  const SMOKE_N = 60;
+  const smoke = Array.from({ length: SMOKE_N }, () => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: smokeTex, transparent: true, depthWrite: false })); sp.renderOrder = 6; scene.add(sp); return sp; });
+
+  // 종이 조각
+  const scrapTex = [0, 1, 2].map((k) => {
+    const c = mkCanvas(64, 64), x = c.getContext('2d'); const pts = circlePts(32, 32, 24, 7, .35); tracePath(x, pts, true, 0); x.fillStyle = P.paper; x.fill();
+    if (k < 2) { x.save(); x.clip(); waxFill(x, [[0, 40], [64, 26], [64, 40], [0, 54]], C.blue, { sp: 3 }); x.restore(); } x.strokeStyle = '#d8d1bf'; x.lineWidth = 2; x.stroke(); return new THREE.CanvasTexture(c);
+  });
+  const scraps = Array.from({ length: 24 }, (_, i) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: scrapTex[i % 3], transparent: true, side: THREE.DoubleSide, depthWrite: false }));
+    m.renderOrder = 5; scene.add(m);
+    const sc = rand(.1, .24);
+    const s = {
+      m, p0: new V3(tearX + rand(-.45, .45), BY + rand(-.05, .3), rand(.05, .3)), scale: [sc, sc * rand(.7, 1.2)],
+      v0: new V3(rand(-1.4, 2.2), rand(.6, 3.2), rand(1.6, 4.2)), spin: new V3(rand(-9, 9), rand(-9, 9), rand(-6, 6)), r0: new V3(rand(0, 6), rand(0, 6), rand(0, 6)),
+    };
+    // 종이에 닿는 순간 (z = 0.015)
+    const aHit = (s.v0.z + Math.sqrt(s.v0.z * s.v0.z + 14 * (s.p0.z - 0.015))) / 7;
+    const xy = (a) => { const f = (1 - Math.exp(-.6 * a)) / .6; return [s.p0.x + s.v0.x * f, s.p0.y + s.v0.y * f]; };
+    const [hx, hy] = xy(aHit);
+    s.land = Math.abs(hx) < PW / 2 && Math.abs(hy) < PH / 2 - .05 ? aHit : null;
+    s.xy = xy;
+    return s;
+  });
+
+  // 찢긴 종이 사본
+  {
+    const ctx = tornCanvas.getContext('2d'); ctx.drawImage(paperCanvas, 0, 0);
+    const pts = [toPx(tearX - 0.62, 3.62)];
+    const n = 11; for (let i = 0; i <= n; i++) { const x = tearX - 0.58 + i / n * 1.16; const y = 2.93 + Math.sin(i / n * Math.PI) * -0.05 + rand(-.07, .07); pts.push(toPx(x, i === 0 || i === n ? 3.1 : y)); }
+    pts.push(toPx(tearX + 0.62, 3.62));
+    ctx.save(); ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.closePath();
+    ctx.strokeStyle = '#e4ddcb'; ctx.lineWidth = 14; ctx.lineJoin = 'round'; ctx.stroke();
+    ctx.globalCompositeOperation = 'destination-out'; ctx.fill(); ctx.restore();
+    ctx.save(); ctx.strokeStyle = 'rgba(120,108,88,.35)'; ctx.lineWidth = 2;
+    for (let i = 0; i < 5; i++) { const s = toPx(tearX + rand(-.5, .5), 2.95); ctx.beginPath(); ctx.moveTo(s[0], s[1]); ctx.lineTo(s[0] + rand(-14, 14), s[1] + rand(10, 30)); ctx.stroke(); }
+    ctx.restore(); tornTex.needsUpdate = true;
+  }
+
+  // 화면 위 종이결 (원본의 CSS 그레인)
+  const grainTile = (() => {
+    const c = mkCanvas(256, 256), x = c.getContext('2d'), img = x.createImageData(256, 256);
+    for (let i = 0; i < 256 * 256; i++) { img.data[i * 4 + 3] = Math.round(255 * (0.1 + R() * 0.5)); }
+    x.putImageData(img, 0, 0); return c;
+  })();
+
+  /* ---- 로켓 자세: t의 순수 함수 ---- */
+  const tmpA = new V3(), tmpB = new V3(), mB = new THREE.Matrix4(), Y = new V3(0, 1, 0), Z = new V3(0, 0, 1);
+  function basis(dir, pos, out) {
+    const y = tmpA.copy(dir).normalize();
+    const z = tmpB.copy(CAM_BASE).sub(pos).normalize(); z.sub(y.clone().multiplyScalar(z.dot(y)));
+    if (z.lengthSq() < 1e-4) z.set(0, 0, 1); z.normalize();
+    const x = new V3().crossVectors(y, z).normalize(); z.crossVectors(x, y);
+    mB.makeBasis(x, y, z); out.setFromRotationMatrix(mB); return out;
+  }
+  function pose(t) {
+    const o = { pos: new V3(), dir: new V3(0, 1, 0), sz: 0.06, sx: 1, visible: false, flameAmt: 0, roll: 0, shiver: 0 };
+    if (t >= INF0 && t < FL0) {
+      const k = clamp((t - INF0) / (INF1 - INF0));
+      o.visible = true;
+      o.sz = 0.06 + 0.94 * (1 - Math.pow(2, -8 * k) * Math.cos(k * Math.PI * 3.2));
+      o.sx = 1 + 0.1 * Math.sin(k * Math.PI * 2) * (1 - k);
+      o.pos.copy(REST); o.pos.z = 0.5 * S0 * o.sz;
+      if (t > INF1) { const h = (t - INF1) / (FL0 - INF1); o.shiver = Math.sin(t * 46) * .05 * h; o.pos.z += Math.sin(h * Math.PI) * .04; }
+      o.flameAmt = smooth(FL0 - 0.25, FL0, t);
+    } else if (t >= FL0 && t < FL0 + FLD) {
+      const u = gEase((t - FL0) / FLD);
+      o.visible = true; o.sz = 1; o.flameAmt = 1;
+      o.pos.copy(curve.getPointAt(u)); o.dir.copy(curve.getTangentAt(u));
+      o.roll = Math.PI * 2 * smooth(.36, .58, u);
+      const thrust = smooth(0, .12, u) * (1 - smooth(.9, 1, u)); o.sx = 1 - .06 * thrust;
+    }
+    o.quat = basis(o.dir, o.pos, new THREE.Quaternion());
+    if (o.roll) o.quat.multiply(new THREE.Quaternion().setFromAxisAngle(Y, o.roll));
+    if (o.shiver) o.quat.multiply(new THREE.Quaternion().setFromAxisAngle(Z, o.shiver));
+    o.scale = new V3(S0 * o.sx, S0 * (t < FL0 ? 1 + (1 - o.sz) * 0.04 : 1 / o.sx), S0 * o.sz);
+    return o;
+  }
+  // 연기 한 덩이 (번호 k = 0.035초 격자)
+  const SMOKE_DT = 0.035, _m4 = new THREE.Matrix4();
+  function puffAt(k) {
+    const te = k * SMOKE_DT, o = pose(te);
+    if (!o.visible || o.flameAmt <= .3 || o.pos.z <= .12) return null;
+    const r = rng(1000 + k);
+    _m4.compose(o.pos, o.quat, o.scale);
+    const tail = new V3(-.1 + r() * .2, -1.6 - 0.26, 0).applyMatrix4(_m4);
+    if (tail.z <= .05) return null;
+    const vel = new V3(-.3 + r() * .6, -.3 + r() * .6, .05 + r() * .3).add(o.dir.clone().normalize().multiplyScalar(-.6));
+    return { te, p0: tail, vel, max: .8 + r() * .5, s0: te < FL0 ? .35 : .28 + r() * .22, rot: r() * 6.28 };
+  }
+  const SPLASH_PUFFS = Array.from({ length: 10 }, (_, i) => {
+    const r = rng(500 + i), a = i / 10 * Math.PI * 2;
+    return { te: SPLASH_T, p0: new V3(REST.x + Math.cos(a) * .3, REST.y + Math.sin(a) * .3, .12), vel: new V3(Math.cos(a) * 1.4, Math.sin(a) * 1.4, .4 + r() * .6), max: .8 + r() * .5, s0: .25 + r() * .15, rot: r() * 6.28 };
+  });
+
+  return {
+    draw(g, t, S) {
+      if (!S.transparent) { g.fillStyle = P.desk; g.fillRect(0, 0, S.W, S.H); }
+
+      // boil: 0.13초마다 크레용 질감·외곽선이 다시 그린 듯 바뀐다
+      const bi = Math.floor(t / 0.13), br = rng(9000 + bi);
+      drawing.material.map = drawTex[bi % 3];
+      OUT.value = .022 + br() * .012;
+      waxMaps.forEach((m) => m.offset.set(br() * .03, br() * .03));
+
+      const o = pose(t);
+      // 그림 (종이 위 납작한 로켓)
+      let drawOp = 1, drawScale = 1;
+      if (t >= INF0 && t < FL0) drawOp = 1 - smooth(0, .3, clamp((t - INF0) / (INF1 - INF0)));
+      else if (t >= FL0) drawOp = 0;
+      if (t >= SPLASH_T) {
+        const k = clamp((t - SPLASH_T - 0.25) / 0.7);
+        drawOp = smooth(0, .35, k);
+        drawScale = Math.max(.6, k <= 0 ? .6 : 1 + Math.sin(k * Math.PI * 1.5) * Math.exp(-3 * k) * .25);
+      }
+      drawing.material.opacity = drawOp; drawing.visible = drawOp > 0.001; drawing.scale.setScalar(S0 * drawScale);
+
+      // 종이 찢김 → 아묾
+      const torn = t >= TEAR_T;
+      const heal = clamp((t - HEAL0) / 0.7);
+      paperB.visible = torn && heal < 1;
+      paperA.visible = !torn || heal > 0;
+      paperA.material.opacity = torn ? heal : 1;
+
+      // 로켓
+      rocket.visible = o.visible;
+      if (o.visible) {
+        rocket.position.copy(o.pos); rocket.quaternion.copy(o.quat); rocket.scale.copy(o.scale);
+        flame.visible = o.flameAmt > 0.01;
+        const fl = o.flameAmt * (0.85 + 0.3 * Math.sin(t * 37) + 0.12 * Math.sin(t * 91));
+        flame.scale.set(.9 + .12 * Math.sin(t * 53), Math.max(.01, fl), .9 + .12 * Math.sin(t * 53));
+      }
+      const h = o.pos.z;
+      shadow.visible = o.visible && h > -0.05;
+      if (shadow.visible) {
+        shadow.position.set(o.pos.x + .18 * h, o.pos.y - .22 * h, .004);
+        const yAx = new V3(0, 1, 0).applyQuaternion(o.quat);
+        shadow.rotation.z = Math.atan2(-yAx.x, yAx.y);
+        const flat = Math.hypot(yAx.x, yAx.y);
+        shadow.scale.set(S0 * (1 + h * .22), S0 * (.45 + .55 * flat) * (1 + h * .15), 1);
+        shadow.material.opacity = Math.min(1, o.sz) * .55 / (1 + h * .55);
+      }
+
+      // 링 · 팝: 메시마다 가장 최근에 시작한 효과
+      for (const m of [...rings, ...pops]) m.visible = false;
+      for (const [m, t0, d, from, to] of FX) {
+        const k = (t - t0) / d; if (k < 0 || k >= 1) continue;
+        const e = 1 - Math.pow(1 - k, 3);
+        m.visible = true; m.position.set(REST.x, REST.y, .008);
+        m.scale.setScalar(from + (to - from) * e); m.material.opacity = (1 - k) * .95;
+      }
+
+      // 연기
+      const live = [];
+      for (let k = Math.max(0, Math.ceil((t - 1.3) / SMOKE_DT)); k * SMOKE_DT <= t; k++) { const p = puffAt(k); if (p) live.push(p); }
+      for (const p of SPLASH_PUFFS) live.push(p);
+      let si = 0;
+      for (const p of live) {
+        const a = t - p.te, k = a / p.max; if (a < 0 || k >= 1 || si >= SMOKE_N) continue;
+        const sp = smoke[si++], f = (1 - Math.exp(-1.6 * a)) / 1.6;
+        sp.visible = true; sp.position.copy(p.p0).addScaledVector(p.vel, f);
+        if (sp.position.z < .02) sp.position.z = .02;
+        const s = p.s0 * (1 + k * 1.8); sp.scale.set(s, s, 1); sp.material.opacity = (1 - k) * .9; sp.material.rotation = p.rot;
+      }
+      for (; si < SMOKE_N; si++) smoke[si].visible = false;
+
+      // 종이 조각
+      const fade = 1 - smooth(T.landed + 0.5, T.landed + 1.2, t);
+      for (const s of scraps) {
+        const a = t - TEAR_T;
+        if (a < 0 || fade <= 0) { s.m.visible = false; continue; }
+        const aa = s.land !== null ? Math.min(a, s.land) : a;
+        const [x, y] = s.xy(aa), z = s.land !== null && a >= s.land ? .015 : s.p0.z + s.v0.z * aa - 3.5 * aa * aa;
+        s.m.visible = z > -3; s.m.position.set(x, y, z);
+        s.m.scale.set(s.scale[0], s.scale[1], 1);
+        const landed = s.land !== null && a >= s.land;
+        s.m.rotation.set(landed ? 0 : s.r0.x + s.spin.x * aa, landed ? 0 : s.r0.y + s.spin.y * aa, s.r0.z + s.spin.z * aa);
+        s.m.material.opacity = fade;
+      }
+
+      // 카메라: 포맷에 맞춰 물러나고, 루프 주기로 천천히 흔들리고, 찢김·착지에 덜컹
+      const cam = W.camera, aspect = S.W / S.H;
+      cam.fov = aspect < 1 ? 50 : 38;
+      const d0 = CAM_BASE.distanceTo(CAM_TARGET), need = 6.3 / (Math.tan(cam.fov * Math.PI / 360) * aspect);
+      const kz = Math.max(1, need / d0);
+      const cp = CAM_BASE.clone().sub(CAM_TARGET).multiplyScalar(kz).add(CAM_TARGET);
+      const ph = t / DUR * Math.PI * 2;
+      cp.x += Math.sin(ph) * .12; cp.y += Math.cos(ph * 2) * .1;
+      const shake = Math.max(t >= TEAR_T ? .18 - (t - TEAR_T) * .5 : 0, t >= SPLASH_T ? .12 - (t - SPLASH_T) * .5 : 0, 0);
+      if (shake > 0) { const r = rng(7000 + Math.floor(t * 60)); cp.x += (r() * 2 - 1) * shake; cp.z += (r() * 2 - 1) * shake; }
+      cam.position.copy(cp); cam.lookAt(CAM_TARGET);
+      W.render(g, S);
+
+      // 비네트 (원본의 inset box-shadow)
+      const vmin = Math.min(S.W, S.H);
+      g.save();
+      // 테두리 모양은 화면 밖에 그리고 그림자만 화면으로 옮긴다 → 띠 없이 흐린 가장자리만 남는다
+      const off = S.W * 4, sp = vmin * .04;
+      g.beginPath(); g.rect(-S.W - off, -S.H, S.W * 3, S.H * 3); g.rect(sp - off, sp, S.W - sp * 2, S.H - sp * 2);
+      g.shadowColor = DEEP; g.shadowBlur = vmin * .18; g.shadowOffsetX = off; g.fillStyle = DEEP; g.fill('evenodd');
+      g.restore();
+      // 종이결 그레인
+      g.save(); g.globalAlpha = .2; g.globalCompositeOperation = 'multiply';
+      g.fillStyle = g.createPattern(grainTile, 'repeat'); g.fillRect(0, 0, S.W, S.H);
+      g.restore();
+    },
+  };
+});
+</script>

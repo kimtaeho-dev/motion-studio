@@ -1,6 +1,6 @@
 ---
 name: motion-film
-description: 코드로 모션 영상(UI 모핑 루프, 프로덕트 릴, 런칭 영상, 기능 소개 모션, SNS 모션 광고)을 만든다. 디자이너가 "모션 만들어줘", "영상 만들어줘", "런칭 릴", "/motion-film <이름>" 이라고 할 때 사용.
+description: 코드로 모션 영상(UI 모핑 루프, 프로덕트 릴, 런칭 영상, 기능 소개 모션, SNS 모션 광고, 일러스트·손그림 애니메이션, 3D 장면)을 만든다. 디자이너가 "모션 만들어줘", "영상 만들어줘", "런칭 릴", "/motion-film <이름>" 이라고 할 때 사용.
 ---
 
 # motion-film
@@ -13,6 +13,7 @@ description: 코드로 모션 영상(UI 모핑 루프, 프로덕트 릴, 런칭 
 - 디자이너가 레퍼런스(이미지, 영상)나 3D 모델(.glb)을 줬으면 `films/<이름>/refs/`에 둔다.
 
 ## 1. 입력 받기 (brief.md)
+먼저 스타일(UI·프로덕트 모션 / 일러스트·손그림 / 타이포 / 제품 3D …)을 정한다 — 요청에 드러나면 묻지 않는다. UI 기본값(CLAUDE.md 룩)은 UI·프로덕트 모션일 때만 따르고, 다른 스타일이면 그 스타일의 문법으로 `<direction>`을 쓴다. 레퍼런스가 없다고 단순하게 줄이지 않는다.
 `prompts/spec-template.md`의 `<inputs>` 항목 중 빈 것을 한 번에 묻는다. 기본값을 제안하면서 묻는다
 (예: "포맷은 1x1 + 9x16, 템포는 120BPM으로 할까요?"). 물었으면 `waiting=answer`로 기록하고 턴을 끝낸다. 답을 `brief.md`에 채운다.
 실제 프로덕트 화면이 필요하면 디자이너에게 스크린샷을 달라고 한다(채팅창에 끌어다 놓으면 refs/에 저장된다). 프로덕트 UI를 상상으로 그리지 않는다.
@@ -34,7 +35,8 @@ description: 코드로 모션 영상(UI 모핑 루프, 프로덕트 릴, 런칭 
 ## 4. 구현
 `films/<이름>/film.json`(데이터)과 `films/<이름>/index.html`(코드). API는 `prompts/api.md`를 본다(`lib/` 소스를 통째로 읽지 않는다).
 - `index.html` 맨 위 주석에 **장면 의도**를 남긴다: 비트마다 무엇이 왜 움직이는지 한 줄씩(timeline 키로). 수정 요청이 오면 코드보다 이 주석과 상태 표를 먼저 본다.
-2D 필름은 `examples/sample-morph/`를 구조 참고로 읽는다(film.json의 params·timeline, index.html의 STATES 표, CUR 커서 키, 상태별 draw 함수). 3D·물리 필름은 `prompts/3d.md`를 읽는다(뼈대 포함 — 샘플은 막힐 때만).
+UI 모션 2D 필름은 `examples/sample-morph/`를 구조 참고로 읽는다(film.json의 params·timeline, index.html의 STATES 표, CUR 커서 키, 상태별 draw 함수). 3D·물리 필름은 `prompts/3d.md`를 읽는다(뼈대 포함 — 샘플은 막힐 때만). 프리셋에 없는 화풍(손그림·툰·종이·질감)은 THREE·캔버스로 직접 짠다 — 막히면 `examples/sample-crayon/`.
+- 방법은 자유, 결과는 검사로: 렌더 계약(t의 순수 함수, rng, film.T)만 지키면 어떤 기법이든 쓴다. 아래 목록은 UI 모션의 기본 도구다.
 - 숏리스트의 장면 시각은 `film.json` `timeline`에 이름을 붙여 옮기고, 코드에서는 `film.T.<이름>`으로만 쓴다.
 - 화면에 나오는 문구, 포인트 컬러, 배경색은 `params`로 뺀다. `label`은 디자이너가 알아볼 한국어로.
 - 컨테이너 크기/모서리/색/카메라: `loopTrack` (루프 아니면 `track`)
