@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { app, BrowserWindow, ipcMain, shell } from "electron";
 import { startStudioServer, type StudioServer } from "./server";
@@ -187,9 +188,36 @@ function prepareAgentTools(workspaceRoot: string): void {
   process.env.MOTION_RENDER_CMD = JSON.stringify([worker.command, ...worker.args]);
 }
 
+/**
+ * The agent's own Claude Code sign-in, kept in the app's data folder rather
+ * than ~/.claude: switching accounts in Settings must not sign the designer
+ * out of Claude Code in their terminal or another app. Every `claude` the app
+ * starts (setup, auth, the agent) inherits this.
+ *
+ * Sessions are stored under the config folder too, so a workspace's existing
+ * sessions are copied over once — otherwise each film's chat would lose its
+ * `--resume` on the first launch after this change.
+ */
+function useOwnClaudeConfig(workspaceRoot: string): void {
+  const configDir = path.join(app.getPath("userData"), "claude");
+  process.env.CLAUDE_CONFIG_DIR = configDir;
+
+  const project = path.resolve(workspaceRoot).replace(/[^a-zA-Z0-9]/g, "-");
+  const from = path.join(os.homedir(), ".claude", "projects", project);
+  const to = path.join(configDir, "projects", project);
+  if (fs.existsSync(from) && !fs.existsSync(to)) {
+    try {
+      fs.cpSync(from, to, { recursive: true });
+    } catch (err) {
+      console.error("[motion-studio] could not carry over chat sessions:", err);
+    }
+  }
+}
+
 async function boot(): Promise<void> {
   const workspaceRoot = process.env[WORKSPACE_ENV]?.trim() || defaultWorkspaceDir();
   const workspace = resolveWorkspace(workspaceRoot);
+  useOwnClaudeConfig(workspace.root);
 
   seedWorkspace(seedRoot(), workspace);
   prepareAgentTools(workspace.root);
@@ -204,6 +232,7 @@ async function boot(): Promise<void> {
     workspaceRoot: workspace.root,
     workerCommand,
     reveal: (dir) => shell.showItemInFolder(dir),
+    version: app.getVersion(),
     // A session that expires while the app is open reopens the same setup
     // window the first run uses — it already handles "installed but signed
     // out". Unlike at startup, closing it without signing in is not fatal:

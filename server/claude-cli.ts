@@ -121,3 +121,39 @@ export function isSignedOut(): Promise<boolean> {
     });
   });
 }
+
+export interface ClaudeAccount {
+  loggedIn: boolean;
+  email?: string;
+  orgName?: string;
+  subscriptionType?: string;
+}
+
+/** Who the agent runs as, for Settings. Null when the CLI is missing or does not answer. */
+export function readAccount(): Promise<ClaudeAccount | null> {
+  const claude = resolveClaudePath();
+  if (!claude) return Promise.resolve(null);
+
+  return new Promise((resolve) => {
+    execFile(claude, ["auth", "status", "--json"], { timeout: 15000 }, (_err, stdout) => {
+      try {
+        const status = JSON.parse(stdout) as ClaudeAccount;
+        resolve({ loggedIn: status.loggedIn === true, email: status.email, orgName: status.orgName, subscriptionType: status.subscriptionType });
+      } catch {
+        resolve(null);
+      }
+    });
+  });
+}
+
+/** Signs the agent out. Only meaningful under the app's own CLAUDE_CONFIG_DIR (see electron/main.ts). */
+export function signOut(): Promise<{ ok: boolean; error?: string }> {
+  const claude = resolveClaudePath();
+  if (!claude) return Promise.resolve({ ok: false, error: "Claude Code를 찾지 못했어요" });
+
+  return new Promise((resolve) => {
+    execFile(claude, ["auth", "logout"], { timeout: 15000 }, (err, _stdout, stderr) => {
+      resolve(err ? { ok: false, error: stderr.trim() || err.message } : { ok: true });
+    });
+  });
+}

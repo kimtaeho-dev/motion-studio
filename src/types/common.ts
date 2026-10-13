@@ -249,3 +249,14 @@ export interface ChatProgress {
   /** Epoch ms the turn started, so the client can run its own timer. */
   startedAt: number;
 }
+
+/** GET /__settings (server/settings.ts). */
+export interface AppSettings {
+  /** Null when Claude Code is missing or did not answer. */
+  account: { loggedIn: boolean; email?: string; orgName?: string; subscriptionType?: string } | null;
+  /** Whether the agent has a sign-in of its own that can be switched here. */
+  canSwitch: boolean;
+  canReveal: boolean;
+  workspace: string;
+  version: string | null;
+}

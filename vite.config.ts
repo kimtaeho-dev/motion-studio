@@ -7,9 +7,11 @@ import { filmsPlugin } from "./server/films";
 import { mailboxPlugin } from "./server/mailbox";
 import { renderPlugin } from "./server/render";
 import { exportPlugin } from "./server/export";
+import { settingsPlugin } from "./server/settings";
+import pkg from "./package.json" with { type: "json" };
 
 export default defineConfig({
-  plugins: [solidPlugin(), tailwindcss(), solidSvg({ defaultAsComponent: true }), filmsPlugin(), mailboxPlugin(), renderPlugin(), exportPlugin()],
+  plugins: [solidPlugin(), tailwindcss(), solidSvg({ defaultAsComponent: true }), filmsPlugin(), mailboxPlugin(), renderPlugin(), exportPlugin(), settingsPlugin({ version: pkg.version })],
   server: {
     // 3040 by default; PORT lets a second copy run while the installed app holds 3040.
     port: Number(process.env.PORT) || 3040,

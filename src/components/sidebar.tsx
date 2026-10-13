@@ -1,6 +1,6 @@
-import { createSignal, For, Show } from "solid-js";
+import { createSignal, For, onCleanup, onMount, Show } from "solid-js";
 import { useNavigate, useParams } from "@solidjs/router";
-import { Clapperboard, Pencil, Plus, Trash } from "lucide-solid";
+import { Clapperboard, Pencil, Plus, Settings, Trash } from "lucide-solid";
 import { Button } from "@/components/ui/button";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from "@/components/ui/context-menu";
 import {
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useFilms } from "@/context/films";
 import { NewFilmDialog } from "@/components/new-film-dialog";
+import { SettingsDialog } from "@/components/settings-dialog";
 import type { FilmSummary } from "@/types";
 
 /** The brand mark (assets/brand/mark.svg): a timeline playhead, in the brand red. */
@@ -82,6 +83,17 @@ export function Sidebar() {
     if (film.slug === params.film) navigate("/");
   };
 
+  const [settingsOpen, setSettingsOpen] = createSignal(false);
+  // ⌘, — where every Mac app keeps its settings.
+  const onKey = (e: KeyboardEvent) => {
+    if (e.metaKey && e.key === ",") {
+      e.preventDefault();
+      setSettingsOpen(true);
+    }
+  };
+  onMount(() => window.addEventListener("keydown", onKey));
+  onCleanup(() => window.removeEventListener("keydown", onKey));
+
   return (
     <aside class="flex w-[232px] shrink-0 flex-col rounded-2xl border border-border bg-background text-muted-foreground">
       <div class="flex h-12 items-center justify-between px-4">
@@ -148,6 +160,19 @@ export function Sidebar() {
           }}
         </For>
       </div>
+
+      <div class="border-t border-border px-2 py-2">
+        <button
+          type="button"
+          onClick={() => setSettingsOpen(true)}
+          class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xxs text-muted-foreground hover:bg-accent hover:text-foreground focus-ring"
+        >
+          <Settings class="size-3.5 shrink-0" />
+          설정
+        </button>
+      </div>
+
+      <SettingsDialog open={settingsOpen()} onOpenChange={setSettingsOpen} />
 
       <NewFilmDialog open={creating()} onOpenChange={setCreating} onCreated={(slug) => navigate(`/${slug}`)} />
 

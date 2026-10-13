@@ -6,7 +6,7 @@
  *   node tools/turn-timing.mjs films/<이름> --last 2   # 마지막 2턴만
  *   node tools/turn-timing.mjs films/<이름> --json     # 숫자만 JSON으로 (비교 스크립트용)
  *
- * 읽는 것: .mailbox/<이름>/thread.json(세션 id) → ~/.claude/projects/<작업 폴더>/<세션>.jsonl(대화 기록).
+ * 읽는 것: .mailbox/<이름>/thread.json(세션 id) → <CLAUDE_CONFIG_DIR 또는 ~/.claude>/projects/<작업 폴더>/<세션>.jsonl(대화 기록).
  * 턴 = 디자이너 메시지 하나부터 에이전트가 답을 끝낼 때까지.
  *   모델   — 모델이 응답을 만드는 시간(생각 + 글 + 도구 입력 쓰기). 네트워크 멈춤은 뺀다
  *   도구   — 렌더·검사·파일 읽기 같은 도구가 실제로 돈 시간 (종류별)
@@ -33,7 +33,7 @@ if (!existsSync(threadFile)) {
   process.exit(1);
 }
 const thread = JSON.parse(readFileSync(threadFile, 'utf8'));
-const project = join(homedir(), '.claude', 'projects', root.replace(/[^a-zA-Z0-9]/g, '-'));
+const project = join(process.env.CLAUDE_CONFIG_DIR || join(homedir(), '.claude'), 'projects', root.replace(/[^a-zA-Z0-9]/g, '-'));
 const transcript = join(project, `${thread.sessionId}.jsonl`);
 if (!thread.sessionId || !existsSync(transcript)) {
   console.error(`대화 기록 파일을 찾지 못했습니다: ${transcript}`);

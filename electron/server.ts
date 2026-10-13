@@ -8,6 +8,7 @@ import { filmsPlugin } from "../server/films";
 import { mailboxPlugin } from "../server/mailbox";
 import { renderPlugin, type WorkerCommand } from "../server/render";
 import { exportPlugin } from "../server/export";
+import { settingsPlugin } from "../server/settings";
 import { WORKSPACE_ENV } from "../server/workspace";
 
 /**
@@ -116,6 +117,8 @@ export interface StudioServerOptions {
   workerCommand: () => WorkerCommand;
   /** Show a finished export in Finder. */
   reveal?: (dir: string) => void;
+  /** The app version, for Settings. */
+  version?: string;
 }
 
 /**
@@ -193,6 +196,7 @@ export async function startStudioServer(options: StudioServerOptions): Promise<S
     mailboxPlugin({ signIn: options.onSignInRequested, agentEnv: options.agentEnv }),
     renderPlugin({ workerCommand: options.workerCommand }),
     exportPlugin({ reveal: options.reveal }),
+    settingsPlugin({ signIn: options.onSignInRequested, reveal: options.reveal, version: options.version }),
   ]) {
     const configResolved = plugin.configResolved;
     const configureServer = plugin.configureServer;
