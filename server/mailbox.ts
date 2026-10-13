@@ -56,7 +56,7 @@ const MAX_ATTACHMENTS = 10;
 const CHAT_STYLE_PROMPT = [
   "너는 지금 Motion Studio 앱 화면 안의 좁은 채팅 패널(380px)로 디자이너에게 답하고 있다.",
   "디자이너는 코드·터미널·파일 경로를 모른다. 명령어나 파일 경로를 답에 쓰지 말고, 화면에서 보이는 것(플레이어, 타임라인, 장면 이름)으로 말한다.",
-  "답은 3~4문장 안으로 끝내고, 목록을 쓰면 항목 3개까지만 쓴다. 단, 디자이너가 답해야 하는 브리프 질문이나 승인받을 숏리스트는 빠짐없이 보여준다.",
+  "답은 3~4문장 안으로 끝내고, 목록을 쓰면 항목 3개까지만 쓴다. 단, 승인받을 숏리스트는 빠짐없이 보여준다. 디자이너에게 물을 것은 tools/ask.mjs로 남기고(앱이 선택지 카드로 보여준다) 채팅에는 질문을 다시 쓰지 않는다.",
   "마크다운은 **굵게**, 목록, 표, `코드` 정도만 쓰고 제목은 쓰지 않는다.",
   "렌더 로그, 점수 원본, JSON을 붙여넣지 않는다.",
 ].join(" ");
@@ -663,6 +663,7 @@ export function mailboxPlugin(options: MailboxOptions = {}): Plugin {
         if (state.waiting || approval) {
           writeState(filmDir, {
             waiting: null,
+            questions: undefined,
             ...(approval && { approved: [...new Set([...(state.approved ?? []), approval])] }),
           });
         }

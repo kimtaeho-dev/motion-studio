@@ -68,7 +68,7 @@ Lottie 필름은 `prompts/lottie.md`의 작업 순서를 따른다(단일 애셋
 
 단계가 바뀔 때마다 `node tools/state.mjs films/<이름> stage=<단계>`로 기록한다. Motion Studio 앱이 이걸 보고 디자이너에게 진행 단계와 승인 버튼을 보여준다. `state.json`을 손으로 고치지 않는다. `quality`와 `approved`는 앱이 쓴다.
 
-1. **브리프** (`stage=brief`): `films/<이름>/brief.md` (템플릿: `prompts/spec-template.md`). 빈칸이 있으면 디자이너에게 먼저 묻고, `waiting=answer`로 기록한 뒤 **턴을 끝낸다.**
+1. **브리프** (`stage=brief`): `films/<이름>/brief.md` (템플릿: `prompts/spec-template.md`). 빈칸이 있으면 디자이너에게 먼저 묻고 **턴을 끝낸다.** 질문은 `node tools/ask.mjs`로 남긴다(질문 4개까지, 선택지 2~4개에 권장안 `--rec`, 열린 질문은 선택지 없이). 앱이 선택지 카드로 보여주고 `waiting=answer`도 함께 기록된다. 채팅에는 질문을 다시 쓰지 않고 한 줄로만 알린다.
 2. **레퍼런스가 있으면**: `films/<이름>/refs/`에서 `style_guide.md`를 먼저 쓴다(`prompts/reference.md`). 레퍼런스의 문법만 가져오고 내용·로고·캐릭터는 가져오지 않는다. 디자이너가 그대로 쓰기로 준 에셋은 이 규칙의 대상이 아니다.
 3. **숏리스트** (`stage=shotlist`): `films/<이름>/shotlist.md`에 비트 그리드 위의 상태 목록을 마크다운 표로 적는다(비트 | 시각 | 상태 / 동작 | 커서). 다 쓰면 `waiting=approval`로 기록하고, 채팅에 표를 보여주고 승인을 부탁한 뒤 **턴을 끝낸다.** **디자이너 승인 전에는 코드를 쓰지 않는다.** 승인은 앱의 승인 버튼(`state.json`의 `approved`에 `shotlist`가 들어간다) 또는 채팅의 분명한 OK다. 수정 요청이 오면 숏리스트를 고치고 다시 `waiting=approval`.
 4. **스틸** (`stage=stills`): 먼저 `node tools/render.mjs films/<이름> --check`(품질 검사: 정지·새 일 없음·구도·빈 화면·결정성·루프 이음새·렌더 계약). 첫 줄이 판정이고, 실패면 `→` 줄대로 고친다(통과면 `check/motion.png`를 열지 않는다). 그다음 `node tools/render.mjs films/<이름> --stills beats`로 비트마다 1장 → `contact-beats.png`를 **직접 열어서 본다.** 그리드에서 벗어남, 답답함, 읽기 어려움, 화풍이 브리프에서 물러선 곳을 고친다. 고칠 점은 한 번에 모아서 고치고, 확인은 바뀐 비트만 `--stills 2.5,3` 처럼 몇 장으로 본다(컨택트 시트 전체를 고칠 때마다 다시 열지 않는다 — 이미지 한 장 한 장이 이후 모든 단계의 비용이 된다). 3D 필름은 주 포맷 하나로 `--check3d`도 돌린다(판정이 통과면 끝, `prompts/3d.md`의 3D 검사).
@@ -93,6 +93,7 @@ node tools/render.mjs films/<이름> --check3d       # 3D 검사: 파고듦·바
 node tools/critique.mjs films/<이름> [포맷] [빠른동작시각]
 node tools/determinism.mjs films/<이름>            # 다른 프로세스에서 같은 프레임 두 번 → 같은 픽셀인지 (한 페이지 안 순서 섞기는 --check)
 node tools/state.mjs films/<이름> stage=shotlist waiting=approval  # 진행 단계 기록 (앱의 단계 표시·승인 버튼)
+node tools/ask.mjs films/<이름> --q "질문" --opt "A" --opt "B" --rec 1  # 디자이너에게 묻기 (앱의 선택지 카드)
 node tools/engine.mjs films/<이름>                 # 엔진 고정 상태 (deliver면 고정, 앞 단계로 가면 풀림)
 node tools/new.mjs <이름> --lottie --size 512x512 --dur 2  # Lottie 필름 (앱에서는 새 필름 창의 "앱·웹에 넣을 것")
 node tools/lottie.mjs sync films/<이름>            # Lottie: lottie.json → film.json

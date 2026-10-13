@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import chokidar, { type FSWatcher } from "chokidar";
 import type { Plugin, ViteDevServer } from "vite";
-import { FILM_STAGES, LOTTIE_DUR, LOTTIE_SIZES, defaultRole, type ChatAttachment, type FilmChange, type FilmFile, type FilmFiles, type FilmOutput, type FilmQuality, type FilmStage, type FilmSummary } from "../src/types/common";
+import { FILM_STAGES, LOTTIE_DUR, LOTTIE_SIZES, defaultRole, type ChatAttachment, type FilmChange, type FilmFile, type FilmFiles, type FilmOutput, type FilmQuality, type FilmQuestion, type FilmStage, type FilmSummary } from "../src/types/common";
 import { inside, json, readJsonBody, saveBody, sendFile } from "./http";
 import { readState, writeState } from "./state";
 import { resolveWorkspace, type Workspace } from "./workspace";
@@ -265,6 +265,22 @@ function inferStage(docs: FilmFiles["docs"], outputs: FilmOutput[], state: Recor
     : "brief";
 }
 
+/** state.json's questions (tools/ask.mjs validates them; this only guards against a hand-edited file). */
+function readQuestions(value: unknown): FilmQuestion[] | null {
+  if (!Array.isArray(value)) return null;
+  const text = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null);
+  const questions = value.flatMap((raw): FilmQuestion[] => {
+    if (!raw || typeof raw !== "object") return [];
+    const r = raw as Record<string, unknown>;
+    const q = text(r.q);
+    if (!q) return [];
+    const options = Array.isArray(r.options) ? r.options.flatMap((o) => text(o) ?? []) : [];
+    const recommended = typeof r.recommended === "number" && r.recommended >= 0 && r.recommended < options.length ? r.recommended : undefined;
+    return [{ q, options, ...(text(r.hint) && { hint: text(r.hint)! }), ...(recommended !== undefined && { recommended }), ...(r.multi === true && options.length > 0 && { multi: true }) }];
+  });
+  return questions.length ? questions : null;
+}
+
 function readFilmFiles(ws: Workspace, slug: string): FilmFiles {
   const dir = path.join(ws.filmsDir, slug);
   const docs: FilmFiles["docs"] = {};
@@ -283,7 +299,8 @@ function readFilmFiles(ws: Workspace, slug: string): FilmFiles {
   } catch {
     // no readable film.json: infer as a video film
   }
-  return { docs, outputs, stage: inferStage(docs, outputs, state, lottie), quality, waiting, round };
+  const questions = waiting === "answer" ? readQuestions(state.questions) : null;
+  return { docs, outputs, stage: inferStage(docs, outputs, state, lottie), quality, waiting, round, questions };
 }
 
 /** Rewrites only `title`, keeping every other key (and their order) as the agent left them. */

@@ -113,6 +113,19 @@ export interface FilmFiles {
   waiting: FilmWaiting | null;
   /** Critique round in progress or last finished (1-based), when the agent recorded one. */
   round: number | null;
+  /** What the agent asked (tools/ask.mjs), while it waits for the answer. */
+  questions: FilmQuestion[] | null;
+}
+
+/** One question from tools/ask.mjs, shown as a choice card in the chat. */
+export interface FilmQuestion {
+  q: string;
+  hint?: string;
+  /** Empty: free text only. The card always adds "직접 입력". */
+  options: string[];
+  /** Index into options. */
+  recommended?: number;
+  multi?: boolean;
 }
 
 export type FilmWaiting = "approval" | "answer";
@@ -125,6 +138,7 @@ export interface FilmState {
   quality?: FilmQuality;
   /** Gates the designer has passed, e.g. ["shotlist"]. */
   approved?: string[];
+  questions?: FilmQuestion[];
 }
 
 /** One render in the studio's queue (server/render.ts), pushed as `render:update`. */

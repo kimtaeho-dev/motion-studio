@@ -24,6 +24,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Markdown } from "@/lib/markdown";
+import { QuestionCard } from "@/components/question-card";
+import { useFiles } from "@/context/files";
 import { useChat } from "@/context/chat";
 import { useFilms } from "@/context/films";
 import { defaultRole, roleFixed, type AttachmentRole, type ChatAttachment, type ChatEffort, type ChatMessage, type ChatModel } from "@/types";
@@ -292,6 +294,10 @@ export function ChatPanel() {
   const { films } = useFilms();
   const isLottie = () => films().find((f) => f.slug === params.film)?.kind === "lottie";
   const { messages, sending, send, cancel, reset, upload, composeRequest } = useChat();
+  const { files } = useFiles();
+  const turnRunning = () => messages().some((m) => m.status === "pending" || m.status === "processing");
+  // The agent's open questions (tools/ask.mjs), until the designer answers — by card or by typing.
+  const questions = () => (!turnRunning() && files()?.waiting === "answer" ? files()?.questions ?? null : null);
   const [text, setText] = createSignal("");
   const [staged, setStaged] = createSignal<Staged[]>([]);
   const [attachError, setAttachError] = createSignal<string | null>(null);
@@ -430,7 +436,7 @@ export function ChatPanel() {
     ),
   );
   createEffect(
-    on(messages, () => {
+    on([messages, questions], () => {
       if (followBottom) toBottom();
     }),
   );
@@ -571,6 +577,19 @@ export function ChatPanel() {
               </div>
             )}
           </For>
+        </Show>
+        <Show when={questions()} keyed>
+          {(list) => (
+            <QuestionCard
+              questions={list}
+              disabled={sending()}
+              onSubmit={(answer) => {
+                followBottom = true;
+                toBottom();
+                void send(answer);
+              }}
+            />
+          )}
         </Show>
       </div>
 

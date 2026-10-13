@@ -5,7 +5,7 @@
  *
  *   node tools/state.mjs films/<이름>                                # 지금 상태 보기
  *   node tools/state.mjs films/<이름> stage=shotlist waiting=approval # 숏리스트를 썼고 승인을 기다린다 → 턴을 끝낸다
- *   node tools/state.mjs films/<이름> waiting=answer                  # 디자이너에게 질문했다 → 턴을 끝낸다
+ *   node tools/state.mjs films/<이름> waiting=answer                  # 디자이너에게 질문했다 → 턴을 끝낸다 (선택지가 있으면 tools/ask.mjs)
  *   node tools/state.mjs films/<이름> stage=critique round=2          # 검수 2라운드
  *   node tools/state.mjs films/<이름> stage=deliver waiting=none      # 전달 완료
  *
@@ -45,6 +45,8 @@ for (const pair of pairs) {
   } else if (key === 'waiting') {
     if (!WAITING.includes(value)) fail(`waiting: ${WAITING.join(' | ')}`);
     state.waiting = value === 'none' ? null : value;
+    // Questions belong to an answer wait (tools/ask.mjs); any other wait leaves them stale.
+    if (value !== 'answer') delete state.questions;
   } else if (key === 'round') {
     const n = Number(value);
     if (!Number.isInteger(n) || n < 1) fail('round: 1 이상의 정수');
