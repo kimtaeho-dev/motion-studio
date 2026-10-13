@@ -574,60 +574,62 @@ export function ChatPanel() {
         </Show>
       </div>
 
-      <Show when={staged().length > 0 || attachError()}>
-        <div class="flex flex-col gap-1 px-3 pt-2 shrink-0">
-          <Show when={staged().length > 0}>
-            <div class="flex flex-wrap gap-1">
-              <For each={staged()}>
-                {(item) => (
-                  <AttachmentChip
-                    name={item.name}
-                    kind={item.attachment?.kind}
-                    role={item.attachment && (item.attachment.role ?? defaultRole(item.attachment))}
-                    onToggleRole={
-                      item.attachment && !roleFixed(item.attachment.kind)
-                        ? () =>
-                            setStaged((list) =>
-                              list.map((s) => {
-                                if (s.id !== item.id || !s.attachment) return s;
-                                const current = s.attachment.role ?? defaultRole(s.attachment);
-                                return { ...s, attachment: { ...s.attachment, role: current === "asset" ? "reference" : "asset" } };
-                              }),
-                            )
-                        : undefined
-                    }
-                    onRemove={item.attachment ? () => setStaged((list) => list.filter((s) => s.id !== item.id)) : undefined}
-                  />
-                )}
-              </For>
-            </div>
-          </Show>
-          <Show when={attachError()}>
-            <span class="text-xxs text-destructive">{attachError()}</span>
-          </Show>
-        </div>
-      </Show>
+      <div class="border-t border-border shrink-0">
+        <Show when={staged().length > 0 || attachError()}>
+          <div class="flex flex-col gap-1.5 px-3 pt-3">
+            <Show when={staged().length > 0}>
+              <div class="flex flex-wrap gap-1.5">
+                <For each={staged()}>
+                  {(item) => (
+                    <AttachmentChip
+                      name={item.name}
+                      kind={item.attachment?.kind}
+                      role={item.attachment && (item.attachment.role ?? defaultRole(item.attachment))}
+                      onToggleRole={
+                        item.attachment && !roleFixed(item.attachment.kind)
+                          ? () =>
+                              setStaged((list) =>
+                                list.map((s) => {
+                                  if (s.id !== item.id || !s.attachment) return s;
+                                  const current = s.attachment.role ?? defaultRole(s.attachment);
+                                  return { ...s, attachment: { ...s.attachment, role: current === "asset" ? "reference" : "asset" } };
+                                }),
+                              )
+                          : undefined
+                      }
+                      onRemove={item.attachment ? () => setStaged((list) => list.filter((s) => s.id !== item.id)) : undefined}
+                    />
+                  )}
+                </For>
+              </div>
+            </Show>
+            <Show when={attachError()}>
+              <span class="text-xxs text-destructive">{attachError()}</span>
+            </Show>
+          </div>
+        </Show>
 
-      <div class="flex items-end gap-1.5 px-3 py-2 border-t border-border shrink-0">
-        <input ref={fileInputRef} type="file" multiple accept={ACCEPT} class="hidden" onChange={handleFileInput} />
-        <Button size="icon" variant="ghost" onClick={() => fileInputRef?.click()} aria-label="파일 첨부">
-          <Paperclip />
-        </Button>
-        <textarea
-          ref={textareaRef}
-          rows={1}
-          value={text()}
-          onInput={(e) => {
-            setText(e.currentTarget.value);
-            autoGrow();
-          }}
-          onKeyDown={handleKeyDown}
-          placeholder="예: 체크가 나오는 타이밍을 반 박 늦춰줘"
-          class="rounded-md bg-input font-sans text-foreground outline-none resize-none flex-1 text-xxs min-h-7 max-h-32 overflow-y-auto py-1.5 px-2 focus-ring"
-        />
-        <Button size="icon" variant="ghost" onClick={handleSend} disabled={uploading()} aria-label="보내기">
-          <Send />
-        </Button>
+        <div class="flex items-end gap-1.5 px-3 py-2">
+          <input ref={fileInputRef} type="file" multiple accept={ACCEPT} class="hidden" onChange={handleFileInput} />
+          <Button size="icon" variant="ghost" onClick={() => fileInputRef?.click()} aria-label="파일 첨부">
+            <Paperclip />
+          </Button>
+          <textarea
+            ref={textareaRef}
+            rows={1}
+            value={text()}
+            onInput={(e) => {
+              setText(e.currentTarget.value);
+              autoGrow();
+            }}
+            onKeyDown={handleKeyDown}
+            placeholder="예: 체크가 나오는 타이밍을 반 박 늦춰줘"
+            class="rounded-md bg-input font-sans text-foreground outline-none resize-none flex-1 text-xxs min-h-7 max-h-32 overflow-y-auto py-1.5 px-2 focus-ring"
+          />
+          <Button size="icon" variant="ghost" onClick={handleSend} disabled={uploading()} aria-label="보내기">
+            <Send />
+          </Button>
+        </div>
       </div>
     </div>
   );
