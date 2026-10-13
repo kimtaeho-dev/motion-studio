@@ -63,7 +63,7 @@ films/<이름>/
 `lottie.json`은 손으로 쓰지 않고 `films/<이름>/build.mjs`(Node 스크립트)로 만든다. 다음 수정 때 몇 줄만 고쳐 다시 실행하면 되도록, 스크립트를 `/tmp` 같은 바깥에 두지 않는다.
 
 - 조각은 `tools/lottie/kit.mjs`: `layer` · `group` · `ellipse` · `rect` · `path` · `fill` · `stroke` · `trim` · `slot` · `kf` · `lottie` · `write` (쓰는 법은 그 파일 맨 위 주석). `kf`의 이징 이름은 아래 [움직임](#움직임) 표의 이름(`entrance-sharp` · `travel-balanced` · `settle-soft` · `exit-accelerate` · `travel-cut` · `kinetic-ui` · `linear`).
-- 예시: `films/sample-lottie/build.mjs`. 장면의 의도(무엇이 언제 왜 움직이는지)를 짧은 주석으로 남긴다 — 다음 수정에서 다시 생각할 것을 줄인다.
+- 예시: `examples/sample-lottie/build.mjs`. 장면의 의도(무엇이 언제 왜 움직이는지)를 짧은 주석으로 남긴다 — 다음 수정에서 다시 생각할 것을 줄인다.
 - 실행: `node films/<이름>/build.mjs && node tools/lottie.mjs sync films/<이름>`.
 - `build.mjs`가 없는 필름(이 규칙 전에 만든 것)을 고칠 때는 먼저 지금 `lottie.json`을 그대로 내는 `build.mjs`를 만들고 거기서 고친다.
 

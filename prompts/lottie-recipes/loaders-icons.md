@@ -17,7 +17,7 @@
 | `orbital-loader` | 점·마크가 돈다. 회전은 360°의 정수배, 선형 |
 | `stroke-trace` | 아이콘 선이 그려지고 잠깐 멈춘 뒤 초기화/루프 |
 | `pulse-badge` | 상태 기호 주변의 작은 스케일·불투명도 맥박 |
-| `check-complete` | 원 착지 → 체크 트림 그리기 → 짧은 착지 (`films/sample-lottie/` 참고) |
+| `check-complete` | 원 착지 → 체크 트림 그리기 → 짧은 착지 (`examples/sample-lottie/` 참고) |
 | `error-shake` | X·경고 강조. 짧고 통제된 좌우(±6~10px, 2~3회, 18~24f). 정신없지 않게 |
 | `warning-pulse` | 삼각형·배지 등장 + 절제된 주의 맥박 1~2회 |
 | `scan-progress` | 선형·원형 진행 스윕 |

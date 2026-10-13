@@ -34,7 +34,7 @@ description: 코드로 모션 영상(UI 모핑 루프, 프로덕트 릴, 런칭 
 ## 4. 구현
 `films/<이름>/film.json`(데이터)과 `films/<이름>/index.html`(코드). API는 `prompts/api.md`를 본다(`lib/` 소스를 통째로 읽지 않는다).
 - `index.html` 맨 위 주석에 **장면 의도**를 남긴다: 비트마다 무엇이 왜 움직이는지 한 줄씩(timeline 키로). 수정 요청이 오면 코드보다 이 주석과 상태 표를 먼저 본다.
-2D 필름은 `films/sample-morph/`를 구조 참고로 읽는다(film.json의 params·timeline, index.html의 STATES 표, CUR 커서 키, 상태별 draw 함수). 3D·물리 필름은 `prompts/3d.md`를 읽는다(뼈대 포함 — 샘플은 막힐 때만).
+2D 필름은 `examples/sample-morph/`를 구조 참고로 읽는다(film.json의 params·timeline, index.html의 STATES 표, CUR 커서 키, 상태별 draw 함수). 3D·물리 필름은 `prompts/3d.md`를 읽는다(뼈대 포함 — 샘플은 막힐 때만).
 - 숏리스트의 장면 시각은 `film.json` `timeline`에 이름을 붙여 옮기고, 코드에서는 `film.T.<이름>`으로만 쓴다.
 - 화면에 나오는 문구, 포인트 컬러, 배경색은 `params`로 뺀다. `label`은 디자이너가 알아볼 한국어로.
 - 컨테이너 크기/모서리/색/카메라: `loopTrack` (루프 아니면 `track`)

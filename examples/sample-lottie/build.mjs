@@ -1,4 +1,4 @@
-// 성공 체크 — lottie.json을 만드는 스크립트. 고친 뒤: node films/sample-lottie/build.mjs && node tools/lottie.mjs sync films/sample-lottie
+// 성공 체크 — lottie.json을 만드는 스크립트. 고친 뒤: node examples/sample-lottie/build.mjs && node tools/lottie.mjs sync examples/sample-lottie
 import { lottie, layer, group, ellipse, path, fill, stroke, trim, slot, kf, write } from '../../tools/lottie/kit.mjs';
 
 const accent = () => slot('#2F6BFF', 'accent');   // 속성 패널: 포인트 컬러

@@ -71,7 +71,8 @@ lib/                    렌더 엔진. 필름이 불러 쓰는 유일한 코드
   stage-lottie.js       Lottie 필름 셸(Skottie로 미리보기·렌더)
   lottie/               CanvasKit, lottie-web, 슬롯 굽기(bake.mjs), 패리티 비교(parity.js)
 tools/                  에이전트와 사람이 같이 쓰는 CLI (아래)
-films/                  _template, _template-lottie, 샘플(sample-morph, sample-3d, sample-physics, sample-lottie)
+films/                  _template, _template-lottie (디자이너의 필름은 커밋하지 않는다)
+examples/               에이전트가 참고하는 샘플(sample-morph, sample-3d, sample-physics, sample-lottie) — 앱의 필름 목록에는 안 보인다
 src/                    앱 화면 (Solid + Tailwind). 플레이어, 속성 패널, 타임라인, 채팅, 진행 단계, 내보내기
 server/                 Vite 개발 서버와 앱이 같이 쓰는 백엔드: 필름 목록, 메일박스(에이전트 호출), 렌더, 내보내기
 electron/               Electron 메인, 첫 실행 준비(Claude Code 설치·로그인), 숨김 창 렌더 워커

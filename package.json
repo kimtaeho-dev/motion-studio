@@ -94,24 +94,12 @@
         "to": "seed/films/_template"
       },
       {
-        "from": "films/sample-morph",
-        "to": "seed/films/sample-morph"
-      },
-      {
-        "from": "films/sample-3d",
-        "to": "seed/films/sample-3d"
-      },
-      {
-        "from": "films/sample-physics",
-        "to": "seed/films/sample-physics"
-      },
-      {
         "from": "films/_template-lottie",
         "to": "seed/films/_template-lottie"
       },
       {
-        "from": "films/sample-lottie",
-        "to": "seed/films/sample-lottie"
+        "from": "examples",
+        "to": "seed/examples"
       },
       {
         "from": "vendor/ffmpeg/${arch}/ffmpeg",

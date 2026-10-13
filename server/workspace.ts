@@ -61,14 +61,14 @@ export function resolveWorkspace(repoRoot: string): Workspace {
  * tools. These are the app's, not the designer's: edits made to them inside
  * the workspace do not survive an update.
  */
-const AGENT_ASSETS = ["CLAUDE.md", ".claude/skills", "prompts", "lib", "tools", "assets", "films/_template", "films/_template-lottie"] as const;
+const AGENT_ASSETS = ["CLAUDE.md", ".claude/skills", "prompts", "lib", "tools", "assets", "examples", "films/_template", "films/_template-lottie"] as const;
 
 /**
- * Working films to look at and to learn from. Each is copied once — on the
- * first launch that ships it — and is the designer's from then on: deleting
- * one does not bring it back. `.seeded-films` remembers what was copied.
+ * Samples that earlier versions copied into films/, where they showed up in
+ * the designer's film list as if they had made them. They now ship in
+ * examples/ for the agent to read.
  */
-const SAMPLE_FILMS = ["sample-morph", "sample-3d", "sample-physics", "sample-lottie"] as const;
+const LEGACY_SAMPLE_FILMS = ["sample-morph", "sample-3d", "sample-physics", "sample-lottie"] as const;
 
 /** Minimal package.json so the `npm run …` names in CLAUDE.md mean the same thing in the workspace. */
 function workspaceManifest(): string {
@@ -93,7 +93,6 @@ function workspaceManifest(): string {
 
 /** Populate a relocated workspace from the app bundle (`sourceRoot` holds the seed files). */
 export function seedWorkspace(sourceRoot: string, ws: Workspace): void {
-  const firstRun = !fs.existsSync(ws.filmsDir);
   for (const dir of [ws.filmsDir, ws.outDir, ws.mailboxDir]) fs.mkdirSync(dir, { recursive: true });
 
   for (const asset of AGENT_ASSETS) {
@@ -105,17 +104,19 @@ export function seedWorkspace(sourceRoot: string, ws: Workspace): void {
     fs.cpSync(from, to, { recursive: true });
   }
 
+  // A sample the designer never chatted about or rendered goes to .trash; one they worked on stays.
   const seededFile = path.join(ws.root, ".seeded-films");
-  // Workspaces made before this list existed got sample-morph on their first run.
-  const seeded = new Set(fs.existsSync(seededFile) ? fs.readFileSync(seededFile, "utf8").split("\n").filter(Boolean) : firstRun ? [] : ["sample-morph"]);
-  for (const film of SAMPLE_FILMS) {
-    if (seeded.has(film)) continue;
-    const from = path.join(sourceRoot, "films", film);
-    const to = path.join(ws.filmsDir, film);
-    if (fs.existsSync(from) && !fs.existsSync(to)) fs.cpSync(from, to, { recursive: true });
-    seeded.add(film);
+  if (fs.existsSync(seededFile)) {
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    for (const film of LEGACY_SAMPLE_FILMS) {
+      const dir = path.join(ws.filmsDir, film);
+      if (!fs.existsSync(dir) || fs.existsSync(path.join(ws.mailboxDir, film)) || fs.existsSync(path.join(ws.outDir, film))) continue;
+      const dest = path.join(ws.trashDir, `${film}-${stamp}`);
+      fs.mkdirSync(dest, { recursive: true });
+      fs.renameSync(dir, path.join(dest, "film"));
+    }
+    fs.rmSync(seededFile);
   }
-  fs.writeFileSync(seededFile, [...seeded].join("\n") + "\n");
 
   fs.writeFileSync(path.join(ws.root, "package.json"), workspaceManifest());
 }
