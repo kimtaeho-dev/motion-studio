@@ -12,6 +12,7 @@
  *   node tools/render.mjs films/<이름> --codec prores     # 편집용 ProRes 4444 (투명 배경 유지) → master.mov
  *   node tools/render.mjs films/<이름> --codec webm       # 투명 배경 WebM (VP9) → alpha.webm
  *   node tools/render.mjs films/<이름> --codec gif        # 미리보기 GIF (30fps 이하, 720px 이하) → preview.gif
+ *   node tools/render.mjs films/<이름> --check            # 품질 검사(모든 필름): 정지·새 일 없음·구도·결정성·루프·렌더 계약 → check/
  *   node tools/render.mjs films/<이름> --check3d          # 3D 검사: 파고듦·바닥 아래·가림·잘림 + views.png·motion.png → check3d/
  *   node tools/render.mjs films/<이름> --parity           # Lottie 필름: Skottie와 lottie-web(웹 플레이어)으로 같은 프레임을 그려 비교 → parity/
  *
@@ -68,7 +69,7 @@ function print(event) {
     case 'file': {
       if (tty) process.stdout.write('\n');
       const where = relative(process.cwd(), event.path);
-      if (event.kind === 'check') console.log(`🔍 ${where}/  ${where.endsWith('parity') ? 'parity.png' : 'views.png · motion.png'} · report.json`);
+      if (event.kind === 'check') console.log(`🔍 ${where}/  ${where.endsWith('parity') ? 'parity.png' : where.endsWith('check3d') ? 'views.png · motion.png' : 'motion.png'} · report.json`);
       else if (event.kind === 'contact') console.log(`🖼  스틸 ${event.count}장 → ${where}`);
       else if (event.kind === 'stills') console.log(`🖼  스틸 ${event.count}장 → ${where}/`);
       else console.log(`🎞  ${where}  (${Math.round(event.seconds)}초)`);

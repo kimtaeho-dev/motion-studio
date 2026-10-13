@@ -45,7 +45,7 @@ description: 코드로 모션 영상(UI 모핑 루프, 프로덕트 릴, 런칭 
 - 3D(기기 목업, 제품 모델, 입체 글자, 재질 도형)·물리는 `prompts/3d.md`의 규칙과 뼈대대로. 포맷별 배치 표 + `W.fit`, 화면 속 UI는 `screen().draw`에서 2D로, 물체는 이름을 붙여 `W.add({ 이름: obj })`. 줄 세우기는 `row()`, 떨어뜨리기는 `pos: 'above'` + `land: { at: 비트 }`. 좌표를 손으로 계산하지 않는다.
 
 ## 5. 스틸 → 직접 보기
-`stage=stills`. `node tools/render.mjs films/<이름> --stills beats` → `out/<이름>/<포맷>/contact-beats.png`를 Read로 열어서 본다.
+`stage=stills`. 먼저 `node tools/render.mjs films/<이름> --check` — 첫 줄 판정이 통과가 될 때까지 `→` 줄대로 고친다(의도한 정지·암전·여백은 `Stage.film` 안에서 `Stage.allow({ still: [[T.end, DUR]] })`처럼 film.T로 표시). 그다음 `node tools/render.mjs films/<이름> --stills beats` → `out/<이름>/<포맷>/contact-beats.png`를 Read로 열어서 본다.
 비트에 아무것도 없는 칸, 너무 작은 글자, 화면 밖으로 나간 커서, 겹침을 고친다. 깨끗해질 때까지 반복.
 3D면 주 포맷 하나로 `node tools/render.mjs films/<이름> --check3d` → 판정이 통과면 다음 단계. 실패면 `→` 제안대로 고치고 한 번 더 (2라운드까지, `prompts/3d.md`의 3D 검사).
 
@@ -56,10 +56,10 @@ node tools/render.mjs films/<이름>          # 1x1 기준 12초 ≈ 20초
 node tools/critique.mjs films/<이름> <포맷> <가장 빠른 동작 시각>
 ```
 그다음 `/motion-critique` 절차(`prompts/critique-pass.md`)로 채점 → 수정 → 재렌더. 라운드 수는 `state.json`의 `quality`(CLAUDE.md 6번): fast 1 · standard 3 · launch 전 항목 8점 이상까지(6라운드 상한).
-`node tools/determinism.mjs films/<이름>`이 통과해야 한다.
+`node tools/determinism.mjs films/<이름>`과 `--check`가 통과해야 한다.
 
 ## 7. 전달
-- 요청된 포맷 전부 렌더 (`--all-formats` 또는 `--format`).
+- 요청된 포맷 전부 렌더 (`--all-formats` 또는 `--format`). 포맷마다 `--check --format <포맷>` 통과.
 - 포스터: `node tools/render.mjs films/<이름> --stills <가장 좋은 시각>` → 그 스틸을 `out/<이름>/<포맷>/poster.png`로 복사.
 - `node tools/state.mjs films/<이름> stage=deliver waiting=none`.
 - 디자이너에게: 완성본이 플레이어 아래 결과물 줄에 있다는 것, 최종 점수, 다음에 개선할 점 한 줄. 파일 경로는 말하지 않는다.

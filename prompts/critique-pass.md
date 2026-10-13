@@ -1,6 +1,6 @@
 # 크리틱 패스 — 자기 프레임을 보고 고치기
 
-먼저 실행: `node tools/critique.mjs films/<이름> [포맷] [빠른동작시각]`
+먼저 실행: `node tools/render.mjs films/<이름> --check`(통과해야 채점한다 — 정지·구도·결정성·루프는 이 판정을 그대로 쓰고 눈으로 다시 세지 않는다), 그다음 `node tools/critique.mjs films/<이름> [포맷] [빠른동작시각]`
 
 그다음 아래 프롬프트대로 한다.
 

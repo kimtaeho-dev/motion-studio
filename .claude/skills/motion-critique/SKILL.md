@@ -5,7 +5,7 @@ description: 렌더된 모션 영상을 직접 보고 7개 항목으로 채점�
 
 # motion-critique
 
-1. `node tools/critique.mjs films/<이름> [포맷] [빠른동작시각]` 실행.
+1. `node tools/render.mjs films/<이름> --check`(통과가 먼저 — 정지·구도·결정성·루프는 이 판정을 쓴다), 그다음 `node tools/critique.mjs films/<이름> [포맷] [빠른동작시각]` 실행.
 2. `out/<이름>/<포맷>/critique/`의 contact.png, strip.png, phone.png, seam.png를 **Read로 열어서 본다.** 보지 않고 채점하지 않는다.
    3D 필름이면 `node tools/render.mjs films/<이름> --check3d`도 돌린다(마지막 라운드엔 포맷마다). 첫 줄 판정이 통과면 그림은 열지 않는다. 실패면 `→` 제안대로 고치고, 그림은 제안이 "빈자리가 없다"일 때만 연다.
 3. `prompts/critique-pass.md`의 7개 항목을 1~10점으로 채점. 깐깐한 모션 디렉터로 본다. 후하게 주지 않는다.

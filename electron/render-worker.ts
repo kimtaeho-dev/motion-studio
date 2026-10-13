@@ -48,6 +48,8 @@ interface Job {
   check3d: boolean;
   /** Lottie films: draw the same frames in Skottie and lottie-web and compare (lib/lottie/parity.js). */
   parity: boolean;
+  /** Quality check for every film (lib/stage-check.js + a scan of the film's code): dead time, fill, determinism, loop seam. */
+  check: boolean;
 }
 
 interface StageFilm {
@@ -61,6 +63,7 @@ interface StageFilm {
   format: string;
   formats: string[];
   transparent: boolean;
+  loop?: boolean;
 }
 
 const CODECS: Codec[] = ["h264", "prores", "webm", "gif"];
@@ -103,6 +106,7 @@ function parseJob(argv: string[]): Job {
     noContact: opt("no-contact") !== undefined,
     check3d: opt("check3d") !== undefined,
     parity: opt("parity") !== undefined,
+    check: opt("check") !== undefined,
   };
 }
 
@@ -428,6 +432,75 @@ async function check3d(win: BrowserWindow, film: StageFilm, outDir: string, emit
   emit({ type: "file", format: film.format, kind: "check", path: dir, seconds: (Date.now() - started) / 1000 });
 }
 
+/**
+ * The render contract, read from the film's code: things that make seek(t) depend on when or in which order it is
+ * called, or on the network. The page check (lib/stage-check.js) catches what slips through by drawing.
+ */
+const CONTRACT: { re: RegExp; what: string; fix: string }[] = [
+  { re: /\bMath\.random\s*\(/, what: "Math.random", fix: "M.rng(시드)로 바꾼다" },
+  { re: /\b(Date\.now|performance\.now)\s*\(|\bnew Date\s*\(/, what: "현재 시각", fix: "draw(g, t, S)의 t만 쓴다" },
+  { re: /\b(setTimeout|setInterval)\s*\(/, what: "타이머", fix: "t로부터 계산한다" },
+  { re: /\brequestAnimationFrame\s*\(/, what: "requestAnimationFrame", fix: "재생은 Stage가 한다. draw에서 t로 그린다" },
+  { re: /(^|[;{\s])(transition|animation)\s*:|@keyframes/, what: "CSS transition/animation", fix: "캔버스에 t로 그린다" },
+  { re: /(src|href)\s*=\s*["']https?:|import\s*(\(\s*)?["']https?:|from\s*["']https?:/, what: "네트워크에서 불러오기", fix: "레포에 넣은 파일(lib/, assets/, 필름 폴더)만 쓴다" },
+];
+function scanContract(html: string): { line: number; what: string; fix: string; text: string }[] {
+  // Comments go first (keeping line numbers): rules quoted in a comment are not code.
+  const code = html
+    .replace(/<!--[\s\S]*?-->/g, (m) => m.replace(/[^\n]/g, " "))
+    .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "))
+    .replace(/(^|[^:"'\\])\/\/[^\n]*/g, (m, pre: string) => pre + " ".repeat(m.length - pre.length));
+  const found: { line: number; what: string; fix: string; text: string }[] = [];
+  code.split("\n").forEach((text, i) => {
+    for (const c of CONTRACT) if (c.re.test(text)) found.push({ line: i + 1, what: c.what, fix: c.fix, text: text.trim().slice(0, 90) });
+  });
+  return found;
+}
+
+interface QualityIssue { kind: "still" | "quiet" | "blank" | "flash" | "fill" | "determinism" | "seam"; from: number; to: number; max?: number; side?: string; how?: string; fix: string }
+
+/** Runs lib/stage-check.js inside the film page, scans the code, and writes out/<film>/<format>/check/. */
+async function qualityCheck(win: BrowserWindow, film: StageFilm, html: string, outDir: string, emit: (e: WorkerEvent) => void): Promise<void> {
+  const started = Date.now();
+  const contract = scanContract(fs.readFileSync(html, "utf8"));
+  // The check is a tool, not part of the film: always the current one (a delivered film's engine stays pinned).
+  const result = (await win.webContents.executeJavaScript(`(async () => {
+    const m = await import(new URL('/lib/stage-check.js', location.origin).href);
+    return await m.check(${JSON.stringify({ dur: film.dur, fps: film.fps || 60, loop: !!film.loop })});
+  })()`)) as { pass: boolean; issues: QualityIssue[]; notes: string[]; allowed: QualityIssue[];
+    fill: { margins: Record<string, number>; union: number[] } | null; seam: { jump: number; typical: number } | null; images: Record<string, string> };
+  const dir = path.join(outDir, "check");
+  fs.mkdirSync(dir, { recursive: true });
+  for (const [name, url] of Object.entries(result.images)) fs.writeFileSync(path.join(dir, `${name}.png`), Buffer.from(url.split(",")[1], "base64"));
+  const { images, ...report } = result;
+  fs.writeFileSync(path.join(dir, "report.json"), JSON.stringify({ ...report, contract }, null, 1));
+
+  const t = (x: number) => `${x.toFixed(2)}s`;
+  const span = (x: QualityIssue) => (Math.abs(x.to - x.from) < 0.01 ? t(x.from) : `${t(x.from)}–${t(x.to)}`);
+  const text: Record<QualityIssue["kind"], (x: QualityIssue) => string> = {
+    still: (x) => `정지  ${span(x)}  화면이 거의 안 바뀐다 (${(x.to - x.from).toFixed(1)}초)`,
+    quiet: (x) => `새 일 없음  ${span(x)}  ${(x.to - x.from).toFixed(1)}초 동안 큰 변화가 없다`,
+    blank: (x) => `빈 화면  ${span(x)}`,
+    flash: (x) => `번쩍임  ${span(x)}  평균 밝기 ${x.max} 점프`,
+    fill: (x) => `구도  ${x.side} 여백 ${x.max}% (시간 중앙값)`,
+    determinism: (x) => `결정성  ${x.how}`,
+    seam: (x) => `루프 이음새  끝 → 처음이 평소의 ${x.max}배 튄다`,
+  };
+  const bad = result.issues.length + contract.length;
+  const lines = [bad === 0 ? "판정: 통과 — 그림을 열지 않아도 된다" : `판정: 고칠 것 ${bad}개 — 아래 → 줄대로 고치고 한 번 더 검사 (숫자로 안 풀리면 check/motion.png)`];
+  for (const c of contract) lines.push(`계약  index.html:${c.line}  ${c.what}  \`${c.text}\``, `    → ${c.fix}`);
+  for (const x of result.issues) lines.push(text[x.kind](x), `    → ${x.fix}`);
+  if (result.fill) {
+    const m = result.fill.margins;
+    lines.push(`구도: 여백 위/아래/왼/오 ${m.top}/${m.bottom}/${m.left}/${m.right}% (시간 중앙값)`);
+  }
+  if (result.seam) lines.push(`루프: 끝→처음 변화 ${result.seam.jump} (평소 한 프레임 ${result.seam.typical})`);
+  for (const n of result.notes) lines.push(n);
+  if (result.allowed.length) lines.push(`의도로 표시됨(Stage.allow) ${result.allowed.length}건 — 실패에서 뺐다: ${result.allowed.map((x) => `${x.kind} ${span(x)}`).join(" · ")}`);
+  emit({ type: "report", format: film.format, lines });
+  emit({ type: "file", format: film.format, kind: "check", path: dir, seconds: (Date.now() - started) / 1000 });
+}
+
 /** Runs lib/lottie/parity.js inside a Lottie film page and writes out/<film>/<format>/parity/. */
 async function parity(win: BrowserWindow, film: StageFilm, filmDir: string, outDir: string, emit: (e: WorkerEvent) => void): Promise<void> {
   const started = Date.now();
@@ -485,9 +558,10 @@ async function render(job: Job, emit: (e: WorkerEvent) => void): Promise<void> {
         const outDir = path.join(root, "out", name, film.format);
         fs.mkdirSync(outDir, { recursive: true });
         fs.writeFileSync(path.join(outDir, "film.json"), JSON.stringify(film, null, 1));
-        const total = job.stills || job.check3d || job.parity ? 0 : Math.round(((job.to ?? film.dur) - (job.from ?? 0)) * (job.fps ?? (job.draft ? 30 : film.fps || 60)) * (job.sub ?? (job.draft ? 1 : 4)));
-        emit({ type: "start", title: film.title, format: film.format, W: film.W, H: film.H, dur: film.dur, bpm: film.bpm, mode: job.stills || job.check3d || job.parity ? "stills" : "video", total });
-        if (job.check3d) await check3d(win, film, outDir, emit);
+        const total = job.stills || job.check3d || job.parity || job.check ? 0 : Math.round(((job.to ?? film.dur) - (job.from ?? 0)) * (job.fps ?? (job.draft ? 30 : film.fps || 60)) * (job.sub ?? (job.draft ? 1 : 4)));
+        emit({ type: "start", title: film.title, format: film.format, W: film.W, H: film.H, dur: film.dur, bpm: film.bpm, mode: job.stills || job.check3d || job.parity || job.check ? "stills" : "video", total });
+        if (job.check) await qualityCheck(win, film, path.resolve(html), outDir, emit);
+        else if (job.check3d) await check3d(win, film, outDir, emit);
         else if (job.parity) await parity(win, film, path.dirname(path.resolve(html)), outDir, emit);
         else if (job.stills) await renderStills(win, film, job.stills, outDir, emit, !job.noContact);
         else await renderVideo(win, film, job, outDir, emit);

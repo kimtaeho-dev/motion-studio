@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 /*
- * determinism.mjs — 같은 프레임을 두 번 렌더해서 같은 픽셀인지 확인한다.
- * 다르면 어딘가에 Math.random / 타이머 / 누적 상태가 있다.
+ * determinism.mjs — 같은 프레임을 두 번(서로 다른 프로세스에서) 렌더해서 같은 픽셀인지 확인한다.
+ * 다르면 어딘가에 Math.random / 타이머 / 누적 상태 / 첫 렌더에 기대는 코드가 있다.
+ * 한 페이지 안에서 순서를 뒤섞어 보는 검사는 render.mjs --check가 한다.
  *
- *   node tools/determinism.mjs films/<이름> [시각들]   예: 0,1.37,5.5
+ *   node tools/determinism.mjs films/<이름> [시각들]   예: 0,1.37,5.5 (없으면 필름 길이에 고르게 8장)
  */
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -11,11 +12,14 @@ import { readFileSync, rmSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const [filmArg, times = '0,1.37,3.21,5.5'] = process.argv.slice(2);
+const [filmArg, timesArg] = process.argv.slice(2);
 if (!filmArg) {
   console.error('사용법: node tools/determinism.mjs films/<이름> [시각들]');
   process.exit(1);
 }
+// 기본: 필름 길이 안에 고르게 8장 (반올림이 겹치지 않게 홀수 간격으로 비켜서)
+const dur = JSON.parse(readFileSync(join(filmArg, 'film.json'), 'utf8')).dur;
+const times = timesArg ?? Array.from({ length: 8 }, (_, i) => (dur * (i + 0.37) / 8).toFixed(2)).join(',');
 const render = join(dirname(fileURLToPath(import.meta.url)), 'render.mjs');
 const name = basename(resolve(filmArg));
 
