@@ -21,8 +21,8 @@ const STAGE_HINT: Record<FilmStage, string> = {
   brief: "에이전트가 무엇을 만들지 묻고 브리프를 채워요.",
   shotlist: "비트별 장면 목록을 쓰고 있어요. 다 쓰면 승인을 부탁드릴게요.",
   stills: "비트마다 한 장씩 렌더해서 화면 구성을 다듬는 중이에요.",
-  draft: "빠른 초안으로 타이밍을 확인하는 단계예요.",
-  critique: "완성본을 렌더하고 점수를 매겨 고치는 중이에요.",
+  draft: "첫 초안을 만드는 중이에요. 깨진 곳만 고치고 바로 보여 드릴게요.",
+  critique: "말씀하신 점을 고치는 중이에요. 고치면 다시 보여 드릴게요.",
   deliver: "완성됐어요. 플레이어 아래 결과물에서 영상을 볼 수 있어요.",
 };
 
@@ -34,10 +34,17 @@ const LOTTIE_HINT: Partial<Record<FilmStage, string>> = {
   deliver: "완성됐어요. 내보내기에서 Lottie 파일(.json · .lottie)을 받을 수 있어요.",
 };
 
-export const QUALITY_LABEL: Record<FilmQuality, { label: string; hint: string; rounds: number | null }> = {
-  fast: { label: "빠르게", hint: "검수 1라운드", rounds: 1 },
-  standard: { label: "기본", hint: "검수 3라운드", rounds: 3 },
-  launch: { label: "런칭용", hint: "모든 항목 8점 이상까지", rounds: null },
+/** Video films: rounds are the designer's (one per look-and-reply); quality sets how much the agent polishes alone. */
+export const QUALITY_LABEL: Record<FilmQuality, { label: string; hint: string }> = {
+  fast: { label: "빠르게", hint: "가장 빨리 보여 드려요" },
+  standard: { label: "기본", hint: "깨진 곳만 고치고 보여 드려요" },
+  launch: { label: "런칭용", hint: "보여 드릴 때마다 점수를 함께" },
+};
+/** Lottie films still run the agent's own review rounds (prompts/lottie.md). */
+export const LOTTIE_QUALITY_LABEL: Record<FilmQuality, { hint: string; rounds: number | null }> = {
+  fast: { hint: "검수 1라운드", rounds: 1 },
+  standard: { hint: "검수 최대 3라운드", rounds: 3 },
+  launch: { hint: "모든 항목 8점 이상까지", rounds: null },
 };
 
 /** Where the open film is in the pipeline (CLAUDE.md, 작업 순서), and what it needs from the designer. */
@@ -60,7 +67,8 @@ export function StagePanel() {
   const round = () => {
     const f = files();
     if (!f || f.stage !== "critique" || !f.round) return null;
-    const total = QUALITY_LABEL[f.quality].rounds;
+    if (!lottie()) return `다듬기 ${f.round}라운드`;
+    const total = LOTTIE_QUALITY_LABEL[f.quality].rounds;
     return total ? `검수 ${f.round}/${total}라운드` : `검수 ${f.round}라운드`;
   };
 
@@ -68,6 +76,15 @@ export function StagePanel() {
     setApproving(true);
     try {
       await approve("shotlist");
+    } finally {
+      setApproving(false);
+    }
+  };
+
+  const onDeliver = async () => {
+    setApproving(true);
+    try {
+      await approve("deliver");
     } finally {
       setApproving(false);
     }
@@ -81,14 +98,14 @@ export function StagePanel() {
   return (
     <section
       class="flex w-[380px] shrink-0 flex-col gap-2.5 rounded-2xl border bg-background px-4 py-3"
-      classList={{ "border-marker": waiting() === "approval", "border-border": waiting() !== "approval" }}
+      classList={{ "border-marker": waiting() === "approval" || waiting() === "review", "border-border": waiting() !== "approval" && waiting() !== "review" }}
     >
       <div class="flex items-center justify-between">
         <span class="text-xxs font-strong text-foreground">진행 단계</span>
         <Show when={files()}>
           {(f) => (
             <span class="text-[10px] text-muted-foreground">
-              품질 {QUALITY_LABEL[f().quality].label} · {lottie() && f().quality === "standard" ? "검수 최대 3라운드" : QUALITY_LABEL[f().quality].hint}
+              품질 {QUALITY_LABEL[f().quality].label} · {lottie() ? LOTTIE_QUALITY_LABEL[f().quality].hint : QUALITY_LABEL[f().quality].hint}
             </span>
           )}
         </Show>
@@ -150,6 +167,19 @@ export function StagePanel() {
                 숏리스트 승인
               </Button>
               <Button size="sm" variant="secondary" onClick={onRevise}>
+                수정 요청
+              </Button>
+            </div>
+          </div>
+        </Match>
+        <Match when={waiting() === "review"}>
+          <div class="flex flex-col gap-2">
+            <span class="text-xxs text-foreground">초안이 나왔어요. 플레이어에서 보고 바꿀 점을 말해 주세요.</span>
+            <div class="flex gap-1.5">
+              <Button size="sm" onClick={() => void onDeliver()} disabled={approving()}>
+                이대로 전달
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => compose("바꿀 점: ")}>
                 수정 요청
               </Button>
             </div>

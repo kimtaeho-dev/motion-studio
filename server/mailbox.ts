@@ -45,7 +45,12 @@ const DEFAULT_SETTINGS: ChatSettings = { model: "opus", effort: "high" };
 const ATTACHMENT_KINDS: ChatAttachment["kind"][] = ["image", "video", "model"];
 
 /** Gates the app can approve with a button (CLAUDE.md, 작업 순서). */
-const APPROVALS = { shotlist: "숏리스트" } as const;
+/** The app's gate buttons: what the chat shows, and what the agent is told (buildPrompt). */
+const APPROVALS = { shotlist: "숏리스트 승인", deliver: "이대로 전달" } as const;
+const APPROVAL_PROMPT: Record<keyof typeof APPROVALS, string> = {
+  shotlist: "디자이너가 앱의 승인 버튼으로 숏리스트를 승인했다. CLAUDE.md 작업 순서의 다음 단계부터 진행한다. ",
+  deliver: "디자이너가 앱의 '이대로 전달' 버튼을 눌렀다. 더 다듬지 않고 CLAUDE.md 작업 순서 7번(전달)을 진행한다. ",
+};
 type Approval = keyof typeof APPROVALS;
 const MAX_ATTACHMENTS = 10;
 
@@ -180,9 +185,16 @@ function describeTool(name: string, input: Record<string, unknown> = {}): { step
   }
 }
 
+// 영상 필름: 라운드는 디자이너가 정한다(의견 한 번 = 한 라운드). 품질 단계는 혼자 고치는 양과 채점만 바꾼다.
 const QUALITY_PROMPT: Record<string, string> = {
+  fast: "fast(혼자 고치는 순환은 턴마다 1번까지, 채점 없음)",
+  standard: "standard(혼자 고치는 순환은 턴마다 2번까지, 채점 없음)",
+  launch: "launch(혼자 고치는 순환은 턴마다 2번까지, 보여 주기 전에 채점 한 번)",
+};
+// Lottie 필름은 아직 prompts/lottie.md의 검수 라운드를 따른다
+const LOTTIE_QUALITY_PROMPT: Record<string, string> = {
   fast: "fast(검수 1라운드)",
-  standard: "standard(검수 3라운드)",
+  standard: "standard(검수 최대 3라운드, 고칠 게 없으면 일찍 끝)",
   launch: "launch(모든 항목 8점 이상까지, 6라운드 상한)",
 };
 
@@ -199,15 +211,15 @@ function buildPrompt(item: QueueItem, filmsDir: string): string {
   let prompt = `현재 대상 필름은 films/${item.film} 이다. 다른 필름 폴더는 참고로 읽기만 하고 고치지 않는다. `;
   // state.json is written by the app (quality, approvals) and by the agent; a film made outside the app has none.
   const state = readState(path.join(filmsDir, item.film));
-  // Lottie films stop early when a round finds nothing to fix (prompts/lottie.md); video films keep their fixed rounds.
-  const quality = state.quality === "standard" && isLottieFilm(path.join(filmsDir, item.film)) ? "standard(검수 최대 3라운드, 고칠 게 없으면 일찍 끝)" : state.quality && QUALITY_PROMPT[state.quality];
+  const lottieFilm = isLottieFilm(path.join(filmsDir, item.film));
+  const quality = state.quality && (lottieFilm ? LOTTIE_QUALITY_PROMPT : QUALITY_PROMPT)[state.quality];
   if (quality) prompt += `이 필름의 품질 단계는 ${quality}다. `;
-  if (isLottieFilm(path.join(filmsDir, item.film))) {
+  if (lottieFilm) {
     prompt += `이 필름은 Lottie 필름이다(앱·웹에 넣을 애니메이션, 결과물은 films/${item.film}/lottie.json). 작업 전에 prompts/lottie.md를 읽고 그 작업 순서와 검사를 따른다. `;
   }
-  if (state.stage) prompt += `state.json의 현재 단계는 ${state.stage}${state.round ? ` (검수 ${state.round}라운드)` : ""}다. `;
+  if (state.stage) prompt += `state.json의 현재 단계는 ${state.stage}${state.round ? ` (${lottieFilm ? "검수" : "다듬기"} ${state.round}라운드)` : ""}다. `;
   if (item.approval) {
-    prompt += `디자이너가 앱의 승인 버튼으로 ${APPROVALS[item.approval]}를 승인했다. CLAUDE.md 작업 순서의 다음 단계부터 진행한다. `;
+    prompt += APPROVAL_PROMPT[item.approval];
   }
   if (item.attachments.length > 0) {
     const role = (a: ChatAttachment) => a.role ?? defaultRole(a);
@@ -672,7 +684,7 @@ export function mailboxPlugin(options: MailboxOptions = {}): Plugin {
         const userMessage: ChatMessage = {
           id: crypto.randomUUID(),
           role: "user",
-          text: text || (approval ? `${APPROVALS[approval]} 승인` : ""),
+          text: text || (approval ? APPROVALS[approval] : ""),
           status: "done",
           createdAt: now,
           ...(attachments.length > 0 && { attachments }),

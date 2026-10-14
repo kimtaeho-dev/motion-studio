@@ -291,7 +291,7 @@ function readFilmFiles(ws: Workspace, slug: string): FilmFiles {
   const outputs = readOutputs(ws, slug);
   const state = readState(dir) as Record<string, unknown>;
   const quality = QUALITIES.find((q) => q === state.quality) ?? "standard";
-  const waiting = state.waiting === "approval" || state.waiting === "answer" ? state.waiting : null;
+  const waiting = state.waiting === "approval" || state.waiting === "answer" || state.waiting === "review" ? state.waiting : null;
   const round = typeof state.round === "number" && state.round > 0 ? Math.floor(state.round) : null;
   let lottie = false;
   try {

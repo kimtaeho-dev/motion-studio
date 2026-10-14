@@ -5,7 +5,7 @@ description: 코드로 모션 영상(UI 모핑 루프, 프로덕트 릴, 런칭 
 
 # motion-film
 
-디자이너는 코드를 몰라도 된다. 말로 요청하면 이 파이프라인을 끝까지 돌리고, 게이트마다 확인을 받는다.
+디자이너는 코드를 몰라도 된다. 말로 요청하면 이 파이프라인을 돌리고, 게이트마다 확인을 받는다. 혼자 오래 다듬지 않고 첫 결과부터 보여 준다.
 규칙은 레포 루트 `CLAUDE.md`가 우선한다. 단계가 바뀔 때마다 `node tools/state.mjs films/<이름> stage=<단계>`로 기록한다(앱의 진행 단계 표시와 승인 버튼이 이걸 본다).
 
 ## 0. 필름 준비
@@ -48,25 +48,22 @@ UI 모션 2D 필름은 `examples/sample-morph/`를 구조 참고로 읽는다(fi
 - 소리는 만들지 않는다 (CLAUDE.md, 소리와 템포)
 - 3D(기기 목업, 제품 모델, 입체 글자, 재질 도형)·물리는 `prompts/3d.md`의 규칙과 뼈대대로. 포맷별 배치 표 + `W.fit`, 화면 속 UI는 `screen().draw`에서 2D로, 물체는 이름을 붙여 `W.add({ 이름: obj })`. 줄 세우기는 `row()`, 떨어뜨리기는 `pos: 'above'` + `land: { at: 비트 }`. 좌표를 손으로 계산하지 않는다.
 
-## 5. 스틸 → 직접 보기
-`stage=stills`. 먼저 `node tools/render.mjs films/<이름> --check` — 첫 줄 판정이 통과가 될 때까지 `→` 줄대로 고친다(의도한 정지·암전·여백은 `Stage.film` 안에서 `Stage.allow({ still: [[T.end, DUR]] })`처럼 film.T로 표시). 그다음 `node tools/render.mjs films/<이름> --stills beats` → `out/<이름>/<포맷>/contact-beats.png`를 Read로 열어서 본다.
-비트에 아무것도 없는 칸, 너무 작은 글자, 화면 밖으로 나간 커서, 겹침을 고친다. 깨끗해질 때까지 반복.
-3D면 주 포맷 하나로 `node tools/render.mjs films/<이름> --check3d` → 판정이 통과면 다음 단계. 실패면 `→` 제안대로 고치고 한 번 더 (2라운드까지, `prompts/3d.md`의 3D 검사).
+## 5. 첫 결과 → 보여 주기
+`stage=draft`. 다듬기 전에 디자이너에게 보여 준다(CLAUDE.md 작업 순서 4·6번).
+- `node tools/render.mjs films/<이름> --check` — **막는 것**(필름이 안 뜸·렌더 오류·렌더 계약 위반·결정성)만 고친다. 구도·여백·정지·루프 이음새·`--check3d`의 겹침은 고치지 않고 메모로 남긴다(의도한 것은 `Stage.allow`로 표시).
+- `--stills beats` → `contact-beats.png`를 한 번 열어 **깨진 것**(빈 화면, 화면 밖 주인공, 못 읽는 글자, 브리프와 다른 화풍)만 고친다.
+- `--draft` 렌더 → 채팅에 초안이 플레이어에 있다는 것, 다음에 다듬을 곳 2~3줄, 검사 메모. `node tools/state.mjs films/<이름> waiting=review` 후 턴을 끝낸다.
+- 한 턴에 고치기 → 렌더 → 보기 순환은 2번까지. 막히면 더 파지 말고 고친 데까지 보여 준다.
 
-## 6. 렌더 + 크리틱 루프
-초안은 `stage=draft`, 크리틱은 라운드마다 `stage=critique round=<N>`.
-```bash
-node tools/render.mjs films/<이름>          # 1x1 기준 12초 ≈ 20초
-node tools/critique.mjs films/<이름> <포맷> <가장 빠른 동작 시각>
-```
-그다음 `/motion-critique` 절차(`prompts/critique-pass.md`)로 채점 → 수정 → 재렌더. 라운드 수는 `state.json`의 `quality`(CLAUDE.md 6번): fast 1 · standard 3 · launch 전 항목 8점 이상까지(6라운드 상한).
-`node tools/determinism.mjs films/<이름>`과 `--check`가 통과해야 한다.
+## 6. 다듬기 (디자이너 의견 한 번 = 한 라운드)
+`stage=critique round=<N>`. 디자이너가 짚은 것과, 내 제안 중 디자이너가 고른 것만 고친다 → `--from/--to`로 확인 → `--draft` → 5번처럼 보여 주고 `waiting=review`. `review_log.md`에 `## 라운드 N` 아래 요청과 고친 점.
+`quality`가 `launch`면 보여 주기 전에 한 번 `node tools/critique.mjs films/<이름> <포맷> <가장 빠른 동작 시각>` → `/motion-critique` 채점, 점수를 메모에 붙인다(점수를 올리려고 혼자 더 돌지 않는다).
 
-## 7. 전달
-- 요청된 포맷 전부 렌더 (`--all-formats` 또는 `--format`). 포맷마다 `--check --format <포맷>` 통과.
+## 7. 전달 (디자이너가 OK하면)
+- 요청된 포맷 전부 풀 렌더 (`--all-formats` 또는 `--format`). 포맷마다 `--check --format <포맷>`에 막는 것이 없어야 한다.
 - 포스터: `node tools/render.mjs films/<이름> --stills <가장 좋은 시각>` → 그 스틸을 `out/<이름>/<포맷>/poster.png`로 복사.
 - `node tools/state.mjs films/<이름> stage=deliver waiting=none`.
-- 디자이너에게: 완성본이 플레이어 아래 결과물 줄에 있다는 것, 최종 점수, 다음에 개선할 점 한 줄. 파일 경로는 말하지 않는다.
+- 디자이너에게: 완성본이 플레이어 아래 결과물 줄에 있다는 것, 다음에 개선할 점 한 줄. 파일 경로는 말하지 않는다.
 
 ## 수정 요청이 오면
 `index.html` 맨 위의 장면 의도와 상태 표부터 읽고 고칠 곳을 찾는다(코드 전체를 다시 읽지 않는다). 고친 뒤 의도가 바뀌었으면 주석도 고친다.

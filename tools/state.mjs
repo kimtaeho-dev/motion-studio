@@ -6,11 +6,12 @@
  *   node tools/state.mjs films/<이름>                                # 지금 상태 보기
  *   node tools/state.mjs films/<이름> stage=shotlist waiting=approval # 숏리스트를 썼고 승인을 기다린다 → 턴을 끝낸다
  *   node tools/state.mjs films/<이름> waiting=answer                  # 디자이너에게 질문했다 → 턴을 끝낸다 (선택지가 있으면 tools/ask.mjs)
- *   node tools/state.mjs films/<이름> stage=critique round=2          # 검수 2라운드
+ *   node tools/state.mjs films/<이름> waiting=review                  # 초안을 보여 줬다 → 턴을 끝낸다 (앱에 '이대로 전달'·'수정 요청')
+ *   node tools/state.mjs films/<이름> stage=critique round=2          # 다듬기 2라운드 (디자이너 의견 한 번 = 한 라운드)
  *   node tools/state.mjs films/<이름> stage=deliver waiting=none      # 전달 완료
  *
  *   stage:   brief · shotlist · stills · draft · critique · deliver
- *   waiting: approval(승인 대기) · answer(답변 대기) · none
+ *   waiting: approval(승인 대기) · answer(답변 대기) · review(초안을 보여 주고 의견 대기) · none
  *
  * quality(검수 라운드 수)와 approved(디자이너가 통과시킨 관문)는 앱이 쓴다. 여기서 바꾸지 않는다.
  *
@@ -22,7 +23,7 @@ import { join } from 'node:path';
 import { pin, unpin } from './engine.mjs';
 
 const STAGES = ['brief', 'shotlist', 'stills', 'draft', 'critique', 'deliver'];
-const WAITING = ['approval', 'answer', 'none'];
+const WAITING = ['approval', 'answer', 'review', 'none'];
 
 const [filmArg, ...pairs] = process.argv.slice(2);
 if (!filmArg || !existsSync(join(filmArg, 'film.json'))) {

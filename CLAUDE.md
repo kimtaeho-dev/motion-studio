@@ -13,7 +13,7 @@ After Effects를 쓰지 않는다. 모든 영상은 HTML 한 장에 들어 있�
 - 모든 프레임은 **시간의 순수 함수**다. `draw(g, t, S)` 안에서 t로부터 모든 값을 계산한다.
 - `transparent: true`면 `S.transparent`일 때 배경을 칠하지 않는다.
 - 금지: CSS transition/animation, `setTimeout`, `setInterval`, 렌더 모드의 `requestAnimationFrame`, 프레임 사이에 이어지는 상태(누적 변수), `Math.random` (→ `M.rng(seed)`), `Date.now()`.
-- **방법은 자유, 결과는 검사로.** 위 계약만 지키면 그리는 방법은 제한하지 않는다: 2D 캔버스든 three.js 재질·셰이더·지오메트리든 화풍에 맞게 직접 짠다. `lib`의 프리셋(`material()`, 조명, `sp()` 등)은 지름길이지 울타리가 아니다. 대신 `--check`(모든 필름)·`--check3d`(3D)·`determinism.mjs`가 통과해야 하고, 스틸을 직접 본다.
+- **방법은 자유, 망가짐은 검사로, 좋고 나쁨은 디자이너가.** 위 계약만 지키면 그리는 방법은 제한하지 않는다: 2D 캔버스든 three.js 재질·셰이더·지오메트리든 화풍에 맞게 직접 짠다. `lib`의 프리셋(`material()`, 조명, `sp()` 등)은 지름길이지 울타리가 아니다. 검사는 결과물을 망가뜨리는 것(렌더 계약·결정성·렌더 오류)만 막고, 나머지는 디자이너에게 빨리 보여 주고 판단을 받는다(작업 순서 4~6).
 - UI·프로덕트 모션의 움직임은 `M.spring` / `M.track` / `M.loopTrack` / `M.stretch`가 기본이다. 목표가 여러 번 바뀌는 값은 `track()`(루프면 `loopTrack()`)으로 스프링을 더한다. 일러스트·캐릭터·물리 느낌처럼 화풍이 다르면 어떤 곡선이든 쓴다(t로부터 계산하는 것만 지킨다).
 - 폰트는 `assets/fonts`의 파일만 쓴다(지금 Pretendard / Geist / Geist Mono). 시스템 폰트에 의존하지 않는다. 화풍에 맞는 글꼴이 필요하면 라이선스가 맞는 파일을 디자이너에게 받아 `assets/fonts`에 넣는다. (디자이너가 Figma에서 준 다른 글꼴의 글자는 외곽선 SVG 에셋으로 쓴다 — `prompts/figma.md`)
 - **에셋과 레퍼런스를 구분한다.** 디자이너가 첨부할 때 고른다(앱의 첨부 칩: 참고용 / 그대로 쓰기). SVG·.glb는 기본이 그대로 쓰기, 이미지·영상은 기본이 참고용이다.
@@ -25,7 +25,7 @@ After Effects를 쓰지 않는다. 모든 영상은 HTML 한 장에 들어 있�
 
 브리프의 **스타일**(UI·프로덕트 모션 / 일러스트·손그림 / 타이포 / 제품 3D …)이 룩을 정한다. 스타일이 정해지면 그 스타일의 문법을 끝까지 밀고 간다. 레퍼런스가 없다고 단순하게 줄이지 않는다 — 장면을 채울 요소(배경 소품, 질감, 2차 동작)를 숏리스트에 넣는다.
 
-모든 스타일 공통 (`--check`가 숫자로 본다):
+모든 스타일 공통 (`--check`가 숫자로 알려 준다 — 막지는 않고, 디자이너에게 보여 줄 때 메모로 붙인다):
 - 아무 일도 없는 구간(dead time)을 두지 않는다. 2~4초마다 화면에서 새로운 일이 일어난다. 120BPM 기준이면 비트마다 무언가 움직인다.
 - 포맷마다 화면을 쓴다. 한쪽이 대부분의 시간 비어 있으면 그 포맷의 배치를 다시 짠다.
 
@@ -62,7 +62,7 @@ UI·프로덕트 모션의 기본값 (다른 스타일이면 brief.md `<directio
 - `bpm`·`beatOffset`은 리듬을 짜는 그리드로 쓴다. 장면 전환과 큰 동작은 비트에 맞춘다.
 - 편집에서 얹을 곡이 정해져 있으면 디자이너에게 그 곡의 **BPM과 첫 다운비트 시각**을 물어 `bpm`·`beatOffset`에 적는다. 비트를 자동으로 측정하지 않는다.
 
-## 작업 순서 (게이트를 건너뛰지 않는다)
+## 작업 순서 (게이트를 건너뛰지 않는다, 혼자 오래 다듬지 않는다)
 
 Lottie 필름은 `prompts/lottie.md`의 작업 순서를 따른다(단일 애셋은 숏리스트 생략, 초안 없음). 아래는 영상 필름의 순서다.
 
@@ -71,12 +71,17 @@ Lottie 필름은 `prompts/lottie.md`의 작업 순서를 따른다(단일 애셋
 1. **브리프** (`stage=brief`): `films/<이름>/brief.md` (템플릿: `prompts/spec-template.md`). 빈칸이 있으면 디자이너에게 먼저 묻고 **턴을 끝낸다.** 질문은 `node tools/ask.mjs`로 남긴다(질문 4개까지, 선택지 2~4개에 권장안 `--rec`, 열린 질문은 선택지 없이). 앱이 선택지 카드로 보여주고 `waiting=answer`도 함께 기록된다. 채팅에는 질문을 다시 쓰지 않고 한 줄로만 알린다.
 2. **레퍼런스가 있으면**: `films/<이름>/refs/`에서 `style_guide.md`를 먼저 쓴다(`prompts/reference.md`). 레퍼런스의 문법만 가져오고 내용·로고·캐릭터는 가져오지 않는다. 디자이너가 그대로 쓰기로 준 에셋은 이 규칙의 대상이 아니다.
 3. **숏리스트** (`stage=shotlist`): `films/<이름>/shotlist.md`에 비트 그리드 위의 상태 목록을 마크다운 표로 적는다(비트 | 시각 | 상태 / 동작 | 커서). 다 쓰면 `waiting=approval`로 기록하고, 채팅에 표를 보여주고 승인을 부탁한 뒤 **턴을 끝낸다.** **디자이너 승인 전에는 코드를 쓰지 않는다.** 승인은 앱의 승인 버튼(`state.json`의 `approved`에 `shotlist`가 들어간다) 또는 채팅의 분명한 OK다. 수정 요청이 오면 숏리스트를 고치고 다시 `waiting=approval`.
-4. **스틸** (`stage=stills`): 먼저 `node tools/render.mjs films/<이름> --check`(품질 검사: 정지·새 일 없음·구도·빈 화면·결정성·루프 이음새·렌더 계약). 첫 줄이 판정이고, 실패면 `→` 줄대로 고친다(통과면 `check/motion.png`를 열지 않는다). 그다음 `node tools/render.mjs films/<이름> --stills beats`로 비트마다 1장 → `contact-beats.png`를 **직접 열어서 본다.** 그리드에서 벗어남, 답답함, 읽기 어려움, 화풍이 브리프에서 물러선 곳을 고친다. 고칠 점은 한 번에 모아서 고치고, 확인은 바뀐 비트만 `--stills 2.5,3` 처럼 몇 장으로 본다(컨택트 시트 전체를 고칠 때마다 다시 열지 않는다 — 이미지 한 장 한 장이 이후 모든 단계의 비용이 된다). 3D 필름은 주 포맷 하나로 `--check3d`도 돌린다(판정이 통과면 끝, `prompts/3d.md`의 3D 검사).
-5. **초안** (`stage=draft`): `--draft`로 빠르게 렌더해서 타이밍을 확인한다.
-6. **크리틱 루프** (라운드마다 `stage=critique round=<N>`): 풀 렌더 → `node tools/critique.mjs` (3D면 마지막 라운드에 모든 포맷 `--check3d`) → `prompts/critique-pass.md` 기준으로 점수를 매긴다. 라운드 수는 `films/<이름>/state.json`의 `quality`를 따른다: `fast` 1라운드 · `standard`(없을 때 기본) 3라운드 · `launch` 모든 항목이 8점 이상이 될 때까지(최소 3라운드, 6라운드를 넘기면 멈추고 `waiting=answer`로 디자이너에게 묻는다). 매 라운드 `films/<이름>/review_log.md`에 `## 라운드 N` 제목 아래 점수와 고친 점을 남긴다. (Lottie 필름의 라운드 규칙은 `prompts/lottie.md`.)
-7. **전달** (`stage=deliver waiting=none`): 전달하는 모든 포맷에서 `--check` 판정이 통과여야 한다(의도한 것은 `Stage.allow`로 표시한다). `out/<이름>/<포맷>/final.mp4`, `contact-beats.png`, 포스터 프레임(`--stills <시각>` 결과를 `poster.png`로 복사)을 전달하고, 다음에 개선할 점을 한 줄 덧붙인다. `stage=deliver`가 필름을 지금 엔진으로 고정한다(앱이 업데이트돼도 같은 결과). 전달한 필름을 다시 고칠 때는 먼저 `stage`를 앞 단계로 바꾼다 — 최신 엔진으로 풀리니 검사를 다시 돈다.
+4. **첫 결과** (`stage=draft`): 구현이 돌아가면 **다듬기 전에 디자이너에게 보여 준다.** 디자이너는 움직임과 이야기를 보고, 에이전트의 검사 숫자·스틸로는 그걸 대신 볼 수 없다.
+   - `node tools/render.mjs films/<이름> --check`. **막는 것**만 고친다: 필름이 안 뜸·렌더 오류, 렌더 계약 위반(난수·타이머·누적 상태), 결정성. 나머지(구도·여백·새 일 없음·정지·루프 이음새, 3D면 `--check3d`의 겹침·가림)는 고치지 않고 **보여 줄 때 메모로 붙인다.**
+   - `--stills beats` → `contact-beats.png`를 한 번 연다. **깨진 것**만 고친다: 빈 화면, 화면 밖으로 나간 주인공, 읽을 수 없는 글자, 브리프와 다른 화풍. 취향의 다듬기는 하지 않는다.
+   - `--draft` 렌더. 그리고 채팅에: 초안이 플레이어에 있다는 것 · 내가 보기에 다음에 다듬을 곳 2~3줄 · 검사 메모(있으면). `waiting=review`로 기록하고 **턴을 끝낸다.**
+5. **다듬기** (`stage=critique round=<N>`, 디자이너 의견 한 번 = 한 라운드): 디자이너가 짚은 것과, 내 제안 중 디자이너가 고른 것만 고친다. 바뀐 구간만 `--from/--to`로 확인하고 `--draft` → 4번처럼 보여 주고 `waiting=review`. 라운드 수는 디자이너가 정한다(그만 다듬자고 하면 전달). `films/<이름>/review_log.md`에 `## 라운드 N` 아래 요청과 고친 점을 남긴다.
+   - `quality`가 `launch`면 보여 주기 전에 `node tools/critique.mjs` → `prompts/critique-pass.md` 채점을 한 번 하고 점수를 메모에 붙인다(점수를 올리려고 혼자 라운드를 더 돌지 않는다).
+   - (Lottie 필름의 라운드 규칙은 `prompts/lottie.md`.)
+6. **혼자 도는 한도** (4·5번 모두): 한 턴에 "고치기 → 렌더 → 보기" 순환은 **2번까지**(`quality`가 `fast`면 1번). 그 안에 안 풀리면 고친 데까지 보여 주고 무엇이 남았는지 말한다. 같은 검사가 두 번 고쳐도 실패하거나 원인이 필름 코드 밖(엔진·렌더러·도구)으로 보이면 **더 파지 않는다** — 스틸 한 장과 한 줄 설명으로 알리고 `waiting=answer`. 같은 명령을 다시 돌려 통과하는 검사는 "가끔 튄다"고 알리고 넘어간다.
+7. **전달** (`stage=deliver waiting=none`, 디자이너가 OK하면): 요청된 포맷 전부 풀 렌더. 각 포맷에서 `--check`의 **막는 것**이 없어야 한다. `out/<이름>/<포맷>/final.mp4`, `contact-beats.png`, 포스터 프레임(`--stills <시각>` 결과를 `poster.png`로 복사)을 전달하고, 다음에 개선할 점을 한 줄 덧붙인다. `stage=deliver`가 필름을 지금 엔진으로 고정한다(앱이 업데이트돼도 같은 결과). 전달한 필름을 다시 고칠 때는 먼저 `stage`를 앞 단계로 바꾼다 — 최신 엔진으로 풀리니 검사를 다시 돈다.
 
-수정할 때는 바뀐 구간만 `--from/--to`로 다시 렌더해서 확인한 뒤, 마지막에 전체를 렌더한다.
+이미지는 한 장 한 장이 이후 모든 단계의 비용이 된다. 고친 뒤 확인은 바뀐 비트만 `--stills 2.5,3` 처럼 몇 장으로 보고, 컨택트 시트 전체를 다시 열지 않는다.
 
 ## 명령어
 
@@ -88,8 +93,8 @@ node tools/render.mjs films/<이름> --draft         # 빠른 초안 → draft.m
 node tools/render.mjs films/<이름>                 # 최종 (60fps, 4 서브프레임 모션블러) → final.mp4
 node tools/render.mjs films/<이름> --all-formats   # 모든 포맷
 node tools/render.mjs films/<이름> --codec prores  # 편집용 ProRes 4444 (투명 배경 유지) · --codec webm / gif
-node tools/render.mjs films/<이름> --check         # 품질 검사(모든 필름): 첫 줄 판정, 실패면 → 줄에 고칠 것
-node tools/render.mjs films/<이름> --check3d       # 3D 검사: 파고듦·바닥 아래·가림·잘림 + views.png·motion.png
+node tools/render.mjs films/<이름> --check         # 품질 검사(모든 필름): 첫 줄 판정. 막는 것은 → 줄대로 고치고, 메모는 보여 줄 때 붙인다
+node tools/render.mjs films/<이름> --check3d       # 3D 검사: 파고듦·바닥 아래·가림·잘림을 메모로 (막지 않는다)
 node tools/critique.mjs films/<이름> [포맷] [빠른동작시각]
 node tools/determinism.mjs films/<이름>            # 다른 프로세스에서 같은 프레임 두 번 → 같은 픽셀인지 (한 페이지 안 순서 섞기는 --check)
 node tools/state.mjs films/<이름> stage=shotlist waiting=approval  # 진행 단계 기록 (앱의 단계 표시·승인 버튼)

@@ -33,8 +33,9 @@
 4. 전체 애니메이션 → 폴리시 → 최종 렌더.
 5. 챕터별로 서브에이전트에게 나눈다. 먼저 docs/ANIMATION_GUIDE.md를 써서 모두 같은 스타일로 코딩하게 한다.
 
-## 크리틱 루프 (숏마다 최소 3라운드)
-prompts/critique-pass.md 기준. review_log.md에 점수와 큰 문제 3개를 남긴다. 모두 8점 이상까지.
+## 크리틱 (혼자 오래 다듬지 않는다)
+숏마다 첫 결과가 나오면 보여 주고 의견을 받는다. 혼자 고치는 순환은 턴마다 2번까지.
+prompts/critique-pass.md 기준으로 채점해 review_log.md에 점수와 큰 문제 3개를 남긴다. 무엇을 더 다듬을지는 디자이너가 정한다.
 
 ## 결과물
 final.mp4 · loop_check.mp4 · poster.png · contact.png · README

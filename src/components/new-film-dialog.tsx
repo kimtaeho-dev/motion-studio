@@ -9,7 +9,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { QUALITY_LABEL } from "@/components/stage-panel";
+import { LOTTIE_QUALITY_LABEL, QUALITY_LABEL } from "@/components/stage-panel";
 import { useFilms } from "@/context/films";
 import { LOTTIE_DUR, LOTTIE_SIZES, type FilmKind, type FilmQuality } from "@/types";
 
@@ -203,7 +203,7 @@ export function NewFilmDialog(props: { open: boolean; onOpenChange: (open: boole
                     }}
                   >
                     <span class="text-xxs text-foreground">{QUALITY_LABEL[q].label}</span>
-                    <span class="text-[9px] text-muted-foreground">{QUALITY_LABEL[q].hint}</span>
+                    <span class="text-[9px] text-muted-foreground">{lottie() ? LOTTIE_QUALITY_LABEL[q].hint : QUALITY_LABEL[q].hint}</span>
                   </button>
                 )}
               </For>

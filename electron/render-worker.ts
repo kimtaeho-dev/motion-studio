@@ -403,29 +403,29 @@ async function check3d(win: BrowserWindow, film: StageFilm, outDir: string, emit
     floaty: (x) => `무게감  ${span(x)}  ${x.a}이(가) 바닥에 닿기 전 ${pct(x.max)} 느려짐`,
     jam: (x) => `끼임  ${span(x)}  물리 물체끼리 계속 파고든 채 있음 (${x.count}개) — 심한 쌍: ${(x.pairs ?? []).join(" · ")}`,
   };
-  // 첫 줄이 판정: 통과면 그림을 열 필요가 없다
-  const lines = [result.pass ? "판정: 통과 — 그림을 열지 않아도 된다" : `판정: 고칠 것 ${result.issues.length}개 — 아래 → 줄의 제안대로 고치고 한 번 더 검사`];
-  lines.push(`물체: ${result.objects.join(", ")}`);
-  for (const x of result.issues) {
-    lines.push(text[x.kind](x));
-    if (x.fix) lines.push(`    → ${x.fix}`);
-  }
+  // 3D 검사는 막지 않는다: 겹침·가림·잘림은 의도일 때가 많고, 판단은 디자이너가 영상을 보고 한다.
+  // 메모로만 보여 주고 → 줄은 붙이지 않는다. 눈에 띄게 깨진 것만 에이전트가 고친다.
+  const MAX_MEMO = 6;
+  const lines = [result.issues.length ? `판정: 통과 · 메모 ${result.issues.length}개 — 고치지 않는다. 영상에서 눈에 띄게 깨진 것만 고치고, 나머지는 디자이너에게 보여 줄 때 한 줄로 붙인다` : "판정: 통과 — 그림을 열지 않아도 된다"];
+  lines.push(`물체 ${result.objects.length}개: ${result.objects.slice(0, 12).join(", ")}${result.objects.length > 12 ? " …" : ""}`);
+  for (const x of result.issues.slice(0, MAX_MEMO)) lines.push(`메모  ${text[x.kind](x)}`);
+  if (result.issues.length > MAX_MEMO) lines.push(`메모  … 그 밖에 ${result.issues.length - MAX_MEMO}개 (check3d/report.json)`);
   for (const w of result.warns) lines.push(`비트  ${w}`);
   // 구도: 내용(3D + 화면 글자)의 여백. 숫자로 맞추고 컨택트 시트는 마지막에 한 번
   const cp = result.composition;
   if (cp && cp.beats.length) {
     const bad = cp.fixes.length + cp.overlaps.length;
-    lines.push(bad ? `구도: 손볼 곳 ${bad}개 — 숫자대로 고치고 다시 검사 (컨택트 시트는 마지막에 한 번)` : `구도: 좋음 — 비트 ${cp.beats.length}개 모두 여백 5–30% 안`);
-    lines.push(`  여백 위/아래/왼/오 %: ${cp.beats.map((b) => (b.margins ? `b${b.beat} ${b.margins.join("/")}` : `b${b.beat} 없음`)).join(" · ")}`);
-    for (const f of cp.fixes) lines.push(`  ${f.from.toFixed(2)}–${f.to.toFixed(2)}s ${f.what}\n    → ${f.fix}`);
-    for (const o of cp.overlaps) lines.push(`  글자 '${o.str.slice(0, 16)}'이(가) 3D 물체와 최대 ${Math.round(o.max * 100)}% 겹침 ${o.from.toFixed(2)}–${o.to.toFixed(2)}s → 글자 자리나 물체 배치를 옮긴다 (의도면 그대로)`);
+    lines.push(bad ? `구도: 메모 ${bad}개` : `구도: 좋음 — 비트 ${cp.beats.length}개 모두 여백 5–30% 안`);
+    for (const f of cp.fixes) lines.push(`  ${f.from.toFixed(2)}–${f.to.toFixed(2)}s ${f.what}`);
+    for (const o of cp.overlaps) lines.push(`  글자 '${o.str.slice(0, 16)}'이(가) 3D 물체와 최대 ${Math.round(o.max * 100)}% 겹침 ${o.from.toFixed(2)}–${o.to.toFixed(2)}s`);
   }
   if (result.natural) lines.push(`그릇에 담기거나 물리로 쌓여 가려진 것 ${result.natural}건 — 정상으로 봤다`);
   if (result.allowed.length) lines.push(`의도로 표시됨(W.allow) ${result.allowed.length}건 — 실패에서 뺐다`);
   for (const note of result.notes) lines.push(`물리 설정  ${note}`);
   if (result.offscreen.length) {
     const t = (x: number) => x.toFixed(2);
-    lines.push(`화면 밖 (등장 전·퇴장 후라면 정상): ${result.offscreen.map((o) => `${o.a} ${t(o.from)}–${t(o.to)}s`).join(" · ")}`);
+    const shown = result.offscreen.slice(0, 8).map((o) => `${o.a} ${t(o.from)}–${t(o.to)}s`).join(" · ");
+    lines.push(`화면 밖 (등장 전·퇴장 후라면 정상): ${shown}${result.offscreen.length > 8 ? ` … 그 밖에 ${result.offscreen.length - 8}건` : ""}`);
   }
   if (result.impacts.length) lines.push(`충돌: ${result.impacts.map((i) => `${i.t.toFixed(2)}s ${i.name}`).join(" · ")}`);
   emit({ type: "report", format: film.format, lines });
@@ -457,6 +457,9 @@ function scanContract(html: string): { line: number; what: string; fix: string; 
   return found;
 }
 
+/** --check에서 판정을 막는 종류. 나머지(정지·새 일 없음·구도·루프 이음새)는 메모다. */
+const BLOCKING = new Set<QualityIssue["kind"]>(["determinism", "blank", "flash"]);
+
 interface QualityIssue { kind: "still" | "quiet" | "blank" | "flash" | "fill" | "determinism" | "seam"; from: number; to: number; max?: number; side?: string; how?: string; fix: string }
 
 /** Runs lib/stage-check.js inside the film page, scans the code, and writes out/<film>/<format>/check/. */
@@ -473,7 +476,8 @@ async function qualityCheck(win: BrowserWindow, film: StageFilm, html: string, o
   fs.mkdirSync(dir, { recursive: true });
   for (const [name, url] of Object.entries(result.images)) fs.writeFileSync(path.join(dir, `${name}.png`), Buffer.from(url.split(",")[1], "base64"));
   const { images, ...report } = result;
-  fs.writeFileSync(path.join(dir, "report.json"), JSON.stringify({ ...report, contract }, null, 1));
+  const blockingCount = contract.length + report.issues.filter((x) => BLOCKING.has(x.kind)).length;
+  fs.writeFileSync(path.join(dir, "report.json"), JSON.stringify({ ...report, pass: blockingCount === 0, blocking: blockingCount, contract }, null, 1));
 
   const t = (x: number) => `${x.toFixed(2)}s`;
   const span = (x: QualityIssue) => (Math.abs(x.to - x.from) < 0.01 ? t(x.from) : `${t(x.from)}–${t(x.to)}`);
@@ -486,10 +490,21 @@ async function qualityCheck(win: BrowserWindow, film: StageFilm, html: string, o
     determinism: (x) => `결정성  ${x.how}`,
     seam: (x) => `루프 이음새  끝 → 처음이 평소의 ${x.max}배 튄다`,
   };
-  const bad = result.issues.length + contract.length;
-  const lines = [bad === 0 ? "판정: 통과 — 그림을 열지 않아도 된다" : `판정: 고칠 것 ${bad}개 — 아래 → 줄대로 고치고 한 번 더 검사 (숫자로 안 풀리면 check/motion.png)`];
+  // 막는 것 = 결과물이 망가진다(같은 t가 다른 그림, 아무것도 안 그림, 한 프레임 튐). 나머지는 디자이너가 판단한다:
+  // 메모로만 보여 주고 → 줄(고칠 방법)을 붙이지 않는다 — 에이전트가 숫자를 맞추려고 혼자 맴돌지 않게.
+  const blocking = result.issues.filter((x) => BLOCKING.has(x.kind));
+  const memos = result.issues.filter((x) => !BLOCKING.has(x.kind));
+  const nBlock = blocking.length + contract.length;
+  const lines = [
+    nBlock
+      ? `판정: 막는 것 ${nBlock}개 — 아래 → 줄대로 고치고 한 번 더 검사${memos.length ? ` (메모 ${memos.length}개는 고치지 않는다)` : ""}`
+      : memos.length
+        ? `판정: 통과 · 메모 ${memos.length}개 — 고치지 않고, 디자이너에게 보여 줄 때 한 줄로 붙인다`
+        : "판정: 통과 — 그림을 열지 않아도 된다",
+  ];
   for (const c of contract) lines.push(`계약  index.html:${c.line}  ${c.what}  \`${c.text}\``, `    → ${c.fix}`);
-  for (const x of result.issues) lines.push(text[x.kind](x), `    → ${x.fix}`);
+  for (const x of blocking) lines.push(text[x.kind](x), `    → ${x.fix}`);
+  for (const x of memos) lines.push(`메모  ${text[x.kind](x)}`);
   if (result.fill) {
     const m = result.fill.margins;
     lines.push(`구도: 여백 위/아래/왼/오 ${m.top}/${m.bottom}/${m.left}/${m.right}% (시간 중앙값)`);

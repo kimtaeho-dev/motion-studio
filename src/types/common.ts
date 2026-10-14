@@ -109,7 +109,7 @@ export interface FilmFiles {
   /** The pipeline step: what the agent recorded in state.json, or — with none recorded — what the files show. */
   stage: FilmStage;
   quality: FilmQuality;
-  /** The agent stopped for the designer: to approve the shotlist, or to answer its questions. */
+  /** The agent stopped for the designer: to approve the shotlist, to answer its questions, or to look at a draft. */
   waiting: FilmWaiting | null;
   /** Critique round in progress or last finished (1-based), when the agent recorded one. */
   round: number | null;
@@ -128,7 +128,7 @@ export interface FilmQuestion {
   multi?: boolean;
 }
 
-export type FilmWaiting = "approval" | "answer";
+export type FilmWaiting = "approval" | "answer" | "review";
 
 /** films/<slug>/state.json — written by the app (quality, approvals) and the agent (tools/state.mjs). */
 export interface FilmState {

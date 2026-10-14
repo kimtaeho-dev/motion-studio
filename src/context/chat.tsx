@@ -22,7 +22,7 @@ const ChatContext = createContext<{
   upload: (file: File) => Promise<ChatAttachment>;
   send: (text: string, attachments?: ChatAttachment[]) => Promise<void>;
   /** The app's approve button for a pipeline gate (server/mailbox.ts records it in state.json). */
-  approve: (gate: "shotlist") => Promise<void>;
+  approve: (gate: "shotlist" | "deliver") => Promise<void>;
   /** Put text in the message box and focus it — for "수정 요청" and "답하기". */
   compose: (text: string) => void;
   /** The latest compose request; the panel applies it when the id changes. */
@@ -107,7 +107,7 @@ export function ChatProvider(props: { children: JSX.Element }) {
     }
   };
 
-  const approve = async (gate: "shotlist") => {
+  const approve = async (gate: "shotlist" | "deliver") => {
     const film = params.film;
     if (!film) return;
     setSending(true);
