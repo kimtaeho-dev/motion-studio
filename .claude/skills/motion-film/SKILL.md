@@ -62,7 +62,7 @@ UI 모션 2D 필름은 `examples/sample-morph/`를 구조 참고로 읽는다(fi
 ## 7. 전달 (디자이너가 OK하면)
 - 요청된 포맷 전부 풀 렌더 (`--all-formats` 또는 `--format`). 포맷마다 `--check --format <포맷>`에 막는 것이 없어야 한다.
 - 포스터: `node tools/render.mjs films/<이름> --stills <가장 좋은 시각>` → 그 스틸을 `out/<이름>/<포맷>/poster.png`로 복사.
-- `node tools/state.mjs films/<이름> stage=deliver waiting=none`.
+- 렌더·검사·포스터가 다 끝난 **뒤에** `node tools/state.mjs films/<이름> stage=deliver waiting=none` (엔진을 고정하므로 검사를 통과한 결과에만).
 - 디자이너에게: 완성본이 플레이어 아래 결과물 줄에 있다는 것, 다음에 개선할 점 한 줄. 파일 경로는 말하지 않는다.
 
 ## 수정 요청이 오면
