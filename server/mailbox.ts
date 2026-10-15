@@ -53,6 +53,8 @@ const APPROVAL_PROMPT: Record<keyof typeof APPROVALS, string> = {
 };
 type Approval = keyof typeof APPROVALS;
 const MAX_ATTACHMENTS = 10;
+/** How long the agent waits for the API's first response bytes before retrying (see the spawn below). */
+const FIRST_BYTE_TIMEOUT_MS = 120_000;
 
 /**
  * Reply shape for the chat panel: a 380px column read by a designer, not a
@@ -502,9 +504,14 @@ export function mailboxPlugin(options: MailboxOptions = {}): Plugin {
       }
     };
 
+    const env = { ...(options.agentEnv?.() ?? process.env) };
+    // A request that gets no response headers is stuck, not thinking: the
+    // retry of the same request answered in 3–89s every time, after waits of
+    // 4–10 minutes (Claude Code's default window). Give up on it after 2 minutes.
+    env.CLAUDE_STREAM_FIRST_BYTE_TIMEOUT_MS ??= String(FIRST_BYTE_TIMEOUT_MS);
     const child = spawn(claudePath, args, {
       cwd: workspaceRoot,
-      env: options.agentEnv?.() ?? process.env,
+      env,
       stdio: ["ignore", "pipe", "pipe"],
     });
     activeChild = child;
