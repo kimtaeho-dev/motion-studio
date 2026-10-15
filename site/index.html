@@ -165,7 +165,7 @@ p.lead { font-size: clamp(18px, 1.6vw, 21px); color: var(--ink-2); max-width: 34
 <main>
   <section class="hero" data-tc="0">
     <div class="wrap">
-      <div class="beat">00:00 · macOS 앱 · <span id="ver">v0.6.0</span></div>
+      <div class="beat">00:00 · macOS 앱 · <span id="ver">v0.7.0</span></div>
       <div class="hero-grid">
         <div>
           <h1><span class="reveal">말하면,</span><span class="reveal">움직입니다.</span></h1>
@@ -196,10 +196,10 @@ p.lead { font-size: clamp(18px, 1.6vw, 21px); color: var(--ink-2); max-width: 34
       <div class="steps">
         <div class="step in"><span class="tc">00:04</span><h3>말하기</h3><p>"버튼이 로더를 거쳐 체크로 바뀌는 4초 루프"처럼 적으면 돼요. 로고, 스크린샷, Figma 링크도 함께 넣을 수 있어요.</p></div>
         <div class="step in"><span class="tc">00:05</span><h3>장면 확인</h3><p>언제 무엇이 움직일지 장면 표로 먼저 보여 드려요. 확인하고 승인하면 그때 만들기 시작해요.</p></div>
-        <div class="step in"><span class="tc">00:06</span><h3>스스로 점검</h3><p>AI가 만든 영상을 직접 돌려 보고, 글자가 잘 읽히는지, 비어 보이는 구간은 없는지 점검하며 고쳐요.</p></div>
+        <div class="step in"><span class="tc">00:06</span><h3>초안 보고 다듬기</h3><p>초안이 나오면 바로 보여 드려요. 마음에 들면 이대로 전달, 아니면 고칠 곳을 표시해서 말해 주세요. 그 부분만 고쳐 다시 보여 드려요.</p></div>
         <div class="step in"><span class="tc">00:07</span><h3>받기</h3><p>MP4·ProRes·GIF 영상이나 개발자에게 넘길 Lottie 파일로 받아요. 다운로드 폴더에 모아 드려요.</p></div>
       </div>
-      <figure class="shot in" style="margin-left:0;margin-right:0"><img src="assets/shot-app.png?v=3" alt="Motion Studio 앱 화면: 왼쪽 필름 목록, 가운데 플레이어, 오른쪽 진행 단계와 AI 채팅" loading="lazy" width="1600" height="1000"></figure>
+      <figure class="shot in" style="margin-left:0;margin-right:0"><img src="assets/shot-app.png?v=4" alt="Motion Studio 앱 화면: 가운데 플레이어에 고칠 곳으로 표시한 영역, 오른쪽 위 초안 확인 카드(이대로 전달 · 수정 요청), 오른쪽 아래 표시가 첨부된 AI 채팅" loading="lazy" width="1600" height="1000"></figure>
     </div>
   </section>
 
@@ -262,9 +262,11 @@ p.lead { font-size: clamp(18px, 1.6vw, 21px); color: var(--ink-2); max-width: 34
       <div class="beat">00:16 · 직접 고치기</div>
       <h2 class="in">작은 수정은 손으로, 나머지는 말로.</h2>
       <div class="edit">
-        <figure class="shot in" style="margin:0;max-width:440px"><img src="assets/shot-props.png?v=3" alt="속성 패널: 포인트 컬러, 배경, 버튼 문구 등을 바로 바꿀 수 있는 화면" loading="lazy" width="400" height="430" style="width:100%"></figure>
+        <figure class="shot in" style="margin:0;max-width:440px"><img src="assets/shot-props.png?v=4" alt="속성 패널: 문구를 바로 바꾸는 칸과, 착지 충격처럼 움직임의 느낌을 조절하는 슬라이더" loading="lazy" width="380" height="421" style="width:100%"></figure>
         <dl class="in">
           <dt>문구 · 색 · 숫자</dt><dd>AI가 열어 둔 값은 속성 패널에서 바로 바꿀 수 있어요.</dd>
+          <dt>움직임의 느낌</dt><dd>튀는 정도, 흔들림, 속도처럼 말로 설명하기 어려운 느낌은 슬라이더로 열어 둬요. 끄는 대로 바로 바뀌어요.</dd>
+          <dt>고칠 곳 표시</dt><dd>멈춘 장면에서 고칠 부분을 드래그로 감싸면 메시지에 첨부돼요. 설명을 길게 쓰지 않아도 AI가 그 자리를 바로 봐요.</dd>
           <dt>장면 타이밍</dt><dd>타임라인에서 장면 표시를 끌어 옮기면 움직임이 함께 따라와요. 박자에 맞춰 딱 붙어요.</dd>
           <dt>되돌리기</dt><dd><kbd>⌘Z</kbd> · <kbd>⇧⌘Z</kbd>로 언제든 되돌릴 수 있어요. 내가 직접 바꾼 값은 AI가 마음대로 되돌리지 않아요.</dd>
         </dl>
