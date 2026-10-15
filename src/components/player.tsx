@@ -91,7 +91,7 @@ function FormatSwitch() {
  */
 function MarkLayer(props: { frame: () => HTMLIFrameElement | undefined }) {
   const { time, format, playing, toggle, status } = usePlayer();
-  const { compose, marks, addMark } = useChat();
+  const { compose, marks, addMark, viewMark } = useChat();
   const [armed, setArmed] = createSignal(false);
   // The box being drawn, in layer pixels.
   const [draft, setDraft] = createSignal<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
@@ -111,21 +111,28 @@ function MarkLayer(props: { frame: () => HTMLIFrameElement | undefined }) {
       drawing = false;
     }
   };
-  // Boxes are placed in pixels: follow the stage when the window resizes.
-  const onResize = () => setLayout((n) => n + 1);
+  // Boxes are placed in pixels: measure again once the layer is in the page, and whenever the stage or the
+  // film's frame changes size (window, split panes, a new format's letterbox).
+  const relayout = () => setLayout((n) => n + 1);
+  const resizes = new ResizeObserver(relayout);
   onMount(() => {
     window.addEventListener("keydown", onKey);
-    window.addEventListener("resize", onResize);
+    if (layer) resizes.observe(layer);
+    const frame = props.frame();
+    if (frame) resizes.observe(frame);
+    relayout();
   });
   onCleanup(() => {
     window.removeEventListener("keydown", onKey);
-    window.removeEventListener("resize", onResize);
+    resizes.disconnect();
   });
 
   /** The film's own picture inside the player frame (letterboxed), in layer coordinates. */
   const pictureRect = () => {
-    const frame = props.frame(), outer = layer?.getBoundingClientRect();
-    if (!frame || !outer) return null;
+    // Not in the page yet (just remounted): its rect would read 0,0 and shift every box.
+    if (!layer?.isConnected) return null;
+    const frame = props.frame(), outer = layer.getBoundingClientRect();
+    if (!frame) return null;
     const f = frame.getBoundingClientRect();
     try {
       const c = frame.contentDocument?.getElementById("c")?.getBoundingClientRect();
@@ -144,6 +151,7 @@ function MarkLayer(props: { frame: () => HTMLIFrameElement | undefined }) {
     return { x, y, inside: e.clientX - outer.left === x && e.clientY - outer.top === y };
   };
   const onDown = (e: PointerEvent) => {
+    if (e.button !== 0) return;
     const p = at(e);
     if (!p?.inside) return;
     drawing = true;
@@ -157,6 +165,11 @@ function MarkLayer(props: { frame: () => HTMLIFrameElement | undefined }) {
   const onMove = (e: PointerEvent) => {
     const p = drawing && at(e);
     if (p) setDraft((b) => b && { ...b, x1: p.x, y1: p.y });
+  };
+  /** A gesture the system took away (palm rejection, a system swipe) leaves no mark. */
+  const onCancel = () => {
+    drawing = false;
+    setDraft(null);
   };
   const onUp = () => {
     if (!drawing) return;
@@ -177,10 +190,13 @@ function MarkLayer(props: { frame: () => HTMLIFrameElement | undefined }) {
   /** Marks drawn on this very moment and format, in layer pixels. */
   const shown = () => {
     layout();
+    const view = viewMark();
+    const here = [...marks(), ...(view ? [view] : [])].filter((m) => m.format === (format() ?? "") && Math.abs(m.t - time()) < 0.02);
+    // Measuring reads layout in the film's page too: only when a box is on this moment (not every playing frame).
+    if (here.length === 0) return [];
     const r = pictureRect();
     if (!r) return [];
-    return marks()
-      .filter((m) => m.format === (format() ?? "") && Math.abs(m.t - time()) < 0.02)
+    return here
       .map((m) => ({ id: m.id, left: r.left + m.x0 * r.width, top: r.top + m.y0 * r.height, width: (m.x1 - m.x0) * r.width, height: (m.y1 - m.y0) * r.height }));
   };
   const draftRect = () => {
@@ -208,7 +224,7 @@ function MarkLayer(props: { frame: () => HTMLIFrameElement | undefined }) {
         onPointerDown={onDown}
         onPointerMove={onMove}
         onPointerUp={onUp}
-        onPointerCancel={onUp}
+        onPointerCancel={onCancel}
       >
         <For each={shown()}>{(r) => <Box r={r} />}</For>
         <Show when={draftRect()}>{(r) => <Box r={r()} />}</Show>

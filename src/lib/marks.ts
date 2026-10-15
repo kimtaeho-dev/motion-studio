@@ -36,8 +36,18 @@ export function markLine(m: FrameMark): string {
   return `▸ ${m.t.toFixed(2)}초 · ${m.format} · ${markPlace(m)} ${where}`;
 }
 
-/** Reads a sent line back (for the chat bubble); null when the line is not a mark. */
-export function parseMarkLine(line: string): { t: number; format: string; label: string } | null {
-  const m = /^▸ (\d+(?:\.\d+)?)초 · (\S+) · (.+?) \(x [^)]*\)$/.exec(line.trim());
-  return m ? { t: Number(m[1]), format: m[2], label: `${Number(m[1]).toFixed(2)}초 · ${m[3]}` } : null;
+/** Reads a sent line back (for the chat bubble), area included so the stage can draw it again; null when the line is not a mark. */
+export function parseMarkLine(line: string): FrameMark | null {
+  const m = /^▸ (\d+(?:\.\d+)?)초 · (\S+) · .+? \(x (\d+)(?:~(\d+))?%, y (\d+)(?:~(\d+))?%\)$/.exec(line.trim());
+  if (!m) return null;
+  const f = (v: string) => Number(v) / 100;
+  return {
+    id: `sent:${line.trim()}`,
+    t: Number(m[1]),
+    format: m[2],
+    x0: f(m[3]),
+    x1: f(m[4] ?? m[3]),
+    y0: f(m[5]),
+    y1: f(m[6] ?? m[5]),
+  };
 }

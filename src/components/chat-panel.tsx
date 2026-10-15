@@ -55,19 +55,36 @@ interface Staged {
   attachment?: ChatAttachment;
 }
 
-/** A "고칠 곳 표시" chip: shows the moment and area; clicking it jumps the player there so the box shows again. */
-function MarkChip(props: { label: string; t: number; format: string; onRemove?: () => void }) {
-  const { seek, setFormat, playing, toggle } = usePlayer();
+/**
+ * A "고칠 곳 표시" chip: shows the moment and area; clicking it jumps the player there so the box shows again.
+ * `sent` chips (in a sent bubble) no longer have a waiting mark, so they hand theirs to the stage to draw.
+ */
+function MarkChip(props: { mark: FrameMark; sent?: boolean; onRemove?: () => void }) {
+  const { film, seek, setFormat, playing, toggle } = usePlayer();
+  const { setViewMark } = useChat();
+  // The film may have been shortened since: that moment is gone, and seeking would wrap to another one.
+  const gone = () => {
+    const dur = film()?.dur;
+    return dur !== undefined && props.mark.t >= dur;
+  };
   const jump = () => {
+    if (gone()) return;
     if (playing()) toggle();
-    setFormat(props.format);
-    seek(props.t);
+    if (props.sent) setViewMark(props.mark);
+    setFormat(props.mark.format);
+    seek(props.mark.t);
   };
   return (
     <span class="flex max-w-full items-center gap-1 rounded-md bg-brand/10 px-2 py-1 text-xxs">
       <SquareDashedMousePointer class="size-3 shrink-0 text-brand" />
-      <button type="button" onClick={jump} title="그 장면으로 이동" class="truncate hover:underline focus-ring">
-        {props.label}
+      <button
+        type="button"
+        onClick={jump}
+        disabled={gone()}
+        title={gone() ? "필름이 짧아져서 이 장면이 없어요" : "그 장면으로 이동"}
+        class="truncate hover:underline focus-ring disabled:opacity-50 disabled:no-underline"
+      >
+        {markLabel(props.mark)}
       </button>
       <Show when={props.onRemove}>
         <button
@@ -94,7 +111,7 @@ function UserText(props: { text: string }) {
     <>
       <Show when={parts().marks.length > 0}>
         <div class="mb-1 flex flex-wrap gap-1">
-          <For each={parts().marks}>{(m) => <MarkChip label={m.label} t={m.t} format={m.format} />}</For>
+          <For each={parts().marks}>{(m) => <MarkChip mark={m} sent />}</For>
         </div>
       </Show>
       {parts().rest}
@@ -660,7 +677,7 @@ export function ChatPanel() {
             <Show when={staged().length > 0 || marks().length > 0}>
               <div class="flex flex-wrap gap-1.5">
                 <For each={marks()}>
-                  {(m: FrameMark) => <MarkChip label={markLabel(m)} t={m.t} format={m.format} onRemove={() => removeMark(m.id)} />}
+                  {(m: FrameMark) => <MarkChip mark={m} onRemove={() => removeMark(m.id)} />}
                 </For>
                 <For each={staged()}>
                   {(item) => (

@@ -31,6 +31,9 @@ const ChatContext = createContext<{
   addMark: (mark: FrameMark) => void;
   removeMark: (id: string) => void;
   clearMarks: () => void;
+  /** A sent mark the designer jumped back to from its chip; the stage draws it like a waiting one. */
+  viewMark: () => FrameMark | null;
+  setViewMark: (mark: FrameMark | null) => void;
   /** The latest compose request; the panel applies it when the id changes. */
   composeRequest: () => { id: number; text: string; append?: boolean } | null;
   cancel: (messageId: string) => Promise<void>;
@@ -75,8 +78,18 @@ export function ChatProvider(props: { children: JSX.Element }) {
   const addMark = (mark: FrameMark) => setMarks((list) => [...list, mark]);
   const removeMark = (id: string) => setMarks((list) => list.filter((m) => m.id !== id));
   const clearMarks = () => setMarks([]);
+  const [viewMark, setViewMark] = createSignal<FrameMark | null>(null);
   // Marks belong to the film they were drawn on.
-  createEffect(on(() => params.film, clearMarks, { defer: true }));
+  createEffect(
+    on(
+      () => params.film,
+      () => {
+        clearMarks();
+        setViewMark(null);
+      },
+      { defer: true },
+    ),
+  );
 
   const setSettings = (next: ChatSettings) => {
     setSettingsSignal(next);
@@ -185,6 +198,8 @@ export function ChatProvider(props: { children: JSX.Element }) {
         addMark,
         removeMark,
         clearMarks,
+        viewMark,
+        setViewMark,
         cancel,
         retry,
         signIn,
