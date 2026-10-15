@@ -1,6 +1,6 @@
 import { createEffect, createSignal, For, on, onCleanup, Show, untrack } from "solid-js";
 import { useParams } from "@solidjs/router";
-import { Box, ChevronDown, Film, Image, Paperclip, RotateCcw, Send, X } from "lucide-solid";
+import { Box, ChevronDown, Film, Image, Paperclip, RotateCcw, Send, SquareDashedMousePointer, X } from "lucide-solid";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -28,6 +28,8 @@ import { QuestionCard } from "@/components/question-card";
 import { useFiles } from "@/context/files";
 import { useChat } from "@/context/chat";
 import { useFilms } from "@/context/films";
+import { usePlayer } from "@/context/player";
+import { markLabel, markLine, parseMarkLine, type FrameMark } from "@/lib/marks";
 import { defaultRole, roleFixed, type AttachmentRole, type ChatAttachment, type ChatEffort, type ChatMessage, type ChatModel } from "@/types";
 
 const MAX_TEXTAREA_HEIGHT = 128; // px — grows up to this, then scrolls internally
@@ -51,6 +53,53 @@ interface Staged {
   id: number;
   name: string;
   attachment?: ChatAttachment;
+}
+
+/** A "고칠 곳 표시" chip: shows the moment and area; clicking it jumps the player there so the box shows again. */
+function MarkChip(props: { label: string; t: number; format: string; onRemove?: () => void }) {
+  const { seek, setFormat, playing, toggle } = usePlayer();
+  const jump = () => {
+    if (playing()) toggle();
+    setFormat(props.format);
+    seek(props.t);
+  };
+  return (
+    <span class="flex max-w-full items-center gap-1 rounded-md bg-brand/10 px-2 py-1 text-xxs">
+      <SquareDashedMousePointer class="size-3 shrink-0 text-brand" />
+      <button type="button" onClick={jump} title="그 장면으로 이동" class="truncate hover:underline focus-ring">
+        {props.label}
+      </button>
+      <Show when={props.onRemove}>
+        <button
+          type="button"
+          onClick={props.onRemove}
+          class="inline-flex items-center justify-center rounded-sm hover:text-destructive focus-ring"
+          aria-label="표시 지우기"
+        >
+          <X class="size-3" />
+        </button>
+      </Show>
+    </span>
+  );
+}
+
+/** A sent message: its "▸ …" mark lines come back as chips, the rest as text. */
+function UserText(props: { text: string }) {
+  const parts = () => {
+    const lines = props.text.split("\n");
+    const marks = lines.map(parseMarkLine).filter((m): m is NonNullable<typeof m> => m !== null);
+    return { marks, rest: lines.filter((l) => !parseMarkLine(l)).join("\n").trim() };
+  };
+  return (
+    <>
+      <Show when={parts().marks.length > 0}>
+        <div class="mb-1 flex flex-wrap gap-1">
+          <For each={parts().marks}>{(m) => <MarkChip label={m.label} t={m.t} format={m.format} />}</For>
+        </div>
+      </Show>
+      {parts().rest}
+    </>
+  );
 }
 
 function AttachmentChip(props: {
@@ -293,7 +342,7 @@ export function ChatPanel() {
   const params = useParams();
   const { films } = useFilms();
   const isLottie = () => films().find((f) => f.slug === params.film)?.kind === "lottie";
-  const { messages, sending, send, cancel, retry, reset, upload, composeRequest } = useChat();
+  const { messages, sending, send, cancel, retry, reset, upload, composeRequest, marks, removeMark, clearMarks } = useChat();
   const { files } = useFiles();
   const turnRunning = () => messages().some((m) => m.status === "pending" || m.status === "processing");
   // The agent's open questions (tools/ask.mjs), until the designer answers — by card or by typing.
@@ -385,11 +434,14 @@ export function ChatPanel() {
   };
 
   const handleSend = async () => {
-    const value = text().trim();
+    const typed = text().trim();
     const attachments = staged().flatMap((s) => (s.attachment ? [s.attachment] : []));
-    if ((!value && attachments.length === 0) || sending() || uploading()) return;
+    if ((!typed && attachments.length === 0 && marks().length === 0) || sending() || uploading()) return;
+    // Marks travel as "▸ …" lines ahead of the request; the bubble turns them back into chips.
+    const value = [...marks().map(markLine), typed].filter(Boolean).join("\n");
     setText("");
     setStaged([]);
+    clearMarks();
     setAttachError(null);
     autoGrow();
     followBottom = true;
@@ -414,7 +466,7 @@ export function ChatPanel() {
     const request = composeRequest();
     if (!request || !textareaRef) return;
     const before = untrack(text).trimEnd();
-    const next = request.append && before ? `${before}\n${request.text}` : request.text;
+    const next = !request.append ? request.text : before && request.text ? `${before}\n${request.text}` : before || request.text;
     setText(next);
     queueMicrotask(() => {
       autoGrow();
@@ -560,7 +612,7 @@ export function ChatPanel() {
                     <span class="text-muted-foreground italic">요청을 취소했어요.</span>
                   </Show>
                   <Show when={message.status === "done" || message.status === "error"}>
-                    <Show when={message.role === "assistant"} fallback={message.text}>
+                    <Show when={message.role === "assistant"} fallback={<UserText text={message.text} />}>
                       <Markdown text={message.text} />
                     </Show>
                   </Show>
@@ -603,10 +655,13 @@ export function ChatPanel() {
       </div>
 
       <div class="border-t border-border shrink-0">
-        <Show when={staged().length > 0 || attachError()}>
+        <Show when={staged().length > 0 || marks().length > 0 || attachError()}>
           <div class="flex flex-col gap-1.5 px-3 pt-3">
-            <Show when={staged().length > 0}>
+            <Show when={staged().length > 0 || marks().length > 0}>
               <div class="flex flex-wrap gap-1.5">
+                <For each={marks()}>
+                  {(m: FrameMark) => <MarkChip label={markLabel(m)} t={m.t} format={m.format} onRemove={() => removeMark(m.id)} />}
+                </For>
                 <For each={staged()}>
                   {(item) => (
                     <AttachmentChip

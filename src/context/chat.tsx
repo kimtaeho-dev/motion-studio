@@ -1,7 +1,8 @@
-import { createContext, createResource, createSignal, useContext, type JSX } from "solid-js";
+import { createContext, createEffect, createResource, createSignal, on, useContext, type JSX } from "solid-js";
 import { useParams } from "@solidjs/router";
 import type { ChatAttachment, ChatMessage, ChatProgress, ChatSettings } from "@/types";
 import { onServerEvent } from "@/lib/live";
+import type { FrameMark } from "@/lib/marks";
 
 const SETTINGS_KEY = "motion-studio.chat-settings";
 const DEFAULT_SETTINGS: ChatSettings = { model: "opus", effort: "high" };
@@ -23,8 +24,13 @@ const ChatContext = createContext<{
   send: (text: string, attachments?: ChatAttachment[]) => Promise<void>;
   /** The app's approve button for a pipeline gate (server/mailbox.ts records it in state.json). */
   approve: (gate: "shotlist" | "deliver") => Promise<void>;
-  /** Put text in the message box and focus it — for "수정 요청" and "답하기". `append` adds a line to what is already typed (the player's "여기 짚기"). */
+  /** Put text in the message box and focus it — for "수정 요청" and "답하기". `append` keeps what is already typed (empty text just focuses). */
   compose: (text: string, opts?: { append?: boolean }) => void;
+  /** "고칠 곳 표시" marks waiting to go with the next message, as chips; the stage draws their boxes. */
+  marks: () => FrameMark[];
+  addMark: (mark: FrameMark) => void;
+  removeMark: (id: string) => void;
+  clearMarks: () => void;
   /** The latest compose request; the panel applies it when the id changes. */
   composeRequest: () => { id: number; text: string; append?: boolean } | null;
   cancel: (messageId: string) => Promise<void>;
@@ -65,6 +71,12 @@ export function ChatProvider(props: { children: JSX.Element }) {
   const [sending, setSending] = createSignal(false);
   const [progress, setProgress] = createSignal<ChatProgress | null>(null);
   const [settings, setSettingsSignal] = createSignal<ChatSettings>(loadSettings());
+  const [marks, setMarks] = createSignal<FrameMark[]>([]);
+  const addMark = (mark: FrameMark) => setMarks((list) => [...list, mark]);
+  const removeMark = (id: string) => setMarks((list) => list.filter((m) => m.id !== id));
+  const clearMarks = () => setMarks([]);
+  // Marks belong to the film they were drawn on.
+  createEffect(on(() => params.film, clearMarks, { defer: true }));
 
   const setSettings = (next: ChatSettings) => {
     setSettingsSignal(next);
@@ -169,6 +181,10 @@ export function ChatProvider(props: { children: JSX.Element }) {
         approve,
         compose,
         composeRequest,
+        marks,
+        addMark,
+        removeMark,
+        clearMarks,
         cancel,
         retry,
         signIn,

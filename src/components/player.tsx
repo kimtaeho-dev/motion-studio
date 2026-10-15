@@ -84,48 +84,43 @@ function FormatSwitch() {
   );
 }
 
-type Mark = { x0: number; y0: number; x1: number; y1: number };
-
-/** Where on the film a spot or area sits, in words the agent and the designer both read. */
-function placeOf(m: Mark): string {
-  const cx = (m.x0 + m.x1) / 2, cy = (m.y0 + m.y1) / 2;
-  const col = cx < 1 / 3 ? "왼쪽" : cx < 2 / 3 ? "가운데" : "오른쪽";
-  const row = cy < 1 / 3 ? "위" : cy < 2 / 3 ? "가운데" : "아래";
-  const name = col === "가운데" && row === "가운데" ? "가운데" : col === "가운데" ? `가운데 ${row}` : row === "가운데" ? col : `${col} ${row}`;
-  const p = (v: number) => Math.round(v * 100);
-  if (m.x0 === m.x1 && m.y0 === m.y1) return `${name} (x ${p(m.x0)}%, y ${p(m.y0)}%)`;
-  return `${name} 영역 (x ${p(m.x0)}~${p(m.x1)}%, y ${p(m.y0)}~${p(m.y1)}%)`;
-}
-
 /**
- * "고칠 곳 표시": the designer stops on a moment and drags a box around what bothers them (or clicks a spot),
- * and the message box gets "▸ 10.86초 · 16x9 · 왼쪽 위 영역 (x 10~35%, y 20~45%): " — a time and area the agent
- * can render and crop, instead of a description it has to interpret (CLAUDE.md, 수정 요청이 오면).
+ * "고칠 곳 표시": the designer stops on a moment and drags a box around what bothers them (or clicks a spot).
+ * The mark goes into the message box as a chip (chat context), and the stage keeps drawing its box whenever the
+ * playhead is on that moment — removing the chip removes the box. The agent gets it as a "▸ …" line (lib/marks).
  */
 function MarkLayer(props: { frame: () => HTMLIFrameElement | undefined }) {
   const { time, format, playing, toggle, status } = usePlayer();
-  const { compose } = useChat();
+  const { compose, marks, addMark } = useChat();
   const [armed, setArmed] = createSignal(false);
-  // In layer pixels while drawing and after, so the box stays where it was drawn.
-  const [box, setBox] = createSignal<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
+  // The box being drawn, in layer pixels.
+  const [draft, setDraft] = createSignal<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
+  const [layout, setLayout] = createSignal(0);
   let drawing = false;
   let layer: HTMLDivElement | undefined;
-  // A mark belongs to the moment it was made: moving the playhead clears it.
-  createEffect(on(time, () => setBox(null), { defer: true }));
 
   const arm = () => {
     if (playing()) toggle();
-    setBox(null);
+    setDraft(null);
     setArmed(!armed());
   };
   const onKey = (e: KeyboardEvent) => {
     if (e.key === "Escape" && armed()) {
       setArmed(false);
-      setBox(null);
+      setDraft(null);
+      drawing = false;
     }
   };
-  onMount(() => window.addEventListener("keydown", onKey));
-  onCleanup(() => window.removeEventListener("keydown", onKey));
+  // Boxes are placed in pixels: follow the stage when the window resizes.
+  const onResize = () => setLayout((n) => n + 1);
+  onMount(() => {
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("resize", onResize);
+  });
+  onCleanup(() => {
+    window.removeEventListener("keydown", onKey);
+    window.removeEventListener("resize", onResize);
+  });
 
   /** The film's own picture inside the player frame (letterboxed), in layer coordinates. */
   const pictureRect = () => {
@@ -152,7 +147,7 @@ function MarkLayer(props: { frame: () => HTMLIFrameElement | undefined }) {
     const p = at(e);
     if (!p?.inside) return;
     drawing = true;
-    setBox({ x0: p.x, y0: p.y, x1: p.x, y1: p.y });
+    setDraft({ x0: p.x, y0: p.y, x1: p.x, y1: p.y });
     try {
       layer?.setPointerCapture(e.pointerId);    // keep the drag when the pointer leaves the stage
     } catch {
@@ -161,28 +156,48 @@ function MarkLayer(props: { frame: () => HTMLIFrameElement | undefined }) {
   };
   const onMove = (e: PointerEvent) => {
     const p = drawing && at(e);
-    if (p) setBox((b) => b && { ...b, x1: p.x, y1: p.y });
+    if (p) setDraft((b) => b && { ...b, x1: p.x, y1: p.y });
   };
   const onUp = () => {
     if (!drawing) return;
     drawing = false;
-    const b = box(), r = pictureRect();
+    const b = draft(), r = pictureRect();
+    setDraft(null);
+    setArmed(false);
     if (!b || !r) return;
     // A tiny drag is a click: mark the spot.
     const spot = Math.abs(b.x1 - b.x0) < 8 && Math.abs(b.y1 - b.y0) < 8;
     const nx = (x: number) => (x - r.left) / r.width, ny = (y: number) => (y - r.top) / r.height;
-    const mark = spot
-      ? { x0: nx(b.x0), y0: ny(b.y0), x1: nx(b.x0), y1: ny(b.y0) }
-      : { x0: nx(Math.min(b.x0, b.x1)), y0: ny(Math.min(b.y0, b.y1)), x1: nx(Math.max(b.x0, b.x1)), y1: ny(Math.max(b.y0, b.y1)) };
-    if (spot) setBox({ x0: b.x0, y0: b.y0, x1: b.x0, y1: b.y0 });
-    setArmed(false);
-    compose(`▸ ${time().toFixed(2)}초 · ${format() ?? ""} · ${placeOf(mark)}: `, { append: true });
+    const [x0, x1] = spot ? [nx(b.x0), nx(b.x0)] : [nx(Math.min(b.x0, b.x1)), nx(Math.max(b.x0, b.x1))];
+    const [y0, y1] = spot ? [ny(b.y0), ny(b.y0)] : [ny(Math.min(b.y0, b.y1)), ny(Math.max(b.y0, b.y1))];
+    addMark({ id: crypto.randomUUID(), t: Math.round(time() * 100) / 100, format: format() ?? "", x0, y0, x1, y1 });
+    compose("", { append: true });
   };
 
-  const rect = () => {
-    const b = box();
+  /** Marks drawn on this very moment and format, in layer pixels. */
+  const shown = () => {
+    layout();
+    const r = pictureRect();
+    if (!r) return [];
+    return marks()
+      .filter((m) => m.format === (format() ?? "") && Math.abs(m.t - time()) < 0.02)
+      .map((m) => ({ id: m.id, left: r.left + m.x0 * r.width, top: r.top + m.y0 * r.height, width: (m.x1 - m.x0) * r.width, height: (m.y1 - m.y0) * r.height }));
+  };
+  const draftRect = () => {
+    const b = draft();
     return b && { left: Math.min(b.x0, b.x1), top: Math.min(b.y0, b.y1), width: Math.abs(b.x1 - b.x0), height: Math.abs(b.y1 - b.y0) };
   };
+  const Box = (p: { r: { left: number; top: number; width: number; height: number } }) => (
+    <Show
+      when={p.r.width > 0 || p.r.height > 0}
+      fallback={<div class="pointer-events-none absolute size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-background bg-brand" style={{ left: `${p.r.left}px`, top: `${p.r.top}px` }} />}
+    >
+      <div
+        class="pointer-events-none absolute rounded-sm border-2 border-brand bg-brand/15"
+        style={{ left: `${p.r.left}px`, top: `${p.r.top}px`, width: `${p.r.width}px`, height: `${p.r.height}px` }}
+      />
+    </Show>
+  );
 
   return (
     <Show when={status() === "ready"}>
@@ -195,19 +210,8 @@ function MarkLayer(props: { frame: () => HTMLIFrameElement | undefined }) {
         onPointerUp={onUp}
         onPointerCancel={onUp}
       >
-        <Show when={rect()}>
-          {(r) => (
-            <Show
-              when={r().width > 0 || r().height > 0}
-              fallback={<div class="pointer-events-none absolute size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-background bg-brand" style={{ left: `${r().left}px`, top: `${r().top}px` }} />}
-            >
-              <div
-                class="pointer-events-none absolute rounded-sm border-2 border-brand bg-brand/15"
-                style={{ left: `${r().left}px`, top: `${r().top}px`, width: `${r().width}px`, height: `${r().height}px` }}
-              />
-            </Show>
-          )}
-        </Show>
+        <For each={shown()}>{(r) => <Box r={r} />}</For>
+        <Show when={draftRect()}>{(r) => <Box r={r()} />}</Show>
       </div>
       <div class="absolute top-2 right-2 flex items-center gap-2">
         <Show when={armed()}>
@@ -217,7 +221,7 @@ function MarkLayer(props: { frame: () => HTMLIFrameElement | undefined }) {
           size="sm"
           variant={armed() ? "default" : "secondary"}
           onClick={arm}
-          title="멈춘 장면에서 고칠 부분을 감싸면, 그 시각과 위치가 메시지에 붙어요"
+          title="멈춘 장면에서 고칠 부분을 감싸면, 다음 메시지에 첨부돼요"
         >
           <SquareDashedMousePointer />
           고칠 곳 표시
