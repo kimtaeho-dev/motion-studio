@@ -23,10 +23,10 @@ const ChatContext = createContext<{
   send: (text: string, attachments?: ChatAttachment[]) => Promise<void>;
   /** The app's approve button for a pipeline gate (server/mailbox.ts records it in state.json). */
   approve: (gate: "shotlist" | "deliver") => Promise<void>;
-  /** Put text in the message box and focus it — for "수정 요청" and "답하기". */
-  compose: (text: string) => void;
+  /** Put text in the message box and focus it — for "수정 요청" and "답하기". `append` adds a line to what is already typed (the player's "여기 짚기"). */
+  compose: (text: string, opts?: { append?: boolean }) => void;
   /** The latest compose request; the panel applies it when the id changes. */
-  composeRequest: () => { id: number; text: string } | null;
+  composeRequest: () => { id: number; text: string; append?: boolean } | null;
   cancel: (messageId: string) => Promise<void>;
   /** Send a failed request again, unchanged. */
   retry: (messageId: string) => Promise<void>;
@@ -118,8 +118,8 @@ export function ChatProvider(props: { children: JSX.Element }) {
     }
   };
 
-  const [composeRequest, setComposeRequest] = createSignal<{ id: number; text: string } | null>(null);
-  const compose = (text: string) => setComposeRequest((prev) => ({ id: (prev?.id ?? 0) + 1, text }));
+  const [composeRequest, setComposeRequest] = createSignal<{ id: number; text: string; append?: boolean } | null>(null);
+  const compose = (text: string, opts?: { append?: boolean }) => setComposeRequest((prev) => ({ id: (prev?.id ?? 0) + 1, text, append: opts?.append }));
 
   const cancel = async (messageId: string) => {
     if (params.film) await post("/__chat/cancel", { film: params.film, messageId });

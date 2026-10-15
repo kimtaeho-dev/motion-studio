@@ -1,7 +1,8 @@
-import { createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js";
-import { Check, Film, Image, Pause, Play, Redo2, Undo2, X } from "lucide-solid";
+import { createEffect, createMemo, createSignal, For, on, onCleanup, onMount, Show } from "solid-js";
+import { Check, Film, Image, MapPin, Pause, Play, Redo2, Undo2, X } from "lucide-solid";
 import { Button } from "@/components/ui/button";
 import { usePlayer } from "@/context/player";
+import { useChat } from "@/context/chat";
 import { cloneFilm, useEditor } from "@/context/editor";
 import { useFilms } from "@/context/films";
 import { useFiles } from "@/context/files";
@@ -83,15 +84,99 @@ function FormatSwitch() {
   );
 }
 
+/** Where on the film a point falls, in words the agent and the designer both read: "왼쪽 위 (x 22%, y 30%)". */
+function placeOf(x: number, y: number): string {
+  const col = x < 1 / 3 ? "왼쪽" : x < 2 / 3 ? "가운데" : "오른쪽";
+  const row = y < 1 / 3 ? "위" : y < 2 / 3 ? "가운데" : "아래";
+  const name = col === "가운데" && row === "가운데" ? "가운데" : col === "가운데" ? `가운데 ${row}` : row === "가운데" ? col : `${col} ${row}`;
+  return `${name} (x ${Math.round(x * 100)}%, y ${Math.round(y * 100)}%)`;
+}
+
+/**
+ * "여기 짚기": the designer stops on a moment, clicks the spot that bothers them, and the message box gets
+ * "▸ 10.86초 · 16x9 · 왼쪽 위 (x 22%, y 30%): " — a time and place the agent can render and look at, instead of
+ * a description it has to interpret (CLAUDE.md, 수정 요청이 오면).
+ */
+function PinLayer(props: { frame: () => HTMLIFrameElement | undefined }) {
+  const { time, format, playing, toggle, status } = usePlayer();
+  const { compose } = useChat();
+  const [armed, setArmed] = createSignal(false);
+  const [dot, setDot] = createSignal<{ x: number; y: number } | null>(null);
+  let layer: HTMLDivElement | undefined;
+  // A pin belongs to the moment it was made: moving the playhead clears it.
+  createEffect(on(time, () => setDot(null), { defer: true }));
+
+  const arm = () => {
+    if (playing()) toggle();
+    setDot(null);
+    setArmed(!armed());
+  };
+  /** The film's own picture inside the player frame (letterboxed), in layer coordinates. */
+  const pictureRect = () => {
+    const frame = props.frame(), box = layer?.getBoundingClientRect();
+    if (!frame || !box) return null;
+    const f = frame.getBoundingClientRect();
+    try {
+      const c = frame.contentDocument?.getElementById("c")?.getBoundingClientRect();
+      if (c && c.width > 0) return { left: f.left - box.left + c.left, top: f.top - box.top + c.top, width: c.width, height: c.height };
+    } catch {
+      // Another origin: fall back to the whole frame.
+    }
+    return { left: f.left - box.left, top: f.top - box.top, width: f.width, height: f.height };
+  };
+  const onClick = (e: MouseEvent) => {
+    const r = pictureRect(), box = layer?.getBoundingClientRect();
+    if (!r || !box) return;
+    const x = (e.clientX - box.left - r.left) / r.width, y = (e.clientY - box.top - r.top) / r.height;
+    if (x < 0 || x > 1 || y < 0 || y > 1) return;
+    setDot({ x: e.clientX - box.left, y: e.clientY - box.top });
+    setArmed(false);
+    compose(`▸ ${time().toFixed(2)}초 · ${format() ?? ""} · ${placeOf(x, y)}: `, { append: true });
+  };
+
+  return (
+    <Show when={status() === "ready"}>
+      <div
+        ref={layer}
+        class="absolute inset-0"
+        classList={{ "cursor-crosshair": armed(), "pointer-events-none": !armed() }}
+        onClick={onClick}
+      >
+        <Show when={dot()}>
+          {(d) => <div class="pointer-events-none absolute size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-background bg-brand" style={{ left: `${d().x}px`, top: `${d().y}px` }} />}
+        </Show>
+      </div>
+      <div class="absolute top-2 right-2 flex items-center gap-2">
+        <Show when={armed()}>
+          <span class="rounded-md bg-background/90 px-2 py-1 text-[10px] text-foreground">이상한 곳을 눌러 주세요</span>
+        </Show>
+        <Button
+          size="sm"
+          variant={armed() ? "default" : "secondary"}
+          onClick={arm}
+          title="멈춘 순간의 한 곳을 눌러 시각과 위치를 메시지에 붙여요"
+        >
+          <MapPin />
+          여기 짚기
+        </Button>
+      </div>
+    </Show>
+  );
+}
+
 function Stage() {
   const { attach, src, status, error, film } = usePlayer();
+  const [frameEl, setFrameEl] = createSignal<HTMLIFrameElement>();
   return (
     <div
       class="relative min-h-0 flex-1 overflow-hidden rounded-xl bg-stage"
       classList={{ "checkerboard": !!film()?.transparent }}
     >
       <iframe
-        ref={attach}
+        ref={(el) => {
+          setFrameEl(el);
+          attach(el);
+        }}
         src={src()}
         title="필름 미리보기"
         // Same colour scheme as the film page inside: when they differ, Chrome
@@ -118,6 +203,7 @@ function Stage() {
           <pre class="mt-1 whitespace-pre-wrap font-mono text-[10px] text-muted-foreground">{error()}</pre>
         </div>
       </Show>
+      <PinLayer frame={frameEl} />
     </div>
   );
 }

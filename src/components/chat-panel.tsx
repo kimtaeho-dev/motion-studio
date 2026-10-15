@@ -1,4 +1,4 @@
-import { createEffect, createSignal, For, on, onCleanup, Show } from "solid-js";
+import { createEffect, createSignal, For, on, onCleanup, Show, untrack } from "solid-js";
 import { useParams } from "@solidjs/router";
 import { Box, ChevronDown, Film, Image, Paperclip, RotateCcw, Send, X } from "lucide-solid";
 import { Button } from "@/components/ui/button";
@@ -413,11 +413,13 @@ export function ChatPanel() {
   createEffect(() => {
     const request = composeRequest();
     if (!request || !textareaRef) return;
-    setText(request.text);
+    const before = untrack(text).trimEnd();
+    const next = request.append && before ? `${before}\n${request.text}` : request.text;
+    setText(next);
     queueMicrotask(() => {
       autoGrow();
       textareaRef!.focus();
-      textareaRef!.setSelectionRange(request.text.length, request.text.length);
+      textareaRef!.setSelectionRange(next.length, next.length);
     });
   });
 

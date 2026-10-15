@@ -35,10 +35,20 @@ Stage.film((film) => {
   "transparent": false,
   "params": { "bg": { "type": "color", "value": "#E9E6E0", "label": "배경" },
               "word": { "type": "text", "value": "출시", "label": "입체 글자" },
-              "count": { "type": "number", "value": 3, "label": "상자 수" } },
+              "count": { "type": "number", "value": 3, "label": "상자 수" },
+              "bounce": { "type": "number", "value": 1, "min": 0, "max": 2, "step": 0.05, "label": "튀는 정도" } },
   "timeline": { "open": { "t": 0.5, "label": "뚜껑 열림" }, "hit": { "t": 2, "label": "첫 글자 착지" } } }
 ```
   params의 type은 `text` · `color` · `number`. label은 디자이너가 알아볼 한국어. timeline 시각은 코드에서 `film.T.키`로만 쓴다.
+  `number`에 `min`·`max`(·`step`)를 주면 속성 패널에 슬라이더가 생기고, 끄는 동안 미리보기가 바로 바뀐다.
+
+  **느낌 손잡이** (CLAUDE.md 렌더 계약): 말로 고치기 어려운 움직임의 느낌을 슬라이더로 연다. 1 = 지금 그대로인 배율로 두고 코드에서 곱한다.
+  ```js
+  const BOUNCE = P.bounce;                                  // 0 = 튀지 않음 · 1 = 지금 · 2 = 두 배
+  const y = track(t, KEYS, 180, lerp(27, 9, clamp(BOUNCE / 2)));   // 감쇠 27 ≈ 넘침 없음(임계 2√180) → 9 = 크게 튐
+  const shake = P.shake * 6 * U * Math.sin(t * 40);         // 흔들림 세기
+  const hold = P.hold * 0.4;                                // 머무는 시간(초) — 장면 시각 자체는 timeline으로 옮긴다
+  ```
 
 ## motion.js (전역 `M`)
 
