@@ -293,7 +293,7 @@ export function ChatPanel() {
   const params = useParams();
   const { films } = useFilms();
   const isLottie = () => films().find((f) => f.slug === params.film)?.kind === "lottie";
-  const { messages, sending, send, cancel, reset, upload, composeRequest } = useChat();
+  const { messages, sending, send, cancel, retry, reset, upload, composeRequest } = useChat();
   const { files } = useFiles();
   const turnRunning = () => messages().some((m) => m.status === "pending" || m.status === "processing");
   // The agent's open questions (tools/ask.mjs), until the designer answers — by card or by typing.
@@ -566,6 +566,13 @@ export function ChatPanel() {
                   </Show>
                   <Show when={message.auth}>
                     <AuthRecovery message={message} />
+                  </Show>
+                  <Show when={message.role === "assistant" && message.status === "error" && !message.auth}>
+                    <div class="mt-1.5">
+                      <Button size="xs" variant="secondary" onClick={() => void retry(message.id)}>
+                        다시 보내기
+                      </Button>
+                    </div>
                   </Show>
                   <Show when={message.status === "done" && message.settings}>
                     {(settings) => (

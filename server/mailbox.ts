@@ -16,6 +16,8 @@ import { isSignedOut, resolveClaudePath } from "./claude-cli";
 const WORKER_TIMEOUT_MS = 60 * 60 * 1000;
 
 const FALLBACK_ERROR_TEXT = "요청을 처리하는 중에 문제가 생겼어요. 잠시 후 다시 말씀해 주세요.";
+/** A request the API never answered (see the first-byte window at the spawn): the work so far is on disk, so retrying picks it up. */
+const STALLED_TEXT = "Claude 서버가 응답하지 않아 이번 요청이 멈췄어요. 여기까지 한 작업은 그대로 남아 있어요 — 다시 보내기를 누르면 이어서 할게요.";
 
 /**
  * A session can expire while the app sits open for days. The agent then fails
@@ -55,6 +57,8 @@ type Approval = keyof typeof APPROVALS;
 const MAX_ATTACHMENTS = 10;
 /** How long the agent waits for the API's first response bytes before retrying (see the spawn below). */
 const FIRST_BYTE_TIMEOUT_MS = 120_000;
+/** The longest the retry of a stuck request waits for response headers (see the spawn below). */
+const RETRY_TIMEOUT_MS = 300_000;
 
 /**
  * Reply shape for the chat panel: a 380px column read by a designer, not a
@@ -507,8 +511,15 @@ export function mailboxPlugin(options: MailboxOptions = {}): Plugin {
     const env = { ...(options.agentEnv?.() ?? process.env) };
     // A request that gets no response headers is stuck, not thinking: the
     // retry of the same request answered in 3–89s every time, after waits of
-    // 4–10 minutes (Claude Code's default window). Give up on it after 2 minutes.
+    // 4–10 minutes (Claude Code's default window). Give up on it after 2 minutes
+    // (Claude Code adds 1s per 32KB of request body). Other sessions on the same
+    // Mac answered normally meanwhile, so it is one request, not the network.
     env.CLAUDE_STREAM_FIRST_BYTE_TIMEOUT_MS ??= String(FIRST_BYTE_TIMEOUT_MS);
+    // The retry waits up to API_TIMEOUT_MS (default 10–15 min) — one turn waited 3 + 15
+    // minutes and still failed. It bounds the wait for response headers, not the
+    // answer itself (a 54s streamed answer finished under API_TIMEOUT_MS=15000), so
+    // 5 minutes still leaves room for the rare non-streaming fallback.
+    env.API_TIMEOUT_MS ??= String(RETRY_TIMEOUT_MS);
     const child = spawn(claudePath, args, {
       cwd: workspaceRoot,
       env,
@@ -579,6 +590,9 @@ export function mailboxPlugin(options: MailboxOptions = {}): Plugin {
           replyText = final.result;
         } else if (/not logged in/i.test(final.result)) {
           saysSignedOut = true;
+        } else if (/No response from API|first-byte window/i.test(final.result)) {
+          replyText = STALLED_TEXT;
+          console.error(`[mailbox] the API did not respond: ${final.result}`);
         } else {
           console.error(`[mailbox] claude reported an error: ${final.result}`);
         }
