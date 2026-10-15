@@ -1,5 +1,5 @@
 import { createEffect, createMemo, createSignal, For, on, onCleanup, onMount, Show } from "solid-js";
-import { Check, Film, Image, MapPin, Pause, Play, Redo2, Undo2, X } from "lucide-solid";
+import { Check, Film, Image, Pause, Play, Redo2, SquareDashedMousePointer, Undo2, X } from "lucide-solid";
 import { Button } from "@/components/ui/button";
 import { usePlayer } from "@/context/player";
 import { useChat } from "@/context/chat";
@@ -84,80 +84,143 @@ function FormatSwitch() {
   );
 }
 
-/** Where on the film a point falls, in words the agent and the designer both read: "왼쪽 위 (x 22%, y 30%)". */
-function placeOf(x: number, y: number): string {
-  const col = x < 1 / 3 ? "왼쪽" : x < 2 / 3 ? "가운데" : "오른쪽";
-  const row = y < 1 / 3 ? "위" : y < 2 / 3 ? "가운데" : "아래";
+type Mark = { x0: number; y0: number; x1: number; y1: number };
+
+/** Where on the film a spot or area sits, in words the agent and the designer both read. */
+function placeOf(m: Mark): string {
+  const cx = (m.x0 + m.x1) / 2, cy = (m.y0 + m.y1) / 2;
+  const col = cx < 1 / 3 ? "왼쪽" : cx < 2 / 3 ? "가운데" : "오른쪽";
+  const row = cy < 1 / 3 ? "위" : cy < 2 / 3 ? "가운데" : "아래";
   const name = col === "가운데" && row === "가운데" ? "가운데" : col === "가운데" ? `가운데 ${row}` : row === "가운데" ? col : `${col} ${row}`;
-  return `${name} (x ${Math.round(x * 100)}%, y ${Math.round(y * 100)}%)`;
+  const p = (v: number) => Math.round(v * 100);
+  if (m.x0 === m.x1 && m.y0 === m.y1) return `${name} (x ${p(m.x0)}%, y ${p(m.y0)}%)`;
+  return `${name} 영역 (x ${p(m.x0)}~${p(m.x1)}%, y ${p(m.y0)}~${p(m.y1)}%)`;
 }
 
 /**
- * "여기 짚기": the designer stops on a moment, clicks the spot that bothers them, and the message box gets
- * "▸ 10.86초 · 16x9 · 왼쪽 위 (x 22%, y 30%): " — a time and place the agent can render and look at, instead of
- * a description it has to interpret (CLAUDE.md, 수정 요청이 오면).
+ * "고칠 곳 표시": the designer stops on a moment and drags a box around what bothers them (or clicks a spot),
+ * and the message box gets "▸ 10.86초 · 16x9 · 왼쪽 위 영역 (x 10~35%, y 20~45%): " — a time and area the agent
+ * can render and crop, instead of a description it has to interpret (CLAUDE.md, 수정 요청이 오면).
  */
-function PinLayer(props: { frame: () => HTMLIFrameElement | undefined }) {
+function MarkLayer(props: { frame: () => HTMLIFrameElement | undefined }) {
   const { time, format, playing, toggle, status } = usePlayer();
   const { compose } = useChat();
   const [armed, setArmed] = createSignal(false);
-  const [dot, setDot] = createSignal<{ x: number; y: number } | null>(null);
+  // In layer pixels while drawing and after, so the box stays where it was drawn.
+  const [box, setBox] = createSignal<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
+  let drawing = false;
   let layer: HTMLDivElement | undefined;
-  // A pin belongs to the moment it was made: moving the playhead clears it.
-  createEffect(on(time, () => setDot(null), { defer: true }));
+  // A mark belongs to the moment it was made: moving the playhead clears it.
+  createEffect(on(time, () => setBox(null), { defer: true }));
 
   const arm = () => {
     if (playing()) toggle();
-    setDot(null);
+    setBox(null);
     setArmed(!armed());
   };
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key === "Escape" && armed()) {
+      setArmed(false);
+      setBox(null);
+    }
+  };
+  onMount(() => window.addEventListener("keydown", onKey));
+  onCleanup(() => window.removeEventListener("keydown", onKey));
+
   /** The film's own picture inside the player frame (letterboxed), in layer coordinates. */
   const pictureRect = () => {
-    const frame = props.frame(), box = layer?.getBoundingClientRect();
-    if (!frame || !box) return null;
+    const frame = props.frame(), outer = layer?.getBoundingClientRect();
+    if (!frame || !outer) return null;
     const f = frame.getBoundingClientRect();
     try {
       const c = frame.contentDocument?.getElementById("c")?.getBoundingClientRect();
-      if (c && c.width > 0) return { left: f.left - box.left + c.left, top: f.top - box.top + c.top, width: c.width, height: c.height };
+      if (c && c.width > 0) return { left: f.left - outer.left + c.left, top: f.top - outer.top + c.top, width: c.width, height: c.height };
     } catch {
       // Another origin: fall back to the whole frame.
     }
-    return { left: f.left - box.left, top: f.top - box.top, width: f.width, height: f.height };
+    return { left: f.left - outer.left, top: f.top - outer.top, width: f.width, height: f.height };
   };
-  const onClick = (e: MouseEvent) => {
-    const r = pictureRect(), box = layer?.getBoundingClientRect();
-    if (!r || !box) return;
-    const x = (e.clientX - box.left - r.left) / r.width, y = (e.clientY - box.top - r.top) / r.height;
-    if (x < 0 || x > 1 || y < 0 || y > 1) return;
-    setDot({ x: e.clientX - box.left, y: e.clientY - box.top });
+  /** A pointer position in layer pixels, held inside the picture. */
+  const at = (e: PointerEvent) => {
+    const r = pictureRect(), outer = layer?.getBoundingClientRect();
+    if (!r || !outer) return null;
+    const x = Math.min(Math.max(e.clientX - outer.left, r.left), r.left + r.width);
+    const y = Math.min(Math.max(e.clientY - outer.top, r.top), r.top + r.height);
+    return { x, y, inside: e.clientX - outer.left === x && e.clientY - outer.top === y };
+  };
+  const onDown = (e: PointerEvent) => {
+    const p = at(e);
+    if (!p?.inside) return;
+    drawing = true;
+    setBox({ x0: p.x, y0: p.y, x1: p.x, y1: p.y });
+    try {
+      layer?.setPointerCapture(e.pointerId);    // keep the drag when the pointer leaves the stage
+    } catch {
+      // Some pointers cannot be captured; the drag still works inside the stage.
+    }
+  };
+  const onMove = (e: PointerEvent) => {
+    const p = drawing && at(e);
+    if (p) setBox((b) => b && { ...b, x1: p.x, y1: p.y });
+  };
+  const onUp = () => {
+    if (!drawing) return;
+    drawing = false;
+    const b = box(), r = pictureRect();
+    if (!b || !r) return;
+    // A tiny drag is a click: mark the spot.
+    const spot = Math.abs(b.x1 - b.x0) < 8 && Math.abs(b.y1 - b.y0) < 8;
+    const nx = (x: number) => (x - r.left) / r.width, ny = (y: number) => (y - r.top) / r.height;
+    const mark = spot
+      ? { x0: nx(b.x0), y0: ny(b.y0), x1: nx(b.x0), y1: ny(b.y0) }
+      : { x0: nx(Math.min(b.x0, b.x1)), y0: ny(Math.min(b.y0, b.y1)), x1: nx(Math.max(b.x0, b.x1)), y1: ny(Math.max(b.y0, b.y1)) };
+    if (spot) setBox({ x0: b.x0, y0: b.y0, x1: b.x0, y1: b.y0 });
     setArmed(false);
-    compose(`▸ ${time().toFixed(2)}초 · ${format() ?? ""} · ${placeOf(x, y)}: `, { append: true });
+    compose(`▸ ${time().toFixed(2)}초 · ${format() ?? ""} · ${placeOf(mark)}: `, { append: true });
+  };
+
+  const rect = () => {
+    const b = box();
+    return b && { left: Math.min(b.x0, b.x1), top: Math.min(b.y0, b.y1), width: Math.abs(b.x1 - b.x0), height: Math.abs(b.y1 - b.y0) };
   };
 
   return (
     <Show when={status() === "ready"}>
       <div
         ref={layer}
-        class="absolute inset-0"
+        class="absolute inset-0 touch-none"
         classList={{ "cursor-crosshair": armed(), "pointer-events-none": !armed() }}
-        onClick={onClick}
+        onPointerDown={onDown}
+        onPointerMove={onMove}
+        onPointerUp={onUp}
+        onPointerCancel={onUp}
       >
-        <Show when={dot()}>
-          {(d) => <div class="pointer-events-none absolute size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-background bg-brand" style={{ left: `${d().x}px`, top: `${d().y}px` }} />}
+        <Show when={rect()}>
+          {(r) => (
+            <Show
+              when={r().width > 0 || r().height > 0}
+              fallback={<div class="pointer-events-none absolute size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-background bg-brand" style={{ left: `${r().left}px`, top: `${r().top}px` }} />}
+            >
+              <div
+                class="pointer-events-none absolute rounded-sm border-2 border-brand bg-brand/15"
+                style={{ left: `${r().left}px`, top: `${r().top}px`, width: `${r().width}px`, height: `${r().height}px` }}
+              />
+            </Show>
+          )}
         </Show>
       </div>
       <div class="absolute top-2 right-2 flex items-center gap-2">
         <Show when={armed()}>
-          <span class="rounded-md bg-background/90 px-2 py-1 text-[10px] text-foreground">이상한 곳을 눌러 주세요</span>
+          <span class="rounded-md bg-background/90 px-2 py-1 text-[10px] text-foreground">고칠 부분을 드래그해서 감싸 주세요 · Esc 취소</span>
         </Show>
         <Button
           size="sm"
           variant={armed() ? "default" : "secondary"}
           onClick={arm}
-          title="멈춘 순간의 한 곳을 눌러 시각과 위치를 메시지에 붙여요"
+          title="멈춘 장면에서 고칠 부분을 감싸면, 그 시각과 위치가 메시지에 붙어요"
         >
-          <MapPin />
-          여기 짚기
+          <SquareDashedMousePointer />
+          고칠 곳 표시
         </Button>
       </div>
     </Show>
@@ -203,7 +266,7 @@ function Stage() {
           <pre class="mt-1 whitespace-pre-wrap font-mono text-[10px] text-muted-foreground">{error()}</pre>
         </div>
       </Show>
-      <PinLayer frame={frameEl} />
+      <MarkLayer frame={frameEl} />
     </div>
   );
 }
